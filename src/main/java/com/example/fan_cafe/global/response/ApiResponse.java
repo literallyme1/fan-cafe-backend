@@ -1,0 +1,44 @@
+package com.example.fan_cafe.global.response;
+
+import com.example.fan_cafe.global.exception.ErrorCode;
+import lombok.Getter;
+
+@Getter
+public class ApiResponse<T> {
+
+    private final String code;   // 에러/응답 코드
+    private final int status;    // HTTP 상태 코드 (200, 400 등)
+    private final String message;
+    private final T data;
+
+    private ApiResponse(String code, int status, String message, T data) {
+        this.code = code;
+        this.status = status;
+        this.message = message;
+        this.data = data;
+    }
+
+    // ✅ 성공 응답 (ApiResponseStatus 활용)
+    public static <T> ApiResponse<T> success(ApiResponseStatus status, T data) {
+        return new ApiResponse<>(status.getCode(), status.getStatus().value(), status.getMessage(), data);
+    }
+
+    // ✅ 실패 응답 (에러 코드 + 메시지 + 데이터 포함)
+    public static <T> ApiResponse<T> fail(ApiResponseStatus status, T data) {
+        return new ApiResponse<>(status.getCode(), status.getStatus().value(), status.getMessage(), data);
+    }
+
+    // ✅ 실패 응답 (데이터 없이)
+    public static <T> ApiResponse<T> fail(ApiResponseStatus status) {
+        return new ApiResponse<>(status.getCode(), status.getStatus().value(), status.getMessage(), null);
+    }
+
+    public static <T> ApiResponse<T> fail(ErrorCode errorCode, T data) {
+        return new ApiResponse<>(errorCode.getCode(), errorCode.getStatus().value(), errorCode.getMessage(), data);
+    }
+
+    public static <T> ApiResponse<T> fail(ErrorCode errorCode) {
+        return fail(errorCode, null);
+    }
+
+}
