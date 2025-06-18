@@ -3,8 +3,10 @@ package com.example.fan_cafe.user;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Getter;
 
+@Builder
 @Getter
 public class UserRegisterReqeust {
 
@@ -18,5 +20,14 @@ public class UserRegisterReqeust {
 
     @NotBlank(message = "닉네임을 입력하세요.")
     private String nickname;
+
+    public User toEntity(String encodedPassword, Role role) {
+        return User.builder()
+                    .email(this.email)
+                    .password(encodedPassword)
+                    .nickname(this.nickname)
+                    .role(role)
+                    .build();
+    }
 
 }
