@@ -6,18 +6,20 @@ import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
-public class service {
+public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public ApiResponse<UserRegisterResponse> register(UserRegisterReqeust request, Role role)
+    public ApiResponse<UserRegisterResponse> register(UserRegisterRequest request, Role role)
     {
         if (userRepository.existsByEmail(request.getEmail()))
             throw new CustomException(UserErrorCode.EMAIL_ALREADY_EXISTS);
-        if (userRepository.existsByNickname(request.getNickname()))
+        else if (userRepository.existsByNickname(request.getNickname()))
             throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());

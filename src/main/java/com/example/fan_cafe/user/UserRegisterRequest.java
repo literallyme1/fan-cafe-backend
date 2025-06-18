@@ -8,7 +8,7 @@ import lombok.Getter;
 
 @Builder
 @Getter
-public class UserRegisterReqeust {
+public class UserRegisterRequest {
 
     @NotBlank(message = "이메일은 입력하세요.")
     @Email(message = "이메일 형식이 올바르지 않습니다.")

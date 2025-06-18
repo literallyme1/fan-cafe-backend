@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class controller {
 
-
+    private final UserService service;
     @PostMapping("/register")
-    public ApiResponse<UserRegisterResponse> register(@RequestBody @Valid UserRegisterReqeust reqeust) {
-        return service.register(reqeust);
+    public ApiResponse<UserRegisterResponse> register(@RequestBody @Valid UserRegisterRequest reqeust) {
+        return service.register(reqeust, Role.USER);
     }
 
 }
