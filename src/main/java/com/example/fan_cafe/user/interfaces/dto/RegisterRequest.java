@@ -1,5 +1,7 @@
-package com.example.fan_cafe.user;
+package com.example.fan_cafe.user.interfaces.dto;
 
+import com.example.fan_cafe.user.domain.Role;
+import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -8,7 +10,7 @@ import lombok.Getter;
 
 @Builder
 @Getter
-public class UserRegisterRequest {
+public class RegisterRequest {
 
     @NotBlank(message = "이메일은 입력하세요.")
     @Email(message = "이메일 형식이 올바르지 않습니다.")

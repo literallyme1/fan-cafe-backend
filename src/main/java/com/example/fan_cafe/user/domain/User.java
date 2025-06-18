@@ -1,4 +1,4 @@
-package com.example.fan_cafe.user;
+package com.example.fan_cafe.user.domain;
 
 import com.example.fan_cafe.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
