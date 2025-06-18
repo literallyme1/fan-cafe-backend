@@ -1,6 +1,6 @@
 package com.example.fan_cafe.global.response;
 
-import com.example.fan_cafe.global.exception.ErrorCode;
+import com.example.fan_cafe.global.exception.UserErrorCode;
 import lombok.Getter;
 
 @Getter
@@ -33,11 +33,11 @@ public class ApiResponse<T> {
         return new ApiResponse<>(status.getCode(), status.getStatus().value(), status.getMessage(), null);
     }
 
-    public static <T> ApiResponse<T> fail(ErrorCode errorCode, T data) {
+    public static <T> ApiResponse<T> fail(UserErrorCode errorCode, T data) {
         return new ApiResponse<>(errorCode.getCode(), errorCode.getStatus().value(), errorCode.getMessage(), data);
     }
 
-    public static <T> ApiResponse<T> fail(ErrorCode errorCode) {
+    public static <T> ApiResponse<T> fail(UserErrorCode errorCode) {
         return fail(errorCode, null);
     }
 

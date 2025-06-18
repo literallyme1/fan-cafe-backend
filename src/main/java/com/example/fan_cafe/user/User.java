@@ -4,8 +4,6 @@ import com.example.fan_cafe.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -13,7 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name= "users")
-public class entity extends BaseTimeEntity {
+public class User extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
