@@ -1,8 +1,10 @@
 package com.example.fan_cafe.global.security;
 
 import com.example.fan_cafe.global.exception.CustomException;
+import org.springframework.core.io.Resource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -12,22 +14,36 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 public class KeyProvider {
 
-    public PrivateKey loadPrivateKey(String path) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+    public PrivateKey loadPrivateKey(Resource resource) throws Exception {
+    try (InputStream is = resource.getInputStream()) {
+            byte[] keyBytes = is.readAllBytes();
+            String privateKeyPEM = new String(keyBytes)
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replaceAll("\\s+", "");
 
-        byte[] keyBytes = Files.readAllBytes(Paths.get(path));
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes); // 키 규격 지정
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        return keyFactory.generatePrivate(spec); //개인키 생성
+            byte[] decoded = Base64.getDecoder().decode(privateKeyPEM);
+            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decoded);
+            return KeyFactory.getInstance("RSA").generatePrivate(keySpec);
+        }
     }
 
-    public PublicKey loadPublicKey(String path) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+    public PublicKey loadPublicKey(Resource resource) throws Exception  {
 
-        byte[] keyBytes = Files.readAllBytes(Paths.get(path));
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        return  keyFactory.generatePublic(spec);
+        try (InputStream is = resource.getInputStream()) {
+            byte[] keyBytes = is.readAllBytes();
+            String publicKeyPEM = new String(keyBytes)
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s+", "");
+
+            byte[] decoded = Base64.getDecoder().decode(publicKeyPEM);
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
+            return KeyFactory.getInstance("RSA").generatePublic(keySpec);
+        }
     }
 }
