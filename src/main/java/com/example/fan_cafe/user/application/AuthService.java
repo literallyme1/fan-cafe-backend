@@ -5,6 +5,7 @@ import com.example.fan_cafe.global.exception.UserErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.security.JwtProvider;
+import com.example.fan_cafe.global.security.JwtTokenResponse;
 import com.example.fan_cafe.global.security.RedisTokenRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
@@ -59,7 +60,8 @@ public class AuthService {
 
         redisTokenRepository.save(user.getId(), refreshToken);
         UserInfoResponse userInfo = UserInfoResponse.from(user);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, LoginResponse.from(accessToken, refreshToken, userInfo));
+        JwtTokenResponse jwtToken = JwtTokenResponse.from(accessToken, refreshToken);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, LoginResponse.from(jwtToken, userInfo));
 
 
 

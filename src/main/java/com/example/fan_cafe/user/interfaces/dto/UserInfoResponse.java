@@ -6,10 +6,10 @@ import lombok.Builder;
 @Builder
 public class UserInfoResponse {
 
-    private Long id;
-    private String email;
-    private String nickname;
-    private String role;
+    private final Long id;
+    private final String email;
+    private final String nickname;
+    private final String role;
 
     public static UserInfoResponse from(User user) {
         return UserInfoResponse.builder()

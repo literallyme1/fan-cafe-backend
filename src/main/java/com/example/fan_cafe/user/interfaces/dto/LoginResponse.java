@@ -1,19 +1,18 @@
 package com.example.fan_cafe.user.interfaces.dto;
 
 
+import com.example.fan_cafe.global.security.JwtTokenResponse;
 import lombok.Builder;
 
 @Builder
 public class LoginResponse {
 
-    private String accessToken;
-    private String refreshToken;
-    private UserInfoResponse userInfo;
+    private final JwtTokenResponse jwtToken;
+    private final UserInfoResponse userInfo;
 
-    public static LoginResponse from(String accessToken, String refreshToken, UserInfoResponse userInfo) {
+    public static LoginResponse from(JwtTokenResponse jwtToken, UserInfoResponse userInfo) {
         return LoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .jwtToken(jwtToken)
                 .userInfo(userInfo)
                 .build();
     }
