@@ -4,6 +4,8 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.UserErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
+import com.example.fan_cafe.global.security.JwtProvider;
+import com.example.fan_cafe.global.security.RedisTokenRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
@@ -24,6 +26,8 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
+    private final RedisTokenRepository redisTokenRepository;
 
     public ApiResponse<UserInfoResponse> register(RegisterRequest request, Role role)
     {
@@ -50,8 +54,8 @@ public class AuthService {
         if(!passwordEncoder.matches(request.getPassword(), user.getPassword()))
             throw new CustomException(UserErrorCode.INVALID_PASSWORD);
 
-        String accessToken = jwtProvider.generateToken(user.getId());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getId());
+        String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
+        String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole());
 
         redisTokenRepository.save(user.getId(), refreshToken);
         UserInfoResponse userInfo = UserInfoResponse.from(user);
