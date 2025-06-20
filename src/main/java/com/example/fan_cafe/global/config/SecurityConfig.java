@@ -1,5 +1,6 @@
 package com.example.fan_cafe.global.config;
 
+import com.example.fan_cafe.global.security.JwtFilter;
 import com.example.fan_cafe.global.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -32,7 +33,7 @@ public class SecurityConfig {
                         auth.requestMatchers("/login", "/register").permitAll()
                                 .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
