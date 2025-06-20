@@ -1,5 +1,7 @@
 package com.example.fan_cafe.global.config;
 
+import com.example.fan_cafe.global.security.CustomUserDetails;
+import com.example.fan_cafe.global.security.CustomUserDetailsService;
 import com.example.fan_cafe.global.security.JwtFilter;
 import com.example.fan_cafe.global.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -33,7 +36,7 @@ public class SecurityConfig {
                         auth.requestMatchers("/login", "/register").permitAll()
                                 .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtFilter(jwtProvider, customUserDetailsService), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
