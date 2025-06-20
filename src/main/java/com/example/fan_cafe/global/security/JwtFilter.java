@@ -1,7 +1,6 @@
 package com.example.fan_cafe.global.security;
 
-import com.example.fan_cafe.user.domain.User;
-import com.example.fan_cafe.user.infrastructure.UserRepository;
+import com.example.fan_cafe.global.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -19,7 +17,7 @@ import java.util.Optional;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final UserRepository userRepository;
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -28,17 +26,11 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
         if (token != null && jwtProvider.isValid(token)) {
-            Long userId = jwtProvider.getUserIdFromToken(token);
-
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isPresent()){
-                User user = userOptional.get();
-                CustomUserDetails userDetails = new CustomUserDetails(user);
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
+            String userId = String.valueOf(jwtProvider.getUserIdFromToken(token));
+            CustomUserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         chain.doFilter(request, response);
     }
