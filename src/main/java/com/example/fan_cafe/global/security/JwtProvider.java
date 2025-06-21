@@ -4,6 +4,7 @@ import com.example.fan_cafe.user.domain.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import lombok.NoArgsConstructor;
 import org.springframework.core.io.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,8 +24,8 @@ public class JwtProvider {
 
     private PrivateKey privateKey;
     private PublicKey publicKey;
-    private final long accessTokenValidity;
-    private final long refreshTokenValidity;
+    private  final long accessTokenValidity;
+    private  final long refreshTokenValidity;
 
     private KeyProvider keyProvider;
 
