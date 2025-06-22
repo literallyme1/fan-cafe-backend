@@ -13,7 +13,7 @@ public class RedisTokenRepository {
 
     private final StringRedisTemplate redisTemplate;
 
-    @Value("{jwt.refresh-token-expiration}")
+    @Value("${jwt.refresh-token-expiration}")
     private long refreshTokenExpiration;
 
     public void save(Long userId, String refreshToken) {

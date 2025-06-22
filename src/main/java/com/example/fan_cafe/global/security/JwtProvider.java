@@ -24,11 +24,10 @@ public class JwtProvider {
 
     private PrivateKey privateKey;
     private PublicKey publicKey;
-    private  final long accessTokenValidity;
-    private  final long refreshTokenValidity;
+    private  long accessTokenValidity;
+    private  long refreshTokenValidity;
 
     private KeyProvider keyProvider;
-
 
     public JwtProvider(
             @Value("${jwt.private-key-path}") Resource privateKeyPath,
