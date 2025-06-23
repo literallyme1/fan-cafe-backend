@@ -21,11 +21,10 @@ import com.example.fan_cafe.global.exception.JwtErrorCode;
 @Component
 public class JwtProvider {
 
-    private PrivateKey privateKey;
-    private PublicKey publicKey;
-    private  long accessTokenValidity;
-    private  long refreshTokenValidity;
-
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
+    private final long accessTokenValidity;
+    private final long refreshTokenValidity;
     private final KeyProvider keyProvider;
 
     public JwtProvider(
