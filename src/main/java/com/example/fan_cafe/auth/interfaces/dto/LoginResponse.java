@@ -3,8 +3,10 @@ package com.example.fan_cafe.auth.interfaces.dto;
 
 import com.example.fan_cafe.global.security.JwtTokenResponse;
 import lombok.Builder;
+import lombok.Getter;
 
 @Builder
+@Getter
 public class LoginResponse {
 
     private final JwtTokenResponse jwtToken;

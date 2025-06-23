@@ -2,6 +2,7 @@ package com.example.fan_cafe.global.security;
 
 import com.example.fan_cafe.global.exception.CustomException;
 import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +17,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
+@Component
 public class KeyProvider {
 
     public PrivateKey loadPrivateKey(Resource resource) throws Exception {

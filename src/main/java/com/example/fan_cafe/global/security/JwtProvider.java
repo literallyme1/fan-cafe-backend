@@ -19,7 +19,6 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.JwtErrorCode;
 
 @Component
-@RequiredArgsConstructor
 public class JwtProvider {
 
     private PrivateKey privateKey;
@@ -27,14 +26,16 @@ public class JwtProvider {
     private  long accessTokenValidity;
     private  long refreshTokenValidity;
 
-    private KeyProvider keyProvider;
+    private final KeyProvider keyProvider;
 
     public JwtProvider(
+            KeyProvider keyProvider,
             @Value("${jwt.private-key-path}") Resource privateKeyPath,
             @Value("${jwt.public-key-path}") Resource publicKeyPath,
             @Value("${jwt.access-token-expiration}") long accessTokenValidity,
-            @Value("${jwt.refresh-token-expiration}") long refreshTokenValidity //시간
+            @Value("${jwt.refresh-token-expiration}") long refreshTokenValidity
     ) {
+        this.keyProvider = keyProvider;
         try {
             this.privateKey = keyProvider.loadPrivateKey(privateKeyPath);
             this.publicKey = keyProvider.loadPublicKey(publicKeyPath);
