@@ -1,15 +1,17 @@
-package com.example.fan_cafe.user.interfaces.dto;
+package com.example.fan_cafe.auth.interfaces.dto;
 
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
 @Builder
 @Getter
+@AllArgsConstructor
 public class RegisterRequest {
 
     @NotBlank(message = "이메일은 입력하세요.")

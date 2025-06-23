@@ -1,4 +1,4 @@
-package com.example.fan_cafe.user.application;
+package com.example.fan_cafe.auth.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.UserErrorCode;
@@ -10,12 +10,11 @@ import com.example.fan_cafe.global.security.RedisTokenRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
-import com.example.fan_cafe.user.interfaces.dto.LoginRequest;
-import com.example.fan_cafe.user.interfaces.dto.LoginResponse;
-import com.example.fan_cafe.user.interfaces.dto.RegisterRequest;
-import com.example.fan_cafe.user.interfaces.dto.UserInfoResponse;
+import com.example.fan_cafe.auth.interfaces.dto.LoginRequest;
+import com.example.fan_cafe.auth.interfaces.dto.LoginResponse;
+import com.example.fan_cafe.auth.interfaces.dto.RegisterRequest;
+import com.example.fan_cafe.auth.interfaces.dto.UserInfoResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +35,6 @@ public class AuthService {
             throw new CustomException(UserErrorCode.EMAIL_ALREADY_EXISTS);
         else if (userRepository.existsByNickname(request.getNickname()))
             throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
-
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User user = request.toEntity(encodedPassword, role);
         userRepository.save(user);
