@@ -1,4 +1,7 @@
 package com.example.fan_cafe.post.infrastructure;
 
-public class PostRepository {
+import com.example.fan_cafe.post.domain.Post;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PostRepository extends JpaRepository<Post, Long> {
 }
