@@ -25,6 +25,10 @@ public class ApiResponse<T> {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), data);
     }
 
+    public static <T> ApiResponse<T> success(ApiResponseStatus status) {
+        return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), null);
+    }
+
     // ✅ 실패 응답 (에러 코드 + 메시지 + 데이터 포함)
     public static <T> ApiResponse<T> fail(ApiResponseStatus status, T data) {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), data);

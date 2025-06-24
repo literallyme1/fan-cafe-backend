@@ -3,8 +3,16 @@ package com.example.fan_cafe.post.domain;
 import com.example.fan_cafe.global.common.BaseTimeEntity;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name= "posts")
 public class Post extends BaseTimeEntity {
@@ -31,4 +39,12 @@ public class Post extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int commentCount = 0;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostImage> images = new ArrayList<>();
+    
+    public void addImage(PostImage image) {
+        images.add(image);
+        image.setPost(this);
+    }
 }
