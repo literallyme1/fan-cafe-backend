@@ -3,15 +3,17 @@ package com.example.fan_cafe.post.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
+import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
+import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/posts")
@@ -25,5 +27,22 @@ public class PostController {
             @RequestBody @Valid PostCreateRequest request) {
         return postService.create(user, request);
     }
+
+    //paged 10개씩
+    @GetMapping
+    public ApiResponse<List<PostResponse>> get(){
+        return postService.get();
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<Void> update(@PathVariable Long id) {
+        return postService.update();
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        return postService.delete(id);
+    }
+
 
 }
