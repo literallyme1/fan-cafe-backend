@@ -3,16 +3,16 @@ package com.example.fan_cafe.post.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
-import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
-import com.example.fan_cafe.post.interfaces.dto.PostResponse;
+import com.example.fan_cafe.post.interfaces.dto.PostDto;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -30,7 +30,10 @@ public class PostController {
 
     //paged 10개씩
     @GetMapping
-    public ApiResponse<List<PostResponse>> get(){
+    public ApiResponse<List<PostDto>> get(@RequestParam(required = false) Long cursorId,
+                                          @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                          @RequestParam(defaultValue = "10") int size)
+    {
         return postService.get();
     }
 
