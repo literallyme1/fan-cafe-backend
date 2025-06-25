@@ -5,6 +5,7 @@ import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
 import com.example.fan_cafe.post.interfaces.dto.PostDto;
+import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,17 +31,17 @@ public class PostController {
 
     //paged 10개씩
     @GetMapping
-    public ApiResponse<List<PostDto>> get(@RequestParam(required = false) Long cursorId,
-                                          @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                          @RequestParam(defaultValue = "10") int size)
+    public ApiResponse<PostResponse> get(@RequestParam(required = false) Long cursorId,
+                                         @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                         @RequestParam(defaultValue = "10") int size)
     {
-        return postService.get();
+        return postService.get(cursorId, cursorCreatedAt, size);
     }
 
-    @PutMapping("/{id}")
-    public ApiResponse<Void> update(@PathVariable Long id) {
-        return postService.update();
-    }
+//    @PutMapping("/{id}")
+//    public ApiResponse<Void> update(@PathVariable Long id) {
+//        return postService.update();
+//    }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
