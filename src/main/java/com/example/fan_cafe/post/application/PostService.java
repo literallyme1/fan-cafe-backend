@@ -34,7 +34,7 @@ public class PostService {
     public ApiResponse<PostResponse> get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
         Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
         Pageable pageable = PageUtils.createPageRequest(size);
-        List<Post> posts = postRepository.findNextPage(cursorCreatedAt, cursorId, pageable);
+        List<Post> posts = postRepository.findNextPage(cursor.createdAt(), cursor.id(), pageable);
         List<PostDto> postDtoList = posts.stream().map(PostDto::from).toList();
 
         boolean hasNext = postDtoList.size() == size;
