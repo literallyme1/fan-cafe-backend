@@ -4,7 +4,7 @@
 
 ### 1. 회원가입
 
-* `POST /api/users`
+* `POST /api/auth/register`
 
 ```json
 Request:
