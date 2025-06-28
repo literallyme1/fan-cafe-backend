@@ -1,6 +1,8 @@
 package com.example.fan_cafe.post.application;
 
 
+import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.util.PageUtils;
@@ -16,8 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Pageable;
 
 import com.example.fan_cafe.post.interfaces.dto.Cursor;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -56,8 +61,11 @@ public class PostService {
 //    public ApiResponse<Void> update() {
 //    }
 
+    @Transactional
     public ApiResponse<Void> delete(Long id) {
-        postRepository.deleteById(id);
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
+        post.delete();
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 

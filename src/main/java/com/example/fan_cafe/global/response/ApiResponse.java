@@ -20,7 +20,7 @@ public class ApiResponse<T> {
         this.data = data;
     }
 
-    // ✅ 성공 응답 (ApiResponseStatus 활용)
+    // 성공 응답 (ApiResponseStatus 활용)
     public static <T> ApiResponse<T> success(ApiResponseStatus status, T data) {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), data);
     }
@@ -29,12 +29,12 @@ public class ApiResponse<T> {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), null);
     }
 
-    // ✅ 실패 응답 (에러 코드 + 메시지 + 데이터 포함)
+    // 실패 응답 (에러 코드 + 메시지 + 데이터 포함)
     public static <T> ApiResponse<T> fail(ApiResponseStatus status, T data) {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), data);
     }
 
-    // ✅ 실패 응답 (데이터 없이)
+    // 실패 응답 (데이터 없이)
     public static <T> ApiResponse<T> fail(ApiResponseStatus status) {
         return new ApiResponse<>(status.getCode(), status.getStatus(), status.getMessage(), null);
     }
