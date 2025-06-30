@@ -4,6 +4,7 @@ package com.example.fan_cafe.post.interfaces.rest;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.security.CustomUserDetails;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateResponse;
@@ -27,13 +28,14 @@ public class PostController {
     private final PostService postService;
 
     @PostMapping
-    public ApiResponse<PostCreateResponse> create(@AuthenticationPrincipal User user,
+    public ApiResponse<PostCreateResponse> create(@AuthenticationPrincipal(expression = "user") User user,
                                                   @RequestPart("post") @Valid PostCreateRequest request,
                                                   @RequestPart("images") List<MultipartFile> images) {
         if(images == null || images.isEmpty()){
             throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
         }
-            return postService.create(user, request, images);
+
+        return postService.create(user, request, images);
     }
 
     //paged 10개씩
