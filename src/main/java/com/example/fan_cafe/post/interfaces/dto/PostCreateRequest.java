@@ -23,21 +23,12 @@ public class PostCreateRequest {
 
     private String content;
 
-    @NotEmpty(message = "사진을 최소 1장 첨부하세요")
-    private List<String> imageUrls;
 
     public Post toEntity(User user) {
-        Post post = Post.builder()
+        return Post.builder()
                 .user(user)
                 .title(this.title)
                 .content(this.content)
                 .build();
-
-        for (String url : imageUrls) {
-            PostImage image = new PostImage(url);
-            post.addImage(image);
-        }
-
-        return post;
     }
 }

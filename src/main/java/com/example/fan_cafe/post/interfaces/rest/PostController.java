@@ -1,8 +1,11 @@
 package com.example.fan_cafe.post.interfaces.rest;
 
 
+import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
+import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
 import com.example.fan_cafe.post.interfaces.dto.PostDto;
 import com.example.fan_cafe.post.interfaces.dto.PostResponse;
@@ -12,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,8 +29,12 @@ public class PostController {
 
     @PostMapping
     public ApiResponse<Void> create(@AuthenticationPrincipal User user,
-            @RequestBody @Valid PostCreateRequest request) {
-        return postService.create(user, request);
+                                    @RequestPart("post") @Valid PostCreateRequest request,
+                                    @RequestPart("images") List<MultipartFile> images) {
+        if(images == null || images.isEmpty()){
+            throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
+        }
+            return postService.create(user, request, images);
     }
 
     //paged 10개씩

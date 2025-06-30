@@ -7,6 +7,7 @@ import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
+import com.example.fan_cafe.post.domain.PostImage;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
 import com.example.fan_cafe.post.interfaces.dto.PostDto;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.example.fan_cafe.post.interfaces.dto.Cursor;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,8 +32,11 @@ public class PostService {
 
     private final PostRepository postRepository;
 
-    public ApiResponse<Void> create(User user, PostCreateRequest request) {
+    public ApiResponse<Void> create(User user, PostCreateRequest request, List<MultipartFile> images) {
         Post post = request.toEntity(user);
+        for(image : images) {
+
+        }
         postRepository.save(post);
         return ApiResponse.success(ApiResponseStatus.CREATED);
     }
