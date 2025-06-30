@@ -30,6 +30,7 @@ public class PostController {
     public ApiResponse<PostCreateResponse> create(@AuthenticationPrincipal User user,
                                                   @RequestPart("post") @Valid PostCreateRequest request,
                                                   @RequestPart("images") List<MultipartFile> images) {
+        System.out.println("✅ title: " + request.getTitle());
         if(images == null || images.isEmpty()){
             throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
         }
