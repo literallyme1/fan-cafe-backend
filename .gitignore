@@ -39,3 +39,4 @@ out/
 ### ignore ###
 src/main/resources/key
 .env
+src/main/resources/config/application-local.properties

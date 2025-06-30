@@ -5,10 +5,9 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
-import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
-import com.example.fan_cafe.post.interfaces.dto.PostDto;
-import com.example.fan_cafe.post.interfaces.dto.PostResponse;
+import com.example.fan_cafe.post.interfaces.dto.PostCreateResponse;
+import com.example.fan_cafe.post.interfaces.dto.PostGetResponse;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +27,9 @@ public class PostController {
     private final PostService postService;
 
     @PostMapping
-    public ApiResponse<Void> create(@AuthenticationPrincipal User user,
-                                    @RequestPart("post") @Valid PostCreateRequest request,
-                                    @RequestPart("images") List<MultipartFile> images) {
+    public ApiResponse<PostCreateResponse> create(@AuthenticationPrincipal User user,
+                                                  @RequestPart("post") @Valid PostCreateRequest request,
+                                                  @RequestPart("images") List<MultipartFile> images) {
         if(images == null || images.isEmpty()){
             throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
         }
@@ -39,9 +38,9 @@ public class PostController {
 
     //paged 10개씩
     @GetMapping
-    public ApiResponse<PostResponse> get(@RequestParam(required = false) Long cursorId,
-                                         @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                         @RequestParam(defaultValue = "10") int size)
+    public ApiResponse<PostGetResponse> get(@RequestParam(required = false) Long cursorId,
+                                            @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                            @RequestParam(defaultValue = "10") int size)
     {
         return postService.get(cursorId, cursorCreatedAt, size);
     }
