@@ -33,18 +33,22 @@ public class Post extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Builder.Default
     @Column(nullable = false)
     private int viewCount = 0;
 
+    @Builder.Default
     @Column(nullable = false)
     private int likeCount = 0;
 
+    @Builder.Default
     @Column(nullable = false)
     private int commentCount = 0;
 
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
-    
+
     public void addImage(PostImage image) {
         images.add(image);
         image.setPost(this);
