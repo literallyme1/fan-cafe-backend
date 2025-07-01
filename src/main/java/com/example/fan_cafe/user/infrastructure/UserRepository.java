@@ -1,11 +1,14 @@
 package com.example.fan_cafe.user.infrastructure;
 
 import com.example.fan_cafe.user.domain.User;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+
+@SQLRestriction("deleted_at IS NULL")
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
