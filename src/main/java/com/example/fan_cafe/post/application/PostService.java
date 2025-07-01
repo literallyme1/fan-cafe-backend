@@ -32,6 +32,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final S3Uploader s3Uploader;
 
+    @Transactional
     public ApiResponse<PostCreateResponse> create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = uploadImagesAndGetUrls(images, "post");
         Post post = request.toEntity(user, imageUrls);
@@ -61,6 +62,29 @@ public class PostService {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
     }
 
+    public ApiResponse<PostGetResponse> getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
+        Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
+        Pageable pageable = PageUtils.createPageRequest(size);
+        List<Post> posts = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), pageable);
+        List<PostDto> postDtoList = posts.stream().map(PostDto::from).toList();
+
+        boolean hasNext = postDtoList.size() == size;
+        Long nextCursorId = null;
+        LocalDateTime nextCursorCreatedAt = null;
+
+        if(hasNext) {
+            PostDto last = postDtoList.getLast();
+            nextCursorId = last.getId();
+            nextCursorCreatedAt = last.getCreatedAt();
+
+        }
+        PostGetResponse postResponse = PostGetResponse.from(
+                postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
+        );
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
+    }
+
+    @Transactional
     public ApiResponse<PostUpdateResponse> update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
 
         Post post = postRepository.findById(postId)

@@ -45,6 +45,14 @@ public class PostController {
         return postService.get(cursorId, cursorCreatedAt, size);
     }
 
+    @GetMapping("/new")
+    public ApiResponse<PostGetResponse> getNewPosts(@RequestParam(required = false) Long cursorId,
+                                            @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                            @RequestParam(defaultValue = "10") int size)
+    {
+        return postService.getNewPosts(cursorId, cursorCreatedAt, size);
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<PostUpdateResponse> update(@AuthenticationPrincipal(expression = "user") User user,
                                                   @PathVariable Long id,

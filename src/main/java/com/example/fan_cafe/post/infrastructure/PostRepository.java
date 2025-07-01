@@ -20,8 +20,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query(""" 
         SELECT p FROM Post p
-        WHERE (p.createdAt < :createdAt)
-           OR (p.createdAt = :createdAt AND p.id < :id)
+        WHERE (p.deletedAt IS NULL)
+            AND ((p.createdAt < :createdAt)
+           OR (p.createdAt = :createdAt AND p.id < :id))
         ORDER BY p.createdAt DESC, p.id DESC
     """)
     List<Post> findNextPage(@Param("createdAt")LocalDateTime createdAt,
@@ -30,8 +31,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query("""
         SELECT p FROM Post p
-        WHERE (p.createdAt > :createdAt)
-           OR (p.createdAt = :createdAt AND p.id > :id)
+        WHERE (p.deletedAt IS NULL)
+           AND ((p.createdAt > :createdAt)
+           OR (p.createdAt = :createdAt AND p.id > :id))
         ORDER BY p.createdAt ASC, p.id ASC
     """)
     List<Post> findNewPosts(@Param("createdAt") LocalDateTime createdAt,
