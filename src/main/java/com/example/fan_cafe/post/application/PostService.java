@@ -12,6 +12,7 @@ import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -59,8 +61,26 @@ public class PostService {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
     }
 
-//    public ApiResponse<Void> update() {
-//    }
+    public ApiResponse<PostUpdateResponse> update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
+        if(!user.equals(post.getUser())) {throw new CustomException(PostErrorCode.POST_NOT_OWNER);}
+
+        //새로운 이미지 업로드
+        List<String> uploadedUrls = (images != null && !images.isEmpty())
+                ? uploadImagesAndGetUrls(images, "post")
+                : List.of();
+
+        //update 된 url + 새로운 이미지 url
+        List<String> finalImageUrls = new ArrayList<>();
+        finalImageUrls.addAll(request.getImageUrls());
+        finalImageUrls.addAll(uploadedUrls);
+
+        post.update(request.getTitle(), request.getContent(), finalImageUrls);
+
+        return ApiResponse.success(ApiResponseStatus.SUCCESS,PostUpdateResponse.from(finalImageUrls));
+    }
 
     @Transactional
     public ApiResponse<Void> delete(Long id) {

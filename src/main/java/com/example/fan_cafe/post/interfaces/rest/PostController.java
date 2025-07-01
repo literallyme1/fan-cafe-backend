@@ -6,9 +6,7 @@ import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.security.CustomUserDetails;
 import com.example.fan_cafe.post.application.PostService;
-import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
-import com.example.fan_cafe.post.interfaces.dto.PostCreateResponse;
-import com.example.fan_cafe.post.interfaces.dto.PostGetResponse;
+import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,10 +45,13 @@ public class PostController {
         return postService.get(cursorId, cursorCreatedAt, size);
     }
 
-//    @PutMapping("/{id}")
-//    public ApiResponse<Void> update(@PathVariable Long id) {
-//        return postService.update();
-//    }
+    @PutMapping("/{id}")
+    public ApiResponse<PostUpdateResponse> update(@AuthenticationPrincipal(expression = "user") User user,
+                                                  @PathVariable Long id,
+                                                  @RequestPart("post") @Valid PostUpdateRequest request,
+                                                  @RequestPart("images") List<MultipartFile> images) {
+        return postService.update(user, id, request, images);
+    }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {

@@ -32,9 +32,7 @@ public class PostCreateRequest {
                 .title(title)
                 .content(content)
                 .build();
-        for (String url : imageUrls) {
-            post.addImage(new PostImage(url));
-        }
+        post.addImages(imageUrls);
         return post;
     }
 }

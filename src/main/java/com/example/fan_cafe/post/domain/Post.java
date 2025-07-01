@@ -49,8 +49,26 @@ public class Post extends BaseTimeEntity {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 
+
+    public void update(String title, String content, List<String> imageUrls) {
+        this.title = title;
+        this.content = content;
+        replaceImages(imageUrls);
+    }
+    public void addImages(List<String> imageUrls) {
+        if (imageUrls == null) return;
+        for (String url : imageUrls) {
+            this.addImage(new PostImage(url));
+        }
+    }
+
     public void addImage(PostImage image) {
         images.add(image);
         image.setPost(this);
+    }
+
+    public void replaceImages(List<String> newUrls) {
+        this.images.clear();
+        addImages(newUrls);
     }
 }

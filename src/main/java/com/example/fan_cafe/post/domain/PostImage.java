@@ -5,6 +5,7 @@ import lombok.*;
 
 @Getter
 @Entity
+@NoArgsConstructor
 @Table(name="postImages")
 public class PostImage {
 
