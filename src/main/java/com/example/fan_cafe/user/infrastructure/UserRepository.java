@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 
-@SQLRestriction("deleted_at IS NULL")
+@SQLRestriction("deletedAt IS NULL")
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 

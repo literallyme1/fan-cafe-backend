@@ -14,6 +14,7 @@ import com.example.fan_cafe.auth.interfaces.dto.LoginRequest;
 import com.example.fan_cafe.auth.interfaces.dto.LoginResponse;
 import com.example.fan_cafe.auth.interfaces.dto.RegisterRequest;
 import com.example.fan_cafe.auth.interfaces.dto.UserInfoResponse;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -60,8 +61,11 @@ public class AuthService {
         JwtTokenResponse jwtToken = JwtTokenResponse.from(accessToken, refreshToken);
         return ApiResponse.success(ApiResponseStatus.SUCCESS, LoginResponse.from(jwtToken, userInfo));
 
-
-
-
     }
+
+    public ApiResponse<Void> logout(Long userId){
+        redisTokenRepository.delete(userId);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
+
 }
