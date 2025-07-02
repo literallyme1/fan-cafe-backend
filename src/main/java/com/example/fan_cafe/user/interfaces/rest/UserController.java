@@ -18,7 +18,7 @@ public class UserController {
 
     @DeleteMapping
     public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user){
-        return userService.delete(user);
+        return userService.delete(user.getId());
     }
 
 

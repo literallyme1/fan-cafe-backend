@@ -1,6 +1,8 @@
 package com.example.fan_cafe.user.application;
 
 
+import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.UserErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.user.domain.User;
@@ -16,7 +18,10 @@ public class UserService {
     private final UserRepository userRepository;
 
     @Transactional
-    public ApiResponse<Void> delete(User user){
+    public ApiResponse<Void> delete(Long principalUserId){
+        //jpa 영속을 위해 다시 한 번 조회
+        User user = userRepository.findById(principalUserId)
+                        .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
         user.delete();
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
