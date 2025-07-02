@@ -8,18 +8,18 @@ import java.util.List;
 
 @Builder
 @Getter
-public class PostGetResponse {
+public class PostListResponse {
 
-    private final List<PostDto> data;
+    private final List<PostResponse> data;
     private final Long nextCursorId;
     private final LocalDateTime nextCursorCreatedAt;
     private final boolean hasNext;
 
-    public static PostGetResponse from(List<PostDto> data,
-                                       Long nextCursorId,
-                                       LocalDateTime nextCursorCreatedAt,
-                                       boolean hasNext) {
-        return PostGetResponse.builder()
+    public static PostListResponse from(List<PostResponse> data,
+                                        Long nextCursorId,
+                                        LocalDateTime nextCursorCreatedAt,
+                                        boolean hasNext) {
+        return PostListResponse.builder()
                 .data(data)
                 .nextCursorId(nextCursorId)
                 .nextCursorCreatedAt(nextCursorCreatedAt)

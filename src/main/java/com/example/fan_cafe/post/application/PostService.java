@@ -12,7 +12,6 @@ import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
@@ -23,7 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -40,45 +38,45 @@ public class PostService {
         return ApiResponse.success(ApiResponseStatus.CREATED, PostCreateResponse.from(post.getId(), imageUrls));
     }
 
-    public ApiResponse<PostGetResponse> get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
+    public ApiResponse<PostListResponse> get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
         Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
         Pageable pageable = PageUtils.createPageRequest(size);
         List<Post> posts = postRepository.findNextPage(cursor.createdAt(), cursor.id(), pageable);
-        List<PostDto> postDtoList = posts.stream().map(PostDto::from).toList();
+        List<PostResponse> postDtoList = posts.stream().map(PostResponse::from).toList();
 
         boolean hasNext = postDtoList.size() == size;
         Long nextCursorId = null;
         LocalDateTime nextCursorCreatedAt = null;
 
         if(hasNext) {
-            PostDto last = postDtoList.getLast();
+            PostResponse last = postDtoList.getLast();
             nextCursorId = last.getId();
             nextCursorCreatedAt = last.getCreatedAt();
 
         }
-        PostGetResponse postResponse = PostGetResponse.from(
+        PostListResponse postResponse = PostListResponse.from(
                 postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
         );
         return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
     }
 
-    public ApiResponse<PostGetResponse> getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
+    public ApiResponse<PostListResponse> getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
         Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
         Pageable pageable = PageUtils.createPageRequest(size);
         List<Post> posts = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), pageable);
-        List<PostDto> postDtoList = posts.stream().map(PostDto::from).toList();
+        List<PostResponse> postDtoList = posts.stream().map(PostResponse::from).toList();
 
         boolean hasNext = postDtoList.size() == size;
         Long nextCursorId = null;
         LocalDateTime nextCursorCreatedAt = null;
 
         if(hasNext) {
-            PostDto last = postDtoList.getLast();
+            PostResponse last = postDtoList.getLast();
             nextCursorId = last.getId();
             nextCursorCreatedAt = last.getCreatedAt();
 
         }
-        PostGetResponse postResponse = PostGetResponse.from(
+        PostListResponse postResponse = PostListResponse.from(
                 postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
         );
         return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);

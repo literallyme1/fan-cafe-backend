@@ -4,7 +4,6 @@ package com.example.fan_cafe.post.interfaces.rest;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
-import com.example.fan_cafe.global.security.CustomUserDetails;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
@@ -38,17 +37,17 @@ public class PostController {
 
     //paged 10개씩
     @GetMapping
-    public ApiResponse<PostGetResponse> get(@RequestParam(required = false) Long cursorId,
-                                            @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                            @RequestParam(defaultValue = "10") int size)
+    public ApiResponse<PostListResponse> get(@RequestParam(required = false) Long cursorId,
+                                             @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                             @RequestParam(defaultValue = "10") int size)
     {
         return postService.get(cursorId, cursorCreatedAt, size);
     }
 
     @GetMapping("/new")
-    public ApiResponse<PostGetResponse> getNewPosts(@RequestParam(required = false) Long cursorId,
-                                            @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                            @RequestParam(defaultValue = "10") int size)
+    public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Long cursorId,
+                                                     @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+                                                     @RequestParam(defaultValue = "10") int size)
     {
         return postService.getNewPosts(cursorId, cursorCreatedAt, size);
     }

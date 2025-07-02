@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Builder
 @Getter
-public class PostDto {
+public class PostResponse {
 
     private final Long id;
     private final String title;
@@ -18,8 +18,8 @@ public class PostDto {
     private final int commentCount;
     private final LocalDateTime createdAt;
 
-    public static PostDto from(Post post) {
-        return PostDto.builder()
+    public static PostResponse from(Post post) {
+        return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent())
