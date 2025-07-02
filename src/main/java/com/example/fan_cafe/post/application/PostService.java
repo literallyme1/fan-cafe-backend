@@ -107,9 +107,10 @@ public class PostService {
     }
 
     @Transactional
-    public ApiResponse<Void> delete(Long id) {
+    public ApiResponse<Void> delete(User user, Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
+        if(!user.equals(post.getUser())) throw new CustomException(PostErrorCode.POST_NOT_OWNER);
         post.delete();
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }

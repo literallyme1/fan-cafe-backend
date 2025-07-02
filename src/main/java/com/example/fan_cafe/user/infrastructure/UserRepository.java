@@ -1,7 +1,6 @@
 package com.example.fan_cafe.user.infrastructure;
 
 import com.example.fan_cafe.user.domain.User;
-import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,12 +10,14 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailAndDeletedAtIsNull(String email);
 
-    boolean existsByNickname(String nickname);
+    boolean existsByEmailAndDeletedAtIsNotNull(String email);
 
-    Optional<User> findByEmail(String email);
+    boolean existsByNicknameAndDeletedAtIsNull(String nickname);
 
-    Optional<User> findById(Long id);
+    Optional<User> findByEmailAndDeletedAtIsNull(String email);
+
+    Optional<User> findByIdAndDeletedAtIsNull(Long id);
 
 }

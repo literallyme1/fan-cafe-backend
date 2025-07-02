@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -57,8 +56,8 @@ public class AuthServiceTest {
     void register_success() {
         //given
         RegisterRequest request = new RegisterRequest("test@test.com", "1234567", "nickname");
-        when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
-        when(userRepository.existsByNickname(request.getNickname())).thenReturn(false);
+        when(userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(false);
+        when(userRepository.existsByNicknameAndDeletedAtIsNull(request.getNickname())).thenReturn(false);
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encode_pw");
 
         //whend
@@ -73,7 +72,7 @@ public class AuthServiceTest {
     void login_success() {
         //given
         LoginRequest request = new LoginRequest("test@test.com", "1234567");
-        when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(mockUser));
+        when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
         when(passwordEncoder.matches(request.getPassword(), mockUser.getPassword())).thenReturn(true);
         when(jwtProvider.generateAccessToken(mockUser.getId(), mockUser.getRole())).thenReturn("access-token");
         when(jwtProvider.generateRefreshToken(mockUser.getId(), mockUser.getRole())).thenReturn("refresh-token");
@@ -89,7 +88,7 @@ public class AuthServiceTest {
     void login_failed() {
         //given
         LoginRequest request = new LoginRequest("test@test.com", "wrong_pw");
-        when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(mockUser));
+        when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
         when(passwordEncoder.matches(request.getPassword(), mockUser.getPassword())).thenReturn(false);
 
         //when, then

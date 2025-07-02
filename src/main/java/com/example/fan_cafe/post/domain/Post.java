@@ -17,7 +17,6 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @Entity
-@SQLRestriction("deleted_at IS NULL")
 @Table(name= "posts")
 public class Post extends BaseTimeEntity {
 

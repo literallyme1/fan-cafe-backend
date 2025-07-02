@@ -57,13 +57,16 @@ public class PostController {
     public ApiResponse<PostUpdateResponse> update(@AuthenticationPrincipal(expression = "user") User user,
                                                   @PathVariable Long id,
                                                   @RequestPart("post") @Valid PostUpdateRequest request,
-                                                  @RequestPart("images") List<MultipartFile> images) {
+                                                  @RequestPart("images") List<MultipartFile> images)
+    {
         return postService.update(user, id, request, images);
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id) {
-        return postService.delete(id);
+    public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user,
+                                    @PathVariable Long id)
+    {
+        return postService.delete(user, id);
     }
 
 

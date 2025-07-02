@@ -1,6 +1,7 @@
 package com.example.fan_cafe.auth.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.JwtErrorCode;
 import com.example.fan_cafe.global.exception.UserErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
@@ -14,7 +15,6 @@ import com.example.fan_cafe.auth.interfaces.dto.LoginRequest;
 import com.example.fan_cafe.auth.interfaces.dto.LoginResponse;
 import com.example.fan_cafe.auth.interfaces.dto.RegisterRequest;
 import com.example.fan_cafe.auth.interfaces.dto.UserInfoResponse;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,9 +32,11 @@ public class AuthService {
 
     public ApiResponse<UserInfoResponse> register(RegisterRequest request, Role role)
     {
-        if (userRepository.existsByEmail(request.getEmail()))
+        if (userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail()))
             throw new CustomException(UserErrorCode.EMAIL_ALREADY_EXISTS);
-        else if (userRepository.existsByNickname(request.getNickname()))
+        else if(userRepository.existsByEmailAndDeletedAtIsNotNull(request.getEmail()))
+            throw new CustomException(UserErrorCode.USER_ALREADEY_DELETED);
+        else if (userRepository.existsByNicknameAndDeletedAtIsNull(request.getNickname()))
             throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         User user = request.toEntity(encodedPassword, role);
@@ -46,7 +48,7 @@ public class AuthService {
 
     public ApiResponse<LoginResponse> login(LoginRequest request){
 
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        Optional<User> userOptional = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail());
         if(userOptional.isEmpty()) throw new CustomException(UserErrorCode.USER_NOT_FOUND);
 
         User user = userOptional.get();
@@ -68,4 +70,16 @@ public class AuthService {
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
+    public ApiResponse<JwtTokenResponse> reissueAccessToken(String refreshToken) {
+
+        if(!jwtProvider.isValid(refreshToken)) {throw new CustomException(JwtErrorCode.INVALID_REFRESH_TOKEN);}
+        Long userId = jwtProvider.getUserIdFromToken(refreshToken);
+        String userRole = jwtProvider.getRoleFromToken(refreshToken);
+        String savedToken = redisTokenRepository.find(userId);
+
+        if(!refreshToken.equals(savedToken)) {throw new CustomException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);}
+
+        String newAccessToken = jwtProvider.createAccessToken(userId, Role.from(userRole));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, JwtTokenResponse.from(newAccessToken));
+    }
 }

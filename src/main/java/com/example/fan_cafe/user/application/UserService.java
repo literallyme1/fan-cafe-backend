@@ -20,7 +20,7 @@ public class UserService {
     @Transactional
     public ApiResponse<Void> delete(Long principalUserId){
         //jpa 영속을 위해 다시 한 번 조회
-        User user = userRepository.findById(principalUserId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(principalUserId)
                         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
         user.delete();
         return ApiResponse.success(ApiResponseStatus.SUCCESS);

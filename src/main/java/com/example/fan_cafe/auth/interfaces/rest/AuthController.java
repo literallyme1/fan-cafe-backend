@@ -1,6 +1,8 @@
 package com.example.fan_cafe.auth.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.security.RefreshTokenRequest;
+import com.example.fan_cafe.global.security.JwtTokenResponse;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.auth.interfaces.dto.LoginRequest;
 import com.example.fan_cafe.auth.interfaces.dto.LoginResponse;
@@ -36,5 +38,10 @@ public class AuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@AuthenticationPrincipal(expression = "user") User user){
         return authService.logout(user.getId());
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<JwtTokenResponse> refresh(@RequestBody @Valid RefreshTokenRequest request){
+        return authService.reissueAccessToken(request.getRefreshToken());
     }
 }

@@ -7,8 +7,8 @@ import org.springframework.http.HttpStatus;
 public enum JwtErrorCode implements BaseErrorCode{
 
     KEY_LOAD_FAILED("U001", HttpStatus.INTERNAL_SERVER_ERROR, "RSA Key"),
-    PRIVATE_KEY_CREATED_FAILED("U002", HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다."),
-    PUBLIC_KEY_CREATED_FAILED("U003", HttpStatus.CONFLICT, "이미 존재하는 사용자입니다.");
+    INVALID_REFRESH_TOKEN("U002", HttpStatus.CONFLICT, "리프레시 토큰이 확인되지 않습니다."),
+    REFRESH_TOKEN_MISMATCH("U003", HttpStatus.CONFLICT, "리프레시 토큰이 일치하지 않습니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

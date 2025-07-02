@@ -46,20 +46,31 @@ public class JwtProvider {
     }
 
     public String generateAccessToken(Long userId, Role role) {
-        return createToken(userId, role, accessTokenValidity);
+        return createAccessToken(userId, role);
     }
 
     public String generateRefreshToken(Long userId, Role role) {
-        return createToken(userId, role, refreshTokenValidity);
+        return createRefreshToken(userId, role);
     }
 
-    public String createToken(Long userId, Role role, long expiration) {
+    public String createRefreshToken(Long userId, Role role) {
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + refreshTokenValidity))
+                .signWith(privateKey)
+                .compact();
+    }
+
+    public String createAccessToken(Long userId, Role role) {
+
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("role", role)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + accessTokenValidity))
                 .signWith(privateKey)
                 .compact();
     }

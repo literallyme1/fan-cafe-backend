@@ -4,6 +4,7 @@ import com.example.fan_cafe.global.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.SoftDelete;
 
 import java.util.Objects;
 
@@ -13,7 +14,6 @@ import java.util.Objects;
 @Getter
 @Setter
 @Entity
-@SQLRestriction("deleted_at IS NULL")
 @Table(name= "users")
 public class User extends BaseTimeEntity {
 
