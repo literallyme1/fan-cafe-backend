@@ -1,10 +1,11 @@
-package com.example.fan_cafe.global.exception;
+package com.example.fan_cafe.auth.exception;
 
+import com.example.fan_cafe.global.exception.BaseErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum JwtErrorCode implements BaseErrorCode{
+public enum JwtErrorCode implements BaseErrorCode {
 
     KEY_LOAD_FAILED("U001", HttpStatus.INTERNAL_SERVER_ERROR, "RSA Key"),
     INVALID_REFRESH_TOKEN("U002", HttpStatus.CONFLICT, "리프레시 토큰이 확인되지 않습니다."),

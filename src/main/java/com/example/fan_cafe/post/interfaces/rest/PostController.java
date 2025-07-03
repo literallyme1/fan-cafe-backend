@@ -2,7 +2,7 @@ package com.example.fan_cafe.post.interfaces.rest;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.exception.PostErrorCode;
+import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.interfaces.dto.*;

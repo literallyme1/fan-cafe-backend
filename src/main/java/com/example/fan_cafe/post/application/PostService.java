@@ -2,7 +2,7 @@ package com.example.fan_cafe.post.application;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.exception.PostErrorCode;
+import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.s3.S3Uploader;

@@ -1,7 +1,6 @@
 package com.example.fan_cafe.global.response;
 
 import com.example.fan_cafe.global.exception.BaseErrorCode;
-import com.example.fan_cafe.global.exception.UserErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 

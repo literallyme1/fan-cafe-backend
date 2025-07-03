@@ -1,8 +1,8 @@
 package com.example.fan_cafe.auth.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.exception.JwtErrorCode;
-import com.example.fan_cafe.global.exception.UserErrorCode;
+import com.example.fan_cafe.auth.exception.JwtErrorCode;
+import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.security.JwtProvider;

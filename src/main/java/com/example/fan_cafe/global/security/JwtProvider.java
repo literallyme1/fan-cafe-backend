@@ -3,10 +3,7 @@ package com.example.fan_cafe.global.security;
 import com.example.fan_cafe.user.domain.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
-import lombok.NoArgsConstructor;
 import org.springframework.core.io.Resource;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import io.jsonwebtoken.Jwts;
@@ -16,7 +13,7 @@ import java.security.PublicKey;
 import java.util.Date;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.exception.JwtErrorCode;
+import com.example.fan_cafe.auth.exception.JwtErrorCode;
 
 @Component
 public class JwtProvider {

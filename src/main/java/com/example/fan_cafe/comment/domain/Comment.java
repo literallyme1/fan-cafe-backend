@@ -9,6 +9,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,10 +32,38 @@ public class Comment extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_comment_id")
-    private Comment parentComment;
-
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Comment parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> children = new ArrayList<>();
+
+    public void addChild(Comment child) {
+        this.children.add(child);
+        child.parent = this;
+    }
+
+    public static Comment of(Post post, User user, String content) {
+        return Comment.builder()
+                .post(post)
+                .user(user)
+                .content(content)
+                .build();
+    }
+
+    public static Comment of(Post post, User user, Comment parent, String content) {
+        Comment child =  Comment.builder()
+                .post(post)
+                .user(user)
+                .content(content)
+                .build();
+
+        parent.addChild(child);
+
+        return child;
+    }
 }

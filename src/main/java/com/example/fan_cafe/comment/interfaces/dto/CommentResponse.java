@@ -1,5 +1,6 @@
 package com.example.fan_cafe.comment.interfaces.dto;
 
+import com.example.fan_cafe.comment.domain.Comment;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,4 +17,13 @@ public class CommentResponse {
     private String content;
     private Long parentId;
     private List<CommentResponse> children = new ArrayList<>();
+
+    public static CommentResponse from(Comment comment) {
+        return CommentResponse.builder()
+                .id(comment.getId())
+                .writer(comment.getUser().getNickname())
+                .content(comment.getContent())
+                .parentId(comment.getParent().getId())
+                .build();
+    }
 }

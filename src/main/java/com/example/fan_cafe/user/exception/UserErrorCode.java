@@ -1,10 +1,11 @@
-package com.example.fan_cafe.global.exception;
+package com.example.fan_cafe.user.exception;
 
+import com.example.fan_cafe.global.exception.BaseErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum UserErrorCode implements BaseErrorCode{
+public enum UserErrorCode implements BaseErrorCode {
 
     USER_NOT_FOUND("U001", HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     USER_ALREADEY_DELETED("U002", HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."),

@@ -1,7 +1,7 @@
 package com.example.fan_cafe.user.domain;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.exception.UserErrorCode;
+import com.example.fan_cafe.user.exception.UserErrorCode;
 
 public enum Role {
     USER, ADMIN;
