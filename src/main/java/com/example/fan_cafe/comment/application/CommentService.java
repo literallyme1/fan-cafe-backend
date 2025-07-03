@@ -78,6 +78,7 @@ public class CommentService {
         comment.delete();
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
+
     private Post getPostOrThrow(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new CustomException(CommentErrorCode.POST_NOT_FOUND));
