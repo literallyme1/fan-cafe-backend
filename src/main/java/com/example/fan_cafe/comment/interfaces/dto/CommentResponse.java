@@ -16,6 +16,7 @@ public class CommentResponse {
     private String writer;
     private String content;
     private Long parentId;
+    @Builder.Default
     private List<CommentResponse> children = new ArrayList<>();
 
     public static CommentResponse from(Comment comment) {
@@ -23,7 +24,7 @@ public class CommentResponse {
                 .id(comment.getId())
                 .writer(comment.getUser().getNickname())
                 .content(comment.getContent())
-                .parentId(comment.getParent().getId())
+                .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .build();
     }
 }
