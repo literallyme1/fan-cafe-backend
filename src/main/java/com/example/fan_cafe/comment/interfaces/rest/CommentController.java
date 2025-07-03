@@ -29,4 +29,10 @@ public class CommentController {
                                                 @RequestParam(defaultValue = "0") int page) {
         return commentService.get(postId, page);
     }
+
+    @DeleteMapping("{id}")
+    public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user,
+                                    @PathVariable Long id) {
+        return commentService.delete(user, id);
+    }
 }

@@ -13,6 +13,7 @@ import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
+import com.example.fan_cafe.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -65,6 +66,18 @@ public class CommentService {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, CommentListResponse.from(rootResponses, roots.hasNext()));
     }
 
+    @Transactional
+    public ApiResponse<Void> delete(User principalUser, Long id) {
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new CustomException(CommentErrorCode.COMMENT_NOT_FOUND));
+
+        if(!comment.getUser().getId().equals(principalUser.getId())) {
+            throw new CustomException(CommentErrorCode.COMMENT_NOT_OWNER);
+        }
+
+        comment.delete();
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
     private Post getPostOrThrow(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() -> new CustomException(CommentErrorCode.POST_NOT_FOUND));
