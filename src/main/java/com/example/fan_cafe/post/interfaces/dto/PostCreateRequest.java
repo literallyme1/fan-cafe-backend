@@ -25,14 +25,4 @@ public class PostCreateRequest {
 
     private String content;
 
-
-    public Post toEntity(User user, List<String> imageUrls) {
-        Post post = Post.builder()
-                .user(user)
-                .title(title)
-                .content(content)
-                .build();
-        post.addImages(imageUrls);
-        return post;
-    }
 }

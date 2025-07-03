@@ -47,4 +47,13 @@ public class User extends BaseTimeEntity {
         return Objects.hash(id);
     }
 
+    public static User of(String email, String encodedPassword, String nickname, Role role) {
+        return User.builder()
+                .email(email)
+                .password(encodedPassword)
+                .nickname(nickname)
+                .role(role)
+                .build();
+    }
+
 }

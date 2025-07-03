@@ -72,4 +72,14 @@ public class Post extends BaseTimeEntity {
         this.images.clear();
         addImages(newUrls);
     }
+
+    public static Post of(User user, String title, String content, List<String> imageUrls) {
+        Post post = Post.builder()
+                .user(user)
+                .title(title)
+                .content(content)
+                .build();
+        post.addImages(imageUrls);
+        return post;
+    }
 }

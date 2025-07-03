@@ -33,7 +33,7 @@ public class PostService {
     @Transactional
     public ApiResponse<PostCreateResponse> create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = uploadImagesAndGetUrls(images, "post");
-        Post post = request.toEntity(user, imageUrls);
+        Post post = Post.of(user, request.getTitle(), request.getContent(), imageUrls);
         postRepository.save(post);
         return ApiResponse.success(ApiResponseStatus.CREATED, PostCreateResponse.from(post.getId(), imageUrls));
     }

@@ -39,7 +39,7 @@ public class AuthService {
         else if (userRepository.existsByNicknameAndDeletedAtIsNull(request.getNickname()))
             throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        User user = request.toEntity(encodedPassword, role);
+        User user = User.of(request.getEmail(), encodedPassword, request.getNickname(), role);
         userRepository.save(user);
 
         return ApiResponse.success(ApiResponseStatus.CREATED, UserInfoResponse.from(user));
