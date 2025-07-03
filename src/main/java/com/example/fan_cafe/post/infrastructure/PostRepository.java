@@ -18,6 +18,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @NonNull
     Optional<Post> findById(Long id);
 
+    boolean existsById(Long id);
+
     @Query(""" 
         SELECT p FROM Post p
         WHERE (p.deletedAt IS NULL)

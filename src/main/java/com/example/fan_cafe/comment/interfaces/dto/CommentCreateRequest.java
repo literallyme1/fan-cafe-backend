@@ -22,19 +22,4 @@ public class CommentCreateRequest {
     @NotBlank(message = "댓글을 입력해주세요.")
     private String content;
     private Long parentId;
-
-    public Comment toEntity(Post post, User user, String content) {
-        return Comment.builder()
-                .post(post)
-                .user(user)
-                .build();
-    }
-
-    public Comment toEntity(Post post, User user, Comment parentComment, String content) {
-        return Comment.builder()
-                .post(post)
-                .user(user)
-                .parent(parentComment)
-                .build();
-    }
 }

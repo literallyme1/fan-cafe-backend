@@ -9,4 +9,12 @@ import java.util.List;
 @Getter
 public class CommentListResponse {
     private List<CommentResponse> comments;
+    private boolean hasNext;
+
+    public static CommentListResponse from(List<CommentResponse> comments, boolean hasNext) {
+        return CommentListResponse.builder()
+                .comments(comments)
+                .hasNext(hasNext)
+                .build();
+    }
 }

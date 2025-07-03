@@ -10,6 +10,11 @@ public class PageUtils {
         return PageRequest.of(0, size);
     }
 
+    public static Pageable createPageRequest(int page, int size) {
+        return PageRequest.of(page, size);
+    }
+
+
     public static Pageable createPageRequest(int page, int size, String sortBy, String direction) {
         Sort.Direction sortDirection =
                 direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
