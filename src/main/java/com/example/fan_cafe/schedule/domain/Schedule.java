@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Getter
 @Entity
-@Table(name = "schedule")
+@Table(name = "schedules")
 public class Schedule extends BaseTimeEntity {
 
     @Id
@@ -36,21 +36,15 @@ public class Schedule extends BaseTimeEntity {
     @Column
     private LocalDateTime endAt;
 
-    public static Schedule of(String title, String location, LocalDateTime startAt) {
-        return Schedule.builder()
-                .title(title)
-                .location(location)
-                .startAt(startAt)
-                .build();
-    }
-
     public static Schedule of(String title, String location, LocalDateTime startAt, LocalDateTime endAt) {
-        return Schedule.builder()
+        Schedule schedule = Schedule.builder()
                 .title(title)
                 .location(location)
                 .startAt(startAt)
                 .endAt(endAt)
                 .build();
+        schedule.validateTime();
+        return schedule;
     }
 
     public void validateTime() {
