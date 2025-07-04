@@ -47,6 +47,15 @@ public class Schedule extends BaseTimeEntity {
         return schedule;
     }
 
+    public void update(String title, String location, LocalDateTime startAt, LocalDateTime endAt) {
+        this.title = title;
+        this.location = location;
+        this.startAt = startAt;
+        this.endAt = endAt;
+
+        validateTime();
+    }
+
     public void validateTime() {
         if (endAt != null && endAt.isBefore(startAt)) {
             throw new CustomException(ScheduleErrorCode.SCHEDULE_INVALID_TIME);

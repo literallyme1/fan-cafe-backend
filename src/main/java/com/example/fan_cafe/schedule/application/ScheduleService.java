@@ -1,13 +1,16 @@
 package com.example.fan_cafe.schedule.application;
 
 
+import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.schedule.domain.Schedule;
+import com.example.fan_cafe.schedule.exception.ScheduleErrorCode;
 import com.example.fan_cafe.schedule.infrastructure.ScheduleRepository;
 import com.example.fan_cafe.schedule.interfaces.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +28,7 @@ public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
 
+    @Transactional
     public ApiResponse<ScheduleResponse> create(ScheduleRequest request){
         Schedule schedule = Schedule.of(request.getTitle(),
                                         request.getLocation(),
@@ -50,5 +54,22 @@ public class ScheduleService {
                 .toList();
 
         return ApiResponse.success(ApiResponseStatus.SUCCESS, MonthlyScheduleResponse.of(groupedSchedules));
+    }
+
+    @Transactional
+    public ApiResponse<ScheduleResponse> update(Long id, ScheduleRequest request) {
+        Schedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+        schedule.update(request.getTitle(), request.getLocation(), request.getStartAt(), request.getEndAt());
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, ScheduleResponse.from(schedule));
+    }
+
+    @Transactional
+    public ApiResponse<Void> delete(Long id) {
+        Schedule schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+        schedule.delete();
+
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 }
