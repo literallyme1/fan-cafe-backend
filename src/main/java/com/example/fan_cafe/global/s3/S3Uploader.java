@@ -50,8 +50,4 @@ public class S3Uploader {
         String ext = originalName.substring(originalName.lastIndexOf("."));
         return dir + "/" + UUID.randomUUID() + ext;
     }
-
-//    private String getUrl(String filename) {
-//        return "https://" + bucket + ".s3.ap-northeast-2.amazonaws.com/" + filename;
-//    }
 }

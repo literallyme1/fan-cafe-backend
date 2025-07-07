@@ -10,12 +10,12 @@ import java.util.List;
 @Getter
 public class ScheduleListResponse {
     private LocalDate date;
-    private List<ScheduleResponse> scheduleList;
+    private List<ScheduleResponse> schedules;
 
     public static ScheduleListResponse of(LocalDate date, List<ScheduleResponse> scheduleList) {
         return ScheduleListResponse.builder()
                 .date(date)
-                .scheduleList(scheduleList)
+                .schedules(scheduleList)
                 .build();
     }
 }
