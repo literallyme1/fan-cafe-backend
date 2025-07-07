@@ -10,7 +10,7 @@ public enum Status {
     STOP_SELLING,
     DELETED;
 
-    public static Status from(String value) {
+    public static Status of(String value) {
         try {
             return Status.valueOf(value);
         } catch (IllegalArgumentException e) {

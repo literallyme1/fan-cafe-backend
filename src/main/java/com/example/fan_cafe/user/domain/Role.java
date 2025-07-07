@@ -6,7 +6,7 @@ import com.example.fan_cafe.user.exception.UserErrorCode;
 public enum Role {
     USER, ADMIN;
 
-    public static Role from(String value) {
+    public static Role of(String value) {
         try {
             return Role.valueOf(value);
         } catch (IllegalArgumentException e) {

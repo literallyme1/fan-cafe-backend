@@ -79,7 +79,7 @@ public class AuthService {
 
         if(!refreshToken.equals(savedToken)) {throw new CustomException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);}
 
-        String newAccessToken = jwtProvider.createAccessToken(userId, Role.from(userRole));
+        String newAccessToken = jwtProvider.createAccessToken(userId, Role.of(userRole));
         return ApiResponse.success(ApiResponseStatus.SUCCESS, JwtTokenResponse.from(newAccessToken));
     }
 }

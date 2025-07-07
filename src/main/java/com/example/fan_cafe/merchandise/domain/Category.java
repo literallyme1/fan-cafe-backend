@@ -9,7 +9,7 @@ public enum Category {
     T_SHIRT,
     LIGHT_STICK;
 
-    public static Category from(String value) {
+    public static Category of(String value) {
         try {
             return Category.valueOf(value);
         } catch (IllegalArgumentException e) {

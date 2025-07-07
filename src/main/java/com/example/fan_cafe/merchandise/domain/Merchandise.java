@@ -49,27 +49,28 @@ public class Merchandise extends BaseTimeEntity {
     @Column(nullable = false)
     private Category category;
 
-//    public static Merchandise from(MerchandiseRequest dto) {
-//        return Merchandise.builder()
-//                .name(dto.getName())
-//                .description(dto.getDescription())
-//                .price(dto.getPrice())
-//                .salePrice(dto.getSalePrice())
-//                .status(dto.getStatus())
-//                .imageUrl(dto.getImageUrl())
-//                .category(dto.getCategory())
-//                .build();
-//    }
-//
-//    public void update(MerchandiseRequest dto) {
-//        this.name = dto.getName();
-//        this.description = dto.getDescription();
-//        this.price = dto.getPrice();
-//        this.salePrice = dto.getSalePrice();
-//        this.status = dto.getStatus();
-//        this.imageUrl = dto.getImageUrl();
-//        this.category = dto.getCategory();
-//    }
+    public static Merchandise from(MerchandiseRequest dto) {
+        return Merchandise.builder()
+                .name(dto.getName())
+                .description(dto.getDescription())
+                .price(dto.getPrice())
+                .stock(dto.getStock() == null ? 0L : dto.getStock())
+                .salePrice(dto.getSalePrice())
+                .status(dto.getStatus())
+                .category(dto.getCategory())
+                .build();
+
+    }
+
+    public void update(MerchandiseRequest dto) {
+        this.name = dto.getName();
+        this.description = dto.getDescription();
+        this.price = dto.getPrice();
+        this.salePrice = dto.getSalePrice();
+        this.stock = dto.getStock() == null ? 0L : dto.getStock();
+        this.status = dto.getStatus();
+        this.category = dto.getCategory();
+    }
 
     public void decreaseStock(int quantity) {
         this.stock -= quantity;
