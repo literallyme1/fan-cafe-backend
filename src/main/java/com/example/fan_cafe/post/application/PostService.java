@@ -30,9 +30,14 @@ public class PostService {
     private final PostRepository postRepository;
     private final S3Uploader s3Uploader;
 
-    @Transactional
     public ApiResponse<PostCreateResponse> create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = uploadImagesAndGetUrls(images, "post");
+
+        return createWithImages(user, request, imageUrls);
+    }
+
+    @Transactional
+    public ApiResponse<PostCreateResponse> createWithImages(User user, PostCreateRequest request, List<String> imageUrls) {
         Post post = Post.of(user, request.getTitle(), request.getContent(), imageUrls);
         postRepository.save(post);
         return ApiResponse.success(ApiResponseStatus.CREATED, PostCreateResponse.from(post.getId(), imageUrls));

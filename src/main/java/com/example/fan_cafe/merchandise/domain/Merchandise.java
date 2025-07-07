@@ -49,7 +49,7 @@ public class Merchandise extends BaseTimeEntity {
     @Column(nullable = false)
     private Category category;
 
-    public static Merchandise from(MerchandiseRequest dto) {
+    public static Merchandise of(MerchandiseRequest dto, String imageUrl) {
         return Merchandise.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
@@ -58,6 +58,7 @@ public class Merchandise extends BaseTimeEntity {
                 .salePrice(dto.getSalePrice())
                 .status(dto.getStatus())
                 .category(dto.getCategory())
+                .imageUrl(imageUrl)
                 .build();
 
     }
