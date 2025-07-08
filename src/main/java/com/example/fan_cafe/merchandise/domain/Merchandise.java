@@ -1,6 +1,8 @@
 package com.example.fan_cafe.merchandise.domain;
 
 import com.example.fan_cafe.global.common.BaseTimeEntity;
+import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
 import com.example.fan_cafe.schedule.domain.Schedule;
 import jakarta.persistence.*;
@@ -36,7 +38,7 @@ public class Merchandise extends BaseTimeEntity {
     private Long salePrice;
 
     @Column(nullable = false)
-    private Long stock;
+    private int stock;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -54,7 +56,7 @@ public class Merchandise extends BaseTimeEntity {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
-                .stock(dto.getStock() == null ? 0L : dto.getStock())
+                .stock(dto.getStock() == 0 ? 0 : dto.getStock())
                 .salePrice(dto.getSalePrice())
                 .status(dto.getStatus())
                 .category(dto.getCategory())
@@ -68,15 +70,24 @@ public class Merchandise extends BaseTimeEntity {
         this.description = dto.getDescription();
         this.price = dto.getPrice();
         this.salePrice = dto.getSalePrice();
-        this.stock = dto.getStock() == null ? 0L : dto.getStock();
+        this.stock = dto.getStock() == 0 ? 0 : dto.getStock();
         this.status = dto.getStatus();
         this.category = dto.getCategory();
     }
+    public void update(int less){
+        this.stock = less;
+    }
 
-    public void decreaseStock(int quantity) {
-        this.stock -= quantity;
-        if(this.stock <= 0) {
+    public void markSoldOutIfNecessary() {
+        if (this.stock == 0) {
             this.status = Status.SOLD_OUT;
         }
+    }
+
+    public void decreaseStock(int quantity) {
+        if (this.stock < quantity) {
+            throw new CustomException(MerchandiseErrorCode.OUT_OF_STOCK);
+        }
+        this.stock -= quantity;
     }
 }

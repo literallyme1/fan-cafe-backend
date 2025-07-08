@@ -1,5 +1,6 @@
 package com.example.fan_cafe.merchandise.application;
 
+import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.s3.S3Uploader;
@@ -7,6 +8,7 @@ import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
+import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseGroupedResponse;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseListResponse;
@@ -48,24 +50,54 @@ public class MerchandiseService {
         Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
         Slice<Merchandise> merchandises = merchandiseRepository.searchMerchandise(Status.SALE, category, pageable);
 
-        List<MerchandiseListResponse> groupedMerchandises;
+        List<MerchandiseResponse> responses = toResponseList(merchandises);
+        List<MerchandiseListResponse> groupedResponses = (category != null)
+                ? wrapSingleCategory(category, responses)
+                : groupByCategory(responses);
 
-        if (category != null) {
-            List<MerchandiseResponse> responses = merchandises.stream()
-                    .map(MerchandiseResponse::from)
-                    .toList();
-            groupedMerchandises = List.of(MerchandiseListResponse.of(category, responses));
-        } else {
-            Map<Category, List<MerchandiseResponse>> grouped = merchandises.stream()
-                    .map(MerchandiseResponse::from)
-                    .collect(Collectors.groupingBy(MerchandiseResponse::getCategory));
-
-            groupedMerchandises = grouped.entrySet().stream()
-                    .map(entry -> MerchandiseListResponse.of(entry.getKey(), entry.getValue()))
-                    .toList();
-        }
-
-        return ApiResponse.success(ApiResponseStatus.SUCCESS,
-                MerchandiseGroupedResponse.of(groupedMerchandises, merchandises.hasNext()));
+        return ApiResponse.success(
+                ApiResponseStatus.SUCCESS,
+                MerchandiseGroupedResponse.of(groupedResponses, merchandises.hasNext())
+        );
     }
+
+    @Transactional
+    public ApiResponse<MerchandiseResponse> update(Long id, MerchandiseRequest request){
+        Merchandise merchandise = findByIdOrThrow(id);
+        merchandise.update(request);
+        merchandise.markSoldOutIfNecessary();
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, MerchandiseResponse.from(merchandise));
+    }
+
+    @Transactional
+    public ApiResponse<MerchandiseResponse> decreaseStock(Long id, int quantity){
+        Merchandise merchandise = findByIdOrThrow(id);
+        merchandise.decreaseStock(quantity);
+        merchandise.markSoldOutIfNecessary();
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, MerchandiseResponse.from(merchandise));
+    }
+
+    private Merchandise findByIdOrThrow(Long id){
+        return merchandiseRepository.findById(id)
+                .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
+    }
+
+    private List<MerchandiseResponse> toResponseList(Slice<Merchandise> slice) {
+        return slice.stream()
+                .map(MerchandiseResponse::from)
+                .toList();
+    }
+
+    private List<MerchandiseListResponse> wrapSingleCategory(Category category, List<MerchandiseResponse> list) {
+        return List.of(MerchandiseListResponse.of(category, list));
+    }
+
+    private List<MerchandiseListResponse> groupByCategory(List<MerchandiseResponse> list) {
+        return list.stream()
+                .collect(Collectors.groupingBy(MerchandiseResponse::getCategory))
+                .entrySet().stream()
+                .map(entry -> MerchandiseListResponse.of(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
 }

@@ -26,9 +26,21 @@ public class MerchandiseController {
     }
 
     @GetMapping
-    public ApiResponse<MerchandiseGroupedResponse> get(@RequestParam(required = false)int page,
+    public ApiResponse<MerchandiseGroupedResponse> get(@RequestParam(defaultValue = "0")int page,
                                                        @RequestParam(required = false)Category category,
                                                        @RequestParam(defaultValue = "10") int size) {
         return merchandiseService.get(page, size, category);
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<MerchandiseResponse> update(@PathVariable Long id,
+                                                   @RequestBody MerchandiseRequest request){
+        return merchandiseService.update(id, request);
+    }
+
+    @PatchMapping("/{id}/stock")
+    public ApiResponse<MerchandiseResponse> decreaseStock(@PathVariable Long id,
+                                                          @RequestParam int quantity){
+        return merchandiseService.decreaseStock(id, quantity);
     }
 }

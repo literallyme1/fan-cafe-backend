@@ -29,11 +29,12 @@ public class MerchandiseRequest {
 
     private Long salePrice;
 
-    private Long stock;
+    private int stock;
 
     @NotNull(message = "판매 상태를 알려주세요.")
     private Status status;
 
     @NotNull(message = "카테고리를 알려주세요.")
     private Category category;
+
 }

@@ -58,18 +58,21 @@ public class ScheduleService {
 
     @Transactional
     public ApiResponse<ScheduleResponse> update(Long id, ScheduleRequest request) {
-        Schedule schedule = scheduleRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+        Schedule schedule = findByIdOrThrow(id);
         schedule.update(request.getTitle(), request.getLocation(), request.getStartAt(), request.getEndAt());
         return ApiResponse.success(ApiResponseStatus.SUCCESS, ScheduleResponse.from(schedule));
     }
 
     @Transactional
     public ApiResponse<Void> delete(Long id) {
-        Schedule schedule = scheduleRepository.findById(id)
-                .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
+        Schedule schedule = findByIdOrThrow(id);
         schedule.delete();
 
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
+
+    private Schedule findByIdOrThrow(Long id){
+        return scheduleRepository.findById(id)
+                .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 }
