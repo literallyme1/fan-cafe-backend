@@ -43,4 +43,9 @@ public class MerchandiseController {
                                                           @RequestParam int quantity){
         return merchandiseService.decreaseStock(id, quantity);
     }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        return merchandiseService.delete(id);
+    }
 }

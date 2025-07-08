@@ -77,6 +77,13 @@ public class MerchandiseService {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, MerchandiseResponse.from(merchandise));
     }
 
+    @Transactional
+    public ApiResponse<Void> delete(Long id){
+        Merchandise merchandise = findByIdOrThrow(id);
+        merchandise.delete();
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
+
     private Merchandise findByIdOrThrow(Long id){
         return merchandiseRepository.findById(id)
                 .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
