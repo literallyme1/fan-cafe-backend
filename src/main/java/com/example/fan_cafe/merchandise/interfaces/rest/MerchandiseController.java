@@ -4,7 +4,6 @@ import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.merchandise.application.MerchandiseService;
 import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseGroupedResponse;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseListResponse;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseResponse;
 import jakarta.validation.Valid;
@@ -21,7 +20,7 @@ public class MerchandiseController {
 
     @PostMapping
     public ApiResponse<MerchandiseResponse> create(@RequestPart("merchandise") @Valid MerchandiseRequest request,
-                                                   @RequestPart("image")MultipartFile image) {
+                                                   @RequestPart(value = "image", required = false)MultipartFile image) {
         return merchandiseService.create(request, image);
     }
 

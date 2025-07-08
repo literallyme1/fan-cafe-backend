@@ -10,10 +10,12 @@ import java.util.List;
 public class PromotionListResponse {
 
     private List<PromotionResponse> promotions;
+    private boolean hasNext;
 
-    public static PromotionListResponse of(List<PromotionResponse> promotions) {
+    public static PromotionListResponse of(List<PromotionResponse> promotions, boolean hasNext) {
         return PromotionListResponse.builder()
                 .promotions(promotions)
+                .hasNext(hasNext)
                 .build();
     }
 }
