@@ -56,7 +56,7 @@ public class Merchandise extends BaseTimeEntity {
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
-                .stock(dto.getStock() == 0 ? 0 : dto.getStock())
+                .stock(dto.getStock())
                 .salePrice(dto.getSalePrice())
                 .status(dto.getStatus())
                 .category(dto.getCategory())
@@ -70,7 +70,7 @@ public class Merchandise extends BaseTimeEntity {
         this.description = dto.getDescription();
         this.price = dto.getPrice();
         this.salePrice = dto.getSalePrice();
-        this.stock = dto.getStock() == 0 ? 0 : dto.getStock();
+        this.stock = dto.getStock();
         this.status = dto.getStatus();
         this.category = dto.getCategory();
     }

@@ -15,7 +15,7 @@ public class MerchandiseResponse {
     private String description;
     private Long price;
     private Long salePrice;
-    private Long stock;
+    private int stock;
     private Status status;
     private Category category;
     private String imageUrl;
