@@ -20,6 +20,8 @@ public class PromotionRequest {
 
     private String description;
 
+    private String imageUrl;
+
     private LocalDate startAt;
 
     private LocalDate endAt;

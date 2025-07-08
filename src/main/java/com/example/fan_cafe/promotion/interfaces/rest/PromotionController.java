@@ -28,4 +28,17 @@ public class PromotionController {
                                                   @RequestParam(defaultValue = "10") int size){
         return promotionService.get(page, size);
     }
+
+    @PutMapping("/{id}")
+    public ApiResponse<PromotionResponse> update(@PathVariable Long id,
+                                                 @RequestPart("promotion") @Valid PromotionRequest request,
+                                                 @RequestPart("image") MultipartFile image ){
+
+        return promotionService.update(id, request, image);
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        return promotionService.delete(id);
+    }
 }

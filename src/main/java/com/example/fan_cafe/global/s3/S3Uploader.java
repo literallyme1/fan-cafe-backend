@@ -12,6 +12,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -40,6 +42,7 @@ public class S3Uploader {
 
     public void delete(String fileKey) {
         try {
+            if (fileKey == null || fileKey.isBlank()) return;
             s3Template.deleteObject(bucket, fileKey);
         } catch (Exception e) {
             throw new CustomException(S3ErrorCode.FILE_DELETE_FAILED);
@@ -49,5 +52,16 @@ public class S3Uploader {
     private String createFileName(String originalName, String dir) {
         String ext = originalName.substring(originalName.lastIndexOf("."));
         return dir + "/" + UUID.randomUUID() + ext;
+    }
+
+    public String extractFileKey(String url) {
+        if (url == null || url.isBlank()) return null;
+        try {
+            URL parsedUrl = new URL(url);
+            String path = parsedUrl.getPath();
+            return path.startsWith("/") ? path.substring(1) : path;
+        } catch (MalformedURLException e) {
+            throw new CustomException(S3ErrorCode.FILE_INVALID_URL);
+        }
     }
 }
