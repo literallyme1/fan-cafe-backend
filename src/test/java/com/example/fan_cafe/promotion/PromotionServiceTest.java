@@ -73,8 +73,7 @@ public class PromotionServiceTest {
         //then
         verify(s3Uploader).upload(image, "promotion");
         verify(s3Uploader).delete(nullable(String.class));
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-        assertEquals("new-url.jpg", response.getData().getImageUrl());
+        assertEquals("new-url.jpg", response.getImageUrl());
     }
 
     @Test
@@ -83,10 +82,9 @@ public class PromotionServiceTest {
         when(promotionRepository.findById(id)).thenReturn(Optional.of(promotion));
 
         //when
-        var response = promotionService.delete(id);
+        promotionService.delete(id);
 
         //then
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
         assertNotNull(promotion.getDeletedAt());
     }
 

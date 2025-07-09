@@ -64,7 +64,6 @@ public class AuthServiceTest {
         var response = authService.register(request, Role.USER);
 
         //then
-        assertEquals(201, response.getStatus());
         verify(userRepository, times(1)).save(any(User.class));
     }
 
@@ -80,7 +79,6 @@ public class AuthServiceTest {
         //when
         var response = authService.login(request);
         //then
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
         verify(redisTokenRepository, times(1)).save(mockUser.getId(), "refresh-token");
     }
 

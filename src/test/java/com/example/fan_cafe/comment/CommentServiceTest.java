@@ -77,7 +77,6 @@ public class CommentServiceTest {
         var response = commentService.create(mockUser, request);
 
         //then
-        assertEquals(HttpStatus.CREATED.value(), response.getStatus());
         verify(commentRepository, times(1)).save(any(Comment.class));
 
     }
@@ -95,7 +94,6 @@ public class CommentServiceTest {
         var response = commentService.create(mockUser, request);
 
         //then
-        assertEquals(HttpStatus.CREATED.value(), response.getStatus());
         verify(commentRepository, times(1)).save(any(Comment.class));
 
     }
@@ -115,10 +113,9 @@ public class CommentServiceTest {
     void delete_success() {
         when(commentRepository.findById(anyLong())).thenReturn(Optional.of(mockRootComment));
 
-        var response = commentService.delete(mockUser, 1L);
+        commentService.delete(mockUser, 1L);
 
         //then
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
         assertNotNull(mockRootComment.getDeletedAt());
 
     }

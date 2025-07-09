@@ -73,11 +73,9 @@ public class MerchandiseServiceTest {
         //when
         var response = merchandiseService.update(id, request);
         //then
-        MerchandiseResponse data = response.getData();
         assertAll(
-                () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-                () -> assertEquals(Status.SOLD_OUT, data.getStatus()),
-                () -> assertEquals(request.getName(), data.getName())
+                () -> assertEquals(Status.SOLD_OUT, response.getStatus()),
+                () -> assertEquals(request.getName(), response.getName())
         );
     }
 
@@ -102,17 +100,12 @@ public class MerchandiseServiceTest {
         var response = merchandiseService.decreaseStock(id, quantity);
 
         //then
-        assertAll(
-                () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-                ()-> assertEquals(Status.SOLD_OUT, response.getData().getStatus())
-        );
+        assertEquals(Status.SOLD_OUT, response.getStatus());
     }
 
     @Test
     void shouldDeleteMerchandise_whenValidIdIsGiven(){
-        var response = merchandiseService.delete(id);
-
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        merchandiseService.delete(id);
         assertNotNull(merchandise.getDeletedAt());
     }
 }

@@ -55,7 +55,6 @@ public class ScheduleServiceTest {
         var response = scheduleService.create(request);
 
         //then
-        assertEquals(HttpStatus.CREATED.value(), response.getStatus());
         verify(scheduleRepository, times(1)).save(any(Schedule.class));
     }
 
@@ -79,8 +78,7 @@ public class ScheduleServiceTest {
         //when
         var response = scheduleService.get(year, month);
 
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-        List<ScheduleListResponse> grouped = response.getData().getSchedules();
+        List<ScheduleListResponse> grouped = response.getSchedules();
 
         assertEquals(2, grouped.size()); //2개의 그룹
         assertEquals(LocalDate.of(2025, 7, 5), grouped.getFirst().getDate());//날짜 맞는지 확인
@@ -105,8 +103,7 @@ public class ScheduleServiceTest {
         var response = scheduleService.update(id, request);
 
         //then
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
-        assertEquals(mockSchedule.getTitle(), response.getData().getTitle());
+        assertEquals(mockSchedule.getTitle(), response.getTitle());
     }
 
     @Test
@@ -117,10 +114,9 @@ public class ScheduleServiceTest {
         when(scheduleRepository.findById(id)).thenReturn(Optional.of(mockSchedule));
 
         //when
-        var response = scheduleService.delete(id);
+        scheduleService.delete(id);
 
         //then
-        assertEquals(HttpStatus.OK.value(), response.getStatus());
         assertNotNull(mockSchedule.getDeletedAt());
     }
 
