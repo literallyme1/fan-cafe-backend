@@ -3,10 +3,14 @@ package com.example.fan_cafe.global.exception;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import com.example.fan_cafe.global.response.ApiResponse;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.net.BindException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +35,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus())
                 .body(ApiResponse.fail(ex.getErrorCode()));
     }
+
+    //parameter 오류
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String message = String.format("잘못된 파라미터 값입니다.: '%s'", ex.getValue());
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, message));
+    }
+
+    //request body json 형식, enum 값 오류
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<String>> handleJsonParseError(HttpMessageNotReadableException ex){
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 올바르지 않습니다."));
+    }
+
+    //form data 바인딩 실패
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<String>> handleBindException(BindException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 잘못되었습니다."));
+    }
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleException(Exception ex) {

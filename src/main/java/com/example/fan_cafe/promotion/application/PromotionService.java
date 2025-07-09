@@ -1,8 +1,6 @@
 package com.example.fan_cafe.promotion.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.response.ApiResponse;
-import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.promotion.domain.Promotion;
@@ -42,7 +40,7 @@ public class PromotionService {
 
     public PromotionListResponse get(int page, int size) {
         Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
-        Slice<Promotion> promotions = promotionRepository.findSliceAll(pageable);
+        Slice<Promotion> promotions = promotionRepository.findSliceBy(pageable);
         List<PromotionResponse> promotionDtos = promotions.stream()
                 .map(PromotionResponse::from)
                 .toList();

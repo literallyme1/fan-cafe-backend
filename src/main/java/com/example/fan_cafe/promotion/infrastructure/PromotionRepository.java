@@ -11,5 +11,5 @@ import org.springframework.stereotype.Repository;
 public interface PromotionRepository extends JpaRepository<Promotion, Long> {
 
     @NonNull
-    Slice<Promotion> findSliceAll(Pageable pageable);
+    Slice<Promotion> findSliceBy(Pageable pageable);
 }
