@@ -10,12 +10,10 @@ import java.util.List;
 public class MerchandiseGroupedResponse {
 
     private List<MerchandiseListResponse> merchandises;
-    private boolean hasNext;
 
-    public static MerchandiseGroupedResponse of(List<MerchandiseListResponse> merchandises, boolean hasNext){
+    public static MerchandiseGroupedResponse of(List<MerchandiseListResponse> merchandises){
         return MerchandiseGroupedResponse.builder()
                 .merchandises(merchandises)
-                .hasNext(hasNext)
                 .build();
     }
 }

@@ -15,15 +15,16 @@ import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseListResponse;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,10 +34,10 @@ public class MerchandiseService {
     private final MerchandiseRepository merchandiseRepository;
     private final S3Uploader s3Uploader;
 
-    public ApiResponse<MerchandiseResponse> create(MerchandiseRequest request, MultipartFile image){
+    public MerchandiseResponse create(MerchandiseRequest request, MultipartFile image){
         String imageUrl = image.isEmpty()? null : s3Uploader.upload(image, "merchandise");
         Merchandise merchandise = this.create(request, imageUrl);
-        return ApiResponse.success(ApiResponseStatus.CREATED, MerchandiseResponse.from(merchandise));
+        return MerchandiseResponse.from(merchandise);
     }
 
     //트랜잭션 분리
@@ -46,42 +47,44 @@ public class MerchandiseService {
         return merchandiseRepository.save(merchandise);
     }
 
-    public ApiResponse<MerchandiseGroupedResponse> get(int page, int size, Category category) {
+    public MerchandiseGroupedResponse get(int page, int size, Category category) {
         Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
-        Slice<Merchandise> merchandises = merchandiseRepository.searchMerchandise(Status.SALE, category, pageable);
 
-        List<MerchandiseResponse> responses = toResponseList(merchandises);
-        List<MerchandiseListResponse> groupedResponses = (category != null)
-                ? wrapSingleCategory(category, responses)
-                : groupByCategory(responses);
+        List<Category> categories = (category != null)
+                ? List.of(category)
+                : List.of(Category.values());
 
-        return ApiResponse.success(
-                ApiResponseStatus.SUCCESS,
-                MerchandiseGroupedResponse.of(groupedResponses, merchandises.hasNext())
-        );
+        List<MerchandiseListResponse> groupedResponses = categories.stream()
+                .map(cat -> {
+                    Slice<Merchandise> merchandises = merchandiseRepository.findTopByCategory(Status.SALE, cat, pageable);
+                    List<MerchandiseResponse> responses = toResponseList(merchandises);
+                    return MerchandiseListResponse.of(cat, responses, merchandises.hasNext());
+                })
+                .toList();
+
+        return MerchandiseGroupedResponse.of(groupedResponses);
     }
 
     @Transactional
-    public ApiResponse<MerchandiseResponse> update(Long id, MerchandiseRequest request){
+    public MerchandiseResponse update(Long id, MerchandiseRequest request){
         Merchandise merchandise = findByIdOrThrow(id);
         merchandise.update(request);
         merchandise.markSoldOutIfNecessary();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, MerchandiseResponse.from(merchandise));
+        return MerchandiseResponse.from(merchandise);
     }
 
     @Transactional
-    public ApiResponse<MerchandiseResponse> decreaseStock(Long id, int quantity){
+    public MerchandiseResponse decreaseStock(Long id, int quantity){
         Merchandise merchandise = findByIdOrThrow(id);
         merchandise.decreaseStock(quantity);
         merchandise.markSoldOutIfNecessary();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, MerchandiseResponse.from(merchandise));
+        return MerchandiseResponse.from(merchandise);
     }
 
     @Transactional
-    public ApiResponse<Void> delete(Long id){
+    public void delete(Long id){
         Merchandise merchandise = findByIdOrThrow(id);
         merchandise.delete();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
     private Merchandise findByIdOrThrow(Long id){
@@ -94,17 +97,4 @@ public class MerchandiseService {
                 .map(MerchandiseResponse::from)
                 .toList();
     }
-
-    private List<MerchandiseListResponse> wrapSingleCategory(Category category, List<MerchandiseResponse> list) {
-        return List.of(MerchandiseListResponse.of(category, list));
-    }
-
-    private List<MerchandiseListResponse> groupByCategory(List<MerchandiseResponse> list) {
-        return list.stream()
-                .collect(Collectors.groupingBy(MerchandiseResponse::getCategory))
-                .entrySet().stream()
-                .map(entry -> MerchandiseListResponse.of(entry.getKey(), entry.getValue()))
-                .toList();
-    }
-
 }

@@ -22,8 +22,8 @@ public interface MerchandiseRepository extends JpaRepository<Merchandise, Long> 
     @Query("SELECT m FROM Merchandise m " +
            "WHERE m.deletedAt IS NULL " +
             "AND m.status = :status " +
-            "AND (:category IS NULL OR m.category = :category)")
-    Slice<Merchandise> searchMerchandise(@Param("status") Status status,
-                                        @Param("category")Category category,
+            "AND m.category = :category")
+    Slice<Merchandise> findTopByCategory(@Param("status") Status status,
+                                         @Param("category")Category category,
                                          Pageable pageable);
 }

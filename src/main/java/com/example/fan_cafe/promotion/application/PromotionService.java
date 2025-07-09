@@ -40,13 +40,13 @@ public class PromotionService {
         return promotionRepository.save(promotion);
     }
 
-    public ApiResponse<PromotionListResponse> get(int page, int size) {
+    public PromotionListResponse get(int page, int size) {
         Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
         Slice<Promotion> promotions = promotionRepository.findSliceAll(pageable);
         List<PromotionResponse> promotionDtos = promotions.stream()
                 .map(PromotionResponse::from)
                 .toList();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, PromotionListResponse.of(promotionDtos, promotions.hasNext()));
+        return PromotionListResponse.of(promotionDtos, promotions.hasNext());
     }
 
     public ApiResponse<PromotionResponse> update(Long id, PromotionRequest request, MultipartFile image){

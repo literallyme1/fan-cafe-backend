@@ -11,11 +11,13 @@ import java.util.List;
 public class MerchandiseListResponse {
     private Category category;
     private List<MerchandiseResponse> merchandises;
+    private boolean hasNext;
 
-    public static MerchandiseListResponse of(Category category, List<MerchandiseResponse> merchandises) {
+    public static MerchandiseListResponse of(Category category, List<MerchandiseResponse> merchandises, boolean hasNext) {
         return MerchandiseListResponse.builder()
                 .category(category)
                 .merchandises(merchandises)
+                .hasNext(hasNext)
                 .build();
     }
 }

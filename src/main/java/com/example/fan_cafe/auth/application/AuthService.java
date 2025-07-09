@@ -30,7 +30,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final RedisTokenRepository redisTokenRepository;
 
-    public ApiResponse<UserInfoResponse> register(RegisterRequest request, Role role)
+    public UserInfoResponse register(RegisterRequest request, Role role)
     {
         if (userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail()))
             throw new CustomException(UserErrorCode.EMAIL_ALREADY_EXISTS);
@@ -42,11 +42,11 @@ public class AuthService {
         User user = User.of(request.getEmail(), encodedPassword, request.getNickname(), role);
         userRepository.save(user);
 
-        return ApiResponse.success(ApiResponseStatus.CREATED, UserInfoResponse.from(user));
+        return UserInfoResponse.from(user);
 
     }
 
-    public ApiResponse<LoginResponse> login(LoginRequest request){
+    public LoginResponse login(LoginRequest request){
 
         Optional<User> userOptional = userRepository.findByEmailAndDeletedAtIsNull(request.getEmail());
         if(userOptional.isEmpty()) throw new CustomException(UserErrorCode.USER_NOT_FOUND);
@@ -61,16 +61,16 @@ public class AuthService {
         redisTokenRepository.save(user.getId(), refreshToken);
         UserInfoResponse userInfo = UserInfoResponse.from(user);
         JwtTokenResponse jwtToken = JwtTokenResponse.from(accessToken, refreshToken);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, LoginResponse.from(jwtToken, userInfo));
+        return LoginResponse.from(jwtToken, userInfo);
 
     }
 
-    public ApiResponse<Void> logout(Long userId){
+    public void logout(Long userId){
         redisTokenRepository.delete(userId);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+
     }
 
-    public ApiResponse<JwtTokenResponse> reissueAccessToken(String refreshToken) {
+    public JwtTokenResponse reissueAccessToken(String refreshToken) {
 
         if(!jwtProvider.isValid(refreshToken)) {throw new CustomException(JwtErrorCode.INVALID_REFRESH_TOKEN);}
         Long userId = jwtProvider.getUserIdFromToken(refreshToken);
@@ -80,6 +80,6 @@ public class AuthService {
         if(!refreshToken.equals(savedToken)) {throw new CustomException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);}
 
         String newAccessToken = jwtProvider.createAccessToken(userId, Role.of(userRole));
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, JwtTokenResponse.from(newAccessToken));
+        return JwtTokenResponse.from(newAccessToken);
     }
 }

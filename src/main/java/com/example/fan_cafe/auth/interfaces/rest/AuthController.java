@@ -1,6 +1,7 @@
 package com.example.fan_cafe.auth.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.security.RefreshTokenRequest;
 import com.example.fan_cafe.global.security.JwtTokenResponse;
 import com.example.fan_cafe.user.domain.Role;
@@ -27,21 +28,26 @@ public class AuthController {
 
     @PostMapping("/register")
     public ApiResponse<UserInfoResponse> register(@RequestBody @Valid RegisterRequest reqeust) {
-        return authService.register(reqeust, Role.USER);
+        UserInfoResponse response =  authService.register(reqeust, Role.USER);
+        return ApiResponse.success(ApiResponseStatus.CREATED, response);
+
     }
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@RequestBody @Valid LoginRequest request) {
-        return authService.login(request);
+        LoginResponse response =  authService.login(request);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@AuthenticationPrincipal(expression = "user") User user){
-        return authService.logout(user.getId());
+        authService.logout(user.getId());
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
     @PostMapping("/refresh")
     public ApiResponse<JwtTokenResponse> refresh(@RequestBody @Valid RefreshTokenRequest request){
-        return authService.reissueAccessToken(request.getRefreshToken());
+        JwtTokenResponse response = authService.reissueAccessToken(request.getRefreshToken());
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 }
