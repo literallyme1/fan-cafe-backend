@@ -35,7 +35,7 @@ public class CommentService {
 
 
     @Transactional
-    public ApiResponse<CommentResponse> create(User user, CommentCreateRequest request) {
+    public CommentResponse create(User user, CommentCreateRequest request) {
         Post post = getPostOrThrow(request.getPostId());
 
         Comment comment = (request.getParentId() == null)
@@ -44,10 +44,10 @@ public class CommentService {
 
         commentRepository.save(comment);
 
-        return ApiResponse.success(ApiResponseStatus.CREATED, CommentResponse.from(comment));
+        return CommentResponse.from(comment);
     }
 
-    public ApiResponse<CommentListResponse> get(Long postId, int page) {
+    public CommentListResponse get(Long postId, int page) {
         validatePostExists(postId);
         Pageable pageable =  PageUtils.createPageRequest( page, 10,"createdAt", "DESC");
         Slice<Comment> roots = commentRepository.findByPostIdAndParentIsNull(postId, pageable);
@@ -63,11 +63,11 @@ public class CommentService {
         List<CommentResponse> rootResponses = roots.getContent().stream()
                 .map(root -> buildCommentResponseWithChildren(root, childrenMap))
                 .toList();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, CommentListResponse.from(rootResponses, roots.hasNext()));
+        return CommentListResponse.from(rootResponses, roots.hasNext());
     }
 
     @Transactional
-    public ApiResponse<Void> delete(User principalUser, Long id) {
+    public void delete(User principalUser, Long id) {
         Comment comment = commentRepository.findById(id)
                 .orElseThrow(() -> new CustomException(CommentErrorCode.COMMENT_NOT_FOUND));
 
@@ -76,7 +76,6 @@ public class CommentService {
         }
 
         comment.delete();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
     private Post getPostOrThrow(Long postId) {

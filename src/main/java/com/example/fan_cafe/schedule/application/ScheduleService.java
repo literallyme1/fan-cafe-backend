@@ -29,16 +29,16 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
 
     @Transactional
-    public ApiResponse<ScheduleResponse> create(ScheduleRequest request){
+    public ScheduleResponse create(ScheduleRequest request){
         Schedule schedule = Schedule.of(request.getTitle(),
                                         request.getLocation(),
                                         request.getStartAt(),
                                         request.getEndAt());
         scheduleRepository.save(schedule);
-        return ApiResponse.success(ApiResponseStatus.CREATED, ScheduleResponse.from(schedule));
+        return ScheduleResponse.from(schedule);
     }
 
-    public ApiResponse<MonthlyScheduleResponse> get(int year, int month) {
+    public MonthlyScheduleResponse get(int year, int month) {
 
         DateRange range = DateRange.ofMonth(year, month);
 
@@ -53,22 +53,20 @@ public class ScheduleService {
                 .sorted(Comparator.comparing(ScheduleListResponse::getDate))
                 .toList();
 
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, MonthlyScheduleResponse.of(groupedSchedules));
+        return MonthlyScheduleResponse.of(groupedSchedules);
     }
 
     @Transactional
-    public ApiResponse<ScheduleResponse> update(Long id, ScheduleRequest request) {
+    public ScheduleResponse update(Long id, ScheduleRequest request) {
         Schedule schedule = findByIdOrThrow(id);
         schedule.update(request.getTitle(), request.getLocation(), request.getStartAt(), request.getEndAt());
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, ScheduleResponse.from(schedule));
+        return ScheduleResponse.from(schedule);
     }
 
     @Transactional
-    public ApiResponse<Void> delete(Long id) {
+    public void delete(Long id) {
         Schedule schedule = findByIdOrThrow(id);
         schedule.delete();
-
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
     private Schedule findByIdOrThrow(Long id){

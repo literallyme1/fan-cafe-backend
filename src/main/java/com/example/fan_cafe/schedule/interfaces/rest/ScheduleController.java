@@ -1,6 +1,7 @@
 package com.example.fan_cafe.schedule.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.schedule.application.ScheduleService;
 import com.example.fan_cafe.schedule.interfaces.dto.MonthlyScheduleResponse;
 import com.example.fan_cafe.schedule.interfaces.dto.ScheduleListResponse;
@@ -22,25 +23,28 @@ public class ScheduleController {
 //    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ApiResponse<ScheduleResponse> create(@RequestBody @Valid ScheduleRequest request) {
-        return scheduleService.create(request);
+        ScheduleResponse response = scheduleService.create(request);
+        return ApiResponse.success(ApiResponseStatus.CREATED, response);
     }
 
     @GetMapping
     public ApiResponse<MonthlyScheduleResponse> get(@RequestParam int year,
                                                     @RequestParam int month){
-        return scheduleService.get(year, month);
+        MonthlyScheduleResponse response = scheduleService.get(year, month);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     //    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ApiResponse<ScheduleResponse> update(@PathVariable Long id,
                                                 @RequestBody @Valid ScheduleRequest request) {
-        return scheduleService.update(id, request);
+        ScheduleResponse response = scheduleService.update(id, request);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     //    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable Long id){
-        return scheduleService.delete(id);
+    public void delete(@PathVariable Long id){
+        scheduleService.delete(id);
     }
 }

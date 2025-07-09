@@ -1,6 +1,7 @@
 package com.example.fan_cafe.user.interfaces.rest;
 
 import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.user.application.UserService;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,8 @@ public class UserController {
 
     @DeleteMapping
     public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user){
-        return userService.delete(user.getId());
+        userService.delete(user.getId());
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
 

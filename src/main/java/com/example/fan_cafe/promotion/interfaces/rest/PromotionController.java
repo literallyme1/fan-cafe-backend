@@ -21,7 +21,8 @@ public class PromotionController {
     @PostMapping
     public ApiResponse<PromotionResponse> create(@RequestPart("promotion") @Valid PromotionRequest request,
                                                  @RequestPart(value = "image", required = false)MultipartFile image) {
-        return promotionService.create(request, image);
+        PromotionResponse response = promotionService.create(request, image);
+        return ApiResponse.success(ApiResponseStatus.CREATED, response);
     }
 
     @GetMapping
@@ -36,11 +37,13 @@ public class PromotionController {
                                                  @RequestPart("promotion") @Valid PromotionRequest request,
                                                  @RequestPart("image") MultipartFile image ){
 
-        return promotionService.update(id, request, image);
+        PromotionResponse response = promotionService.update(id, request, image);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
-        return promotionService.delete(id);
+        promotionService.delete(id);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 }

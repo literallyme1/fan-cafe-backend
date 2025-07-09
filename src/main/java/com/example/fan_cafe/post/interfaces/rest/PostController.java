@@ -2,6 +2,7 @@ package com.example.fan_cafe.post.interfaces.rest;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.post.application.PostService;
@@ -32,7 +33,8 @@ public class PostController {
             throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
         }
 
-        return postService.create(user, request, images);
+        PostCreateResponse response = postService.create(user, request, images);
+        return ApiResponse.success(ApiResponseStatus.CREATED, response);
     }
 
     //paged 10개씩
@@ -41,7 +43,8 @@ public class PostController {
                                              @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
                                              @RequestParam(defaultValue = "10") int size)
     {
-        return postService.get(cursorId, cursorCreatedAt, size);
+        PostListResponse response = postService.get(cursorId, cursorCreatedAt, size);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     @GetMapping("/new")
@@ -49,7 +52,8 @@ public class PostController {
                                                      @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
                                                      @RequestParam(defaultValue = "10") int size)
     {
-        return postService.getNewPosts(cursorId, cursorCreatedAt, size);
+        PostListResponse response = postService.getNewPosts(cursorId, cursorCreatedAt, size);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
     @PutMapping("/{id}")
@@ -58,14 +62,16 @@ public class PostController {
                                                   @RequestPart("post") @Valid PostUpdateRequest request,
                                                   @RequestPart("images") List<MultipartFile> images)
     {
-        return postService.update(user, id, request, images);
+        PostUpdateResponse response = postService.update(user, id, request, images);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS,response);
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user,
                                     @PathVariable Long id)
     {
-        return postService.delete(user, id);
+        postService.delete(user, id);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
 

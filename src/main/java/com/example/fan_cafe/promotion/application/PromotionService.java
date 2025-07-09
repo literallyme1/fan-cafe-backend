@@ -27,11 +27,11 @@ public class PromotionService {
     private final PromotionRepository promotionRepository;
     private final S3Uploader s3Uploader;
 
-    public ApiResponse<PromotionResponse> create(PromotionRequest request,
+    public PromotionResponse create(PromotionRequest request,
                                                  MultipartFile image){
         String imageUrl = image.isEmpty()? null : s3Uploader.upload(image, "promotion");
         Promotion promotion = this.create(request, imageUrl);
-        return ApiResponse.success(ApiResponseStatus.CREATED, PromotionResponse.from(promotion));
+        return PromotionResponse.from(promotion);
     }
 
     @Transactional
@@ -49,7 +49,7 @@ public class PromotionService {
         return PromotionListResponse.of(promotionDtos, promotions.hasNext());
     }
 
-    public ApiResponse<PromotionResponse> update(Long id, PromotionRequest request, MultipartFile image){
+    public PromotionResponse update(Long id, PromotionRequest request, MultipartFile image){
 
         String newImageUrl = request.getImageUrl();
         if(image != null && !image.isEmpty()){
@@ -58,7 +58,7 @@ public class PromotionService {
         }
         Promotion promotion = update(id, request, newImageUrl);
 
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, PromotionResponse.from(promotion));
+        return PromotionResponse.from(promotion);
     }
 
     @Transactional
@@ -69,10 +69,9 @@ public class PromotionService {
     }
 
     @Transactional
-    public ApiResponse<Void> delete(Long id){
+    public void delete(Long id){
         Promotion promotion = findByIdOrThrow(id);
         promotion.delete();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
 

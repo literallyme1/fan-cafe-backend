@@ -30,20 +30,20 @@ public class PostService {
     private final PostRepository postRepository;
     private final S3Uploader s3Uploader;
 
-    public ApiResponse<PostCreateResponse> create(User user, PostCreateRequest request, List<MultipartFile> images) {
+    public PostCreateResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = uploadImagesAndGetUrls(images, "post");
 
         return createWithImages(user, request, imageUrls);
     }
 
     @Transactional
-    public ApiResponse<PostCreateResponse> createWithImages(User user, PostCreateRequest request, List<String> imageUrls) {
+    public PostCreateResponse createWithImages(User user, PostCreateRequest request, List<String> imageUrls) {
         Post post = Post.of(user, request.getTitle(), request.getContent(), imageUrls);
         postRepository.save(post);
-        return ApiResponse.success(ApiResponseStatus.CREATED, PostCreateResponse.from(post.getId(), imageUrls));
+        return PostCreateResponse.from(post.getId(), imageUrls);
     }
 
-    public ApiResponse<PostListResponse> get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
+    public PostListResponse get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
         Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
         Pageable pageable = PageUtils.createPageRequest(size);
         List<Post> posts = postRepository.findNextPage(cursor.createdAt(), cursor.id(), pageable);
@@ -59,13 +59,12 @@ public class PostService {
             nextCursorCreatedAt = last.getCreatedAt();
 
         }
-        PostListResponse postResponse = PostListResponse.from(
+        return PostListResponse.from(
                 postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
         );
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
     }
 
-    public ApiResponse<PostListResponse> getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
+    public PostListResponse getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
         Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
         Pageable pageable = PageUtils.createPageRequest(size);
         List<Post> posts = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), pageable);
@@ -84,11 +83,11 @@ public class PostService {
         PostListResponse postResponse = PostListResponse.from(
                 postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
         );
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, postResponse);
+        return postResponse;
     }
 
     @Transactional
-    public ApiResponse<PostUpdateResponse> update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
+    public PostUpdateResponse update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
@@ -106,16 +105,15 @@ public class PostService {
 
         post.update(request.getTitle(), request.getContent(), finalImageUrls);
 
-        return ApiResponse.success(ApiResponseStatus.SUCCESS,PostUpdateResponse.from(finalImageUrls));
+        return PostUpdateResponse.from(finalImageUrls);
     }
 
     @Transactional
-    public ApiResponse<Void> delete(User user, Long id) {
+    public void delete(User user, Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
         if(!user.equals(post.getUser())) throw new CustomException(PostErrorCode.POST_NOT_OWNER);
         post.delete();
-        return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
     private List<String> uploadImagesAndGetUrls(List<MultipartFile> images, String dir) {
