@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum LikeErrorCode implements BaseErrorCode {
 
-    SCHEDULE_INVALID_TIME("S001", HttpStatus.BAD_REQUEST, "종료일은 시작일보다 앞설 수 없습니다."),
+    ALREADY_LIKED("L001", HttpStatus.BAD_REQUEST, "이미 좋아요를 눌렀습니다."),
     SCHEDULE_NOT_FOUND("S002", HttpStatus.NOT_FOUND, "스케줄을 찾을 수 없습니다."),
     NO_IMAGE_PROVIDED("S003", HttpStatus.BAD_REQUEST, "이미지를 1개 이상 게시해주세요.");
     private final String code;

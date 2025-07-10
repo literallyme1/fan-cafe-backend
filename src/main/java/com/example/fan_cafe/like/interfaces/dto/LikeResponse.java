@@ -1,5 +1,7 @@
 package com.example.fan_cafe.like.interfaces.dto;
 
+import com.querydsl.core.annotations.QueryProjection;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -10,6 +12,13 @@ public class LikeResponse {
     private Long postId;
     private boolean liked;
     private int likeCount;
+
+    @QueryProjection
+    public LikeResponse(Long postId, boolean liked, int likeCount) {
+        this.postId = postId;
+        this.liked = liked;
+        this.likeCount = likeCount;
+    }
 
     public static LikeResponse from(Long postId, boolean liked, int likeCount){
         return LikeResponse.builder()
