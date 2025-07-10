@@ -13,9 +13,6 @@ import com.example.fan_cafe.promotion.interfaces.dto.PromotionListResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.function.Function;
-
 @Service
 @RequiredArgsConstructor
 public class MerchandisePageService {
