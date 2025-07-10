@@ -65,12 +65,19 @@ public class MerchandiseService {
         return MerchandiseGroupedResponse.of(groupedResponses);
     }
 
-    @Transactional
-    public MerchandiseResponse update(Long id, MerchandiseRequest request){
+    public MerchandiseResponse update(Long id, MerchandiseRequest request, MultipartFile image){
+
         Merchandise merchandise = findByIdOrThrow(id);
-        merchandise.update(request);
+        String newImageUrl = resolveImageUrl(merchandise, request, image);
+        Merchandise newMerchandise = update(merchandise, id, request, newImageUrl);
+        return MerchandiseResponse.from(newMerchandise);
+    }
+
+    @Transactional
+    public Merchandise update(Merchandise merchandise, Long id, MerchandiseRequest request, String imageUrl){
+        merchandise.update(request, imageUrl);
         merchandise.markSoldOutIfNecessary();
-        return MerchandiseResponse.from(merchandise);
+        return merchandise;
     }
 
     @Transactional
@@ -85,6 +92,20 @@ public class MerchandiseService {
     public void delete(Long id){
         Merchandise merchandise = findByIdOrThrow(id);
         merchandise.delete();
+    }
+
+    private String resolveImageUrl(Merchandise oldMerchandise, MerchandiseRequest request, MultipartFile image){
+        String imageUrl = request.getImageUrl();
+
+        if (request.isDeleteImage() && oldMerchandise.getImageUrl() != null) {
+            s3Uploader.delete(s3Uploader.extractFileKey(oldMerchandise.getImageUrl()));
+            imageUrl = null;
+        }
+
+        if(image != null && !image.isEmpty()){
+            imageUrl = s3Uploader.upload(image, "merchandise");
+        }
+        return imageUrl;
     }
 
     private Merchandise findByIdOrThrow(Long id){

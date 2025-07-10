@@ -65,7 +65,7 @@ public class Merchandise extends BaseTimeEntity {
 
     }
 
-    public void update(MerchandiseRequest dto) {
+    public void update(MerchandiseRequest dto, String imageUrl) {
         this.name = dto.getName();
         this.description = dto.getDescription();
         this.price = dto.getPrice();
@@ -73,6 +73,7 @@ public class Merchandise extends BaseTimeEntity {
         this.stock = dto.getStock();
         this.status = dto.getStatus();
         this.category = dto.getCategory();
+        this.imageUrl = imageUrl;
     }
     public void update(int less){
         this.stock = less;

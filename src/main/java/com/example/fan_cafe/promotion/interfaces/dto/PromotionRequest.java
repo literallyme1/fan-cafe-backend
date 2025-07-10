@@ -25,4 +25,6 @@ public class PromotionRequest {
     private LocalDate startAt;
 
     private LocalDate endAt;
+
+    private boolean deleteImage;
 }

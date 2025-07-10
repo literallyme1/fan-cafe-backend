@@ -33,7 +33,7 @@ public class PromotionService {
     }
 
     @Transactional
-    private Promotion create(PromotionRequest request, String imageUrl) {
+    public Promotion create(PromotionRequest request, String imageUrl) {
         Promotion promotion = Promotion.of(request, imageUrl);
         return promotionRepository.save(promotion);
     }
@@ -49,18 +49,15 @@ public class PromotionService {
 
     public PromotionResponse update(Long id, PromotionRequest request, MultipartFile image){
 
-        String newImageUrl = request.getImageUrl();
-        if(image != null && !image.isEmpty()){
-            s3Uploader.delete(s3Uploader.extractFileKey(request.getImageUrl()));
-            newImageUrl  = s3Uploader.upload(image, "promotion");
-        }
-        Promotion promotion = update(id, request, newImageUrl);
+        Promotion promotion = findByIdOrThrow(id);
+        String newImageUrl = resolveImageUrl(promotion, request, image);
+        Promotion newPromotion = update(id, request, newImageUrl);
 
-        return PromotionResponse.from(promotion);
+        return PromotionResponse.from(newPromotion);
     }
 
     @Transactional
-    private Promotion update(Long id, PromotionRequest request, String newImageUrl){
+    public Promotion update(Long id, PromotionRequest request, String newImageUrl){
         Promotion promotion = findByIdOrThrow(id);
         promotion.update(request, newImageUrl);
         return promotion;
@@ -70,6 +67,19 @@ public class PromotionService {
     public void delete(Long id){
         Promotion promotion = findByIdOrThrow(id);
         promotion.delete();
+    }
+
+    private String resolveImageUrl(Promotion oldPromotion, PromotionRequest request, MultipartFile image){
+        String imageUrl = request.getImageUrl();
+
+        if(request.isDeleteImage() && oldPromotion.getImageUrl() != null){
+            s3Uploader.delete(s3Uploader.extractFileKey(oldPromotion.getImageUrl()));
+        }
+
+        if(image != null && !image.isEmpty()){
+            imageUrl = s3Uploader.upload(image, "promotion");
+        }
+        return imageUrl;
     }
 
 

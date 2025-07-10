@@ -36,8 +36,9 @@ public class MerchandiseController {
 
     @PutMapping("/{id}")
     public ApiResponse<MerchandiseResponse> update(@PathVariable Long id,
-                                                   @RequestBody MerchandiseRequest request){
-        MerchandiseResponse response = merchandiseService.update(id, request);
+                                                   @RequestPart("merchandise") MerchandiseRequest request,
+                                                   @RequestPart(value = "image", required = false) MultipartFile image){
+        MerchandiseResponse response = merchandiseService.update(id, request, image);
         return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 

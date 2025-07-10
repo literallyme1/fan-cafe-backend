@@ -4,6 +4,7 @@ import com.example.fan_cafe.global.response.ApiResponseStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -58,6 +59,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 잘못되었습니다."));
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<String>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.fail(ApiResponseStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleException(Exception ex) {

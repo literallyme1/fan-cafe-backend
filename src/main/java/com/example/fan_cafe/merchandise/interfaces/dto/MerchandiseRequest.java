@@ -37,4 +37,8 @@ public class MerchandiseRequest {
     @NotNull(message = "카테고리를 알려주세요.")
     private Category category;
 
+    private String imageUrl;
+
+    private boolean deleteImage;
+
 }

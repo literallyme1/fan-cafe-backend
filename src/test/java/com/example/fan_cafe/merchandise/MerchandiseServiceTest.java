@@ -71,7 +71,7 @@ public class MerchandiseServiceTest {
                 .build();
 
         //when
-        var response = merchandiseService.update(id, request);
+        var response = merchandiseService.update(id, request, null);
         //then
         assertAll(
                 () -> assertEquals(Status.SOLD_OUT, response.getStatus()),
