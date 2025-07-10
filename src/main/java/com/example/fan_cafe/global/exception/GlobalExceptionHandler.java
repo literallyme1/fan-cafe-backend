@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import com.example.fan_cafe.global.response.ApiResponse;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.net.BindException;
 import java.util.HashMap;
@@ -52,11 +54,11 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 올바르지 않습니다."));
     }
 
-    //form data 바인딩 실패
-    @ExceptionHandler(BindException.class)
-    public ResponseEntity<ApiResponse<String>> handleBindException(BindException ex) {
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 잘못되었습니다."));
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiResponse<String>> handleMissingPart(MissingServletRequestPartException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청에 필요한 파일 혹은 데이터가 없습니다.")
+        );
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -64,6 +66,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ApiResponse.fail(ApiResponseStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."));
+    }
+
+    //파일 업로드 에러
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ApiResponse<String>> handleMultipartException(MultipartException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "파일 업로드 형식이 잘못되었습니다."));
     }
 
     @ExceptionHandler(Exception.class)

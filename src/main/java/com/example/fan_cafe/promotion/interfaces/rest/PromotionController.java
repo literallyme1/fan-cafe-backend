@@ -35,7 +35,7 @@ public class PromotionController {
     @PutMapping("/{id}")
     public ApiResponse<PromotionResponse> update(@PathVariable Long id,
                                                  @RequestPart("promotion") @Valid PromotionRequest request,
-                                                 @RequestPart("image") MultipartFile image ){
+                                                 @RequestPart(value = "image", required = false) MultipartFile image){
 
         PromotionResponse response = promotionService.update(id, request, image);
         return ApiResponse.success(ApiResponseStatus.SUCCESS, response);

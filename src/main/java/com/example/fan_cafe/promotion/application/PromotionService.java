@@ -27,7 +27,7 @@ public class PromotionService {
 
     public PromotionResponse create(PromotionRequest request,
                                                  MultipartFile image){
-        String imageUrl = image.isEmpty()? null : s3Uploader.upload(image, "promotion");
+        String imageUrl = (image != null && !image.isEmpty())? s3Uploader.upload(image, "promotion") : null;
         Promotion promotion = this.create(request, imageUrl);
         return PromotionResponse.from(promotion);
     }
