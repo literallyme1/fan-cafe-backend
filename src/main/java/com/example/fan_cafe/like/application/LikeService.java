@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class LikeService {
@@ -25,7 +27,7 @@ public class LikeService {
     private final PostRepository postRepository;
 
     @Transactional
-    public LikeResponse create(User user, Long postId){
+    public LikeResponse like(User user, Long postId){
 
         Post post = findByPostIdOrThrow(postId);
         Like like = Like.of(user, post);
@@ -37,6 +39,16 @@ public class LikeService {
             throw new CustomException(LikeErrorCode.ALREADY_LIKED);
         }
         return LikeResponse.from(like.getId(), true, post.getLikeCount());
+    }
+
+    @Transactional
+    public LikeResponse unlike(User user, Long postId){
+        Post post = findByPostIdOrThrow(postId);
+        Like like = likeRepository.findByUserAndPost(user, post)
+                .orElseThrow(() -> new CustomException(LikeErrorCode.LIKED_NOT_FOUND));
+        likeRepository.delete(like);
+        post.decreaseLikeCount();
+        return LikeResponse.from(post.getLikeCount());
     }
 
     public LikeListResponse get(User user){

@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 public enum LikeErrorCode implements BaseErrorCode {
 
     ALREADY_LIKED("L001", HttpStatus.BAD_REQUEST, "이미 좋아요를 눌렀습니다."),
-    SCHEDULE_NOT_FOUND("S002", HttpStatus.NOT_FOUND, "스케줄을 찾을 수 없습니다."),
+    LIKED_NOT_FOUND("L002", HttpStatus.NOT_FOUND, "좋아요 기록을 찾을 수 없습니다."),
     NO_IMAGE_PROVIDED("S003", HttpStatus.BAD_REQUEST, "이미지를 1개 이상 게시해주세요.");
     private final String code;
     private final HttpStatus status;

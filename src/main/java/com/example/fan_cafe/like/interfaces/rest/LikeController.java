@@ -18,9 +18,15 @@ public class LikeController {
     private final LikeService likeService;
 
     @PostMapping("/{postId}")
-    public ApiResponse<LikeResponse> create(@AuthenticationPrincipal(expression = "user") User user,
+    public ApiResponse<LikeResponse> like(@AuthenticationPrincipal(expression = "user") User user,
                                             @PathVariable Long postId){
-        return ApiResponse.success(ApiResponseStatus.CREATED, likeService.create(user, postId));
+        return ApiResponse.success(ApiResponseStatus.CREATED, likeService.like(user, postId));
+    }
+
+    @DeleteMapping("/{postId}")
+    public ApiResponse<LikeResponse> unLike(@AuthenticationPrincipal(expression = "user")User user,
+                                            @PathVariable Long postId){
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, likeService.unlike(user, postId));
     }
 
     @GetMapping

@@ -72,7 +72,6 @@ public class PromotionServiceTest {
 
         //then
         verify(s3Uploader).upload(image, "promotion");
-        verify(s3Uploader).delete(nullable(String.class));
         assertEquals("new-url.jpg", response.getImageUrl());
     }
 

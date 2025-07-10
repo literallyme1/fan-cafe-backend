@@ -27,4 +27,10 @@ public class LikeResponse {
                 .likeCount(likeCount)
                 .build();
     }
+
+    public static LikeResponse from(int likeCount){
+        return LikeResponse.builder()
+                .likeCount(likeCount)
+                .build();
+    }
 }
