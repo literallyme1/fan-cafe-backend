@@ -34,8 +34,12 @@ public class PostService {
 
     public PostCreateResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = postHelper.uploadImagesAndGetUrls(images, "post");
-
-        return createWithImages(user, request, imageUrls);
+        try{
+            return createWithImages(user, request, imageUrls);
+        } catch (Exception e) {
+            postHelper.deleteUrls(imageUrls);
+            throw e;
+        }
     }
 
     @Transactional
@@ -81,10 +85,14 @@ public class PostService {
         List<String> uploadedUrls = postHelper.uploadImages(images);
         List<String> finalImageUrls = postHelper.mergeImageUrls(request.getImageUrls(), uploadedUrls);
 
-
-        List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
-        postHelper.deleteUrls(removedUrl);
-        return PostUpdateResponse.from(finalImageUrls);
+        try{
+            List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
+            postHelper.deleteUrls(removedUrl);
+            return PostUpdateResponse.from(finalImageUrls);
+        }catch (Exception e){
+            postHelper.deleteUrls(uploadedUrls);
+            throw e;
+        }
     }
 
 
