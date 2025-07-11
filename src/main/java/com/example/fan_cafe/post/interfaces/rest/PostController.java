@@ -26,14 +26,14 @@ public class PostController {
     private final PostService postService;
 
     @PostMapping
-    public ApiResponse<PostCreateResponse> create(@AuthenticationPrincipal(expression = "user") User user,
+    public ApiResponse<PostResponse> create(@AuthenticationPrincipal(expression = "user") User user,
                                                   @RequestPart("post") @Valid PostCreateRequest request,
                                                   @RequestPart("images") List<MultipartFile> images) {
         if(images == null || images.isEmpty()){
             throw new CustomException(PostErrorCode.NO_IMAGE_PROVIDED);
         }
 
-        PostCreateResponse response = postService.create(user, request, images);
+        PostResponse response = postService.create(user, request, images);
         return ApiResponse.success(ApiResponseStatus.CREATED, response);
     }
 

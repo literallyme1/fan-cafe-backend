@@ -32,7 +32,7 @@ public class PostService {
 
 
 
-    public PostCreateResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
+    public PostResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = postHelper.uploadImagesAndGetUrls(images, "post");
         try{
             return createWithImages(user, request, imageUrls);
@@ -43,10 +43,10 @@ public class PostService {
     }
 
     @Transactional
-    public PostCreateResponse createWithImages(User user, PostCreateRequest request, List<String> imageUrls) {
+    public PostResponse createWithImages(User user, PostCreateRequest request, List<String> imageUrls) {
         Post post = Post.of(user, request.getTitle(), request.getContent(), imageUrls);
         postRepository.save(post);
-        return PostCreateResponse.from(post.getId(), imageUrls);
+        return PostResponse.from(post);
     }
 
     public PostListResponse get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
