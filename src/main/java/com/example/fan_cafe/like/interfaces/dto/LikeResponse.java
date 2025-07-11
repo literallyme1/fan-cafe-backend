@@ -30,6 +30,7 @@ public class LikeResponse {
 
     public static LikeResponse from(int likeCount){
         return LikeResponse.builder()
+                .liked(false)
                 .likeCount(likeCount)
                 .build();
     }
