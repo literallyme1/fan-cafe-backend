@@ -9,8 +9,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Builder
 @NoArgsConstructor
@@ -51,11 +52,46 @@ public class Post extends BaseTimeEntity {
     private List<PostImage> images = new ArrayList<>();
 
 
-    public void update(String title, String content, List<String> imageUrls) {
+    public List<String> update(String title, String content, List<String> updatedImageUrls) {
         this.title = title;
         this.content = content;
-        replaceImages(imageUrls);
+
+        List<String> removedUrls = removeDeletedImages(updatedImageUrls);
+        addNewImages(updatedImageUrls);
+        reorderImages(updatedImageUrls);
+
+        return removedUrls;
     }
+
+    private List<String> removeDeletedImages(List<String> updatedImageUrls) {
+        Set<String> updatedSet = new HashSet<>(updatedImageUrls);
+        List<PostImage> toRemove = this.images.stream()
+                .filter(img -> !updatedSet.contains(img.getImageUrl()))
+                .toList();
+        this.images.removeAll(toRemove);
+        return toRemove.stream().map(PostImage::getImageUrl).toList();
+    }
+
+    private void addNewImages(List<String> updatedImageUrls) {
+        Set<String> currentUrls = this.images.stream()
+                .map(PostImage::getImageUrl)
+                .collect(Collectors.toSet());
+
+        updatedImageUrls.stream()
+                .filter(url -> !currentUrls.contains(url))
+                .map(url -> PostImage.of(this, url))
+                .forEach(this.images::add);
+    }
+
+    private void reorderImages(List<String> updatedImageUrls) {
+        Map<String, Integer> orderMap = new HashMap<>();
+        for (int i = 0; i < updatedImageUrls.size(); i++) {
+            orderMap.put(updatedImageUrls.get(i), i);
+        }
+        this.images.sort(Comparator.comparingInt(img -> orderMap.getOrDefault(img.getImageUrl(), Integer.MAX_VALUE)));
+    }
+
+
     public void addImages(List<String> imageUrls) {
         if (imageUrls == null) return;
         for (String url : imageUrls) {
@@ -68,11 +104,12 @@ public class Post extends BaseTimeEntity {
         image.setPost(this);
     }
 
-    public void replaceImages(List<String> newUrls) {
-        this.images.clear();
-        addImages(newUrls);
-    }
 
+    public List<String> getImageUrls(){
+        return this.images.stream()
+                .map(PostImage::getImageUrl)
+                .toList();
+    }
     public static Post of(User user, String title, String content, List<String> imageUrls) {
         Post post = Post.builder()
                 .user(user)

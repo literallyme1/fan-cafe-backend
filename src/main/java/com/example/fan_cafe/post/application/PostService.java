@@ -28,10 +28,12 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
-    private final S3Uploader s3Uploader;
+    private final PostHelper postHelper;
+
+
 
     public PostCreateResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
-        List<String> imageUrls = uploadImagesAndGetUrls(images, "post");
+        List<String> imageUrls = postHelper.uploadImagesAndGetUrls(images, "post");
 
         return createWithImages(user, request, imageUrls);
     }
@@ -44,93 +46,61 @@ public class PostService {
     }
 
     public PostListResponse get(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
-        Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
-        Pageable pageable = PageUtils.createPageRequest(size);
-        List<Post> posts = postRepository.findNextPage(cursor.createdAt(), cursor.id(), pageable);
-        List<PostResponse> postDtoList = posts.stream().map(PostResponse::from).toList();
+        Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
+        List<PostResponse> postDtos = postRepository.findNextPage(cursor.createdAt(), cursor.id(), size);
+        boolean hasNext = postDtos.size() == size;
 
-        boolean hasNext = postDtoList.size() == size;
-        Long nextCursorId = null;
-        LocalDateTime nextCursorCreatedAt = null;
+        Cursor nextCursor = hasNext ? postHelper.resolveCursor(postDtos.getLast().getId(), postDtos.getLast().getCreatedAt())
+                : postHelper.resolveCursor(null, null);
 
-        if(hasNext) {
-            PostResponse last = postDtoList.getLast();
-            nextCursorId = last.getId();
-            nextCursorCreatedAt = last.getCreatedAt();
-
-        }
         return PostListResponse.from(
-                postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
+                postDtos, nextCursor.id(), nextCursor.createdAt(), hasNext
         );
     }
 
     public PostListResponse getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size) {
-        Cursor cursor = resolveCursor(cursorId, cursorCreatedAt);
-        Pageable pageable = PageUtils.createPageRequest(size);
-        List<Post> posts = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), pageable);
-        List<PostResponse> postDtoList = posts.stream().map(PostResponse::from).toList();
+        Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
+        List<PostResponse> postDtos = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), size);
 
-        boolean hasNext = postDtoList.size() == size;
-        Long nextCursorId = null;
-        LocalDateTime nextCursorCreatedAt = null;
+        boolean hasNext = postDtos.size() == size;
+        Cursor nextCursor = hasNext ? postHelper.resolveCursor(postDtos.getLast().getId(), postDtos.getLast().getCreatedAt())
+                : postHelper.resolveCursor(null, null);
 
-        if(hasNext) {
-            PostResponse last = postDtoList.getLast();
-            nextCursorId = last.getId();
-            nextCursorCreatedAt = last.getCreatedAt();
-
-        }
-        PostListResponse postResponse = PostListResponse.from(
-                postDtoList, nextCursorId, nextCursorCreatedAt, hasNext
+        return PostListResponse.from(
+                postDtos, nextCursor.id(), nextCursor.createdAt(), hasNext
         );
-        return postResponse;
     }
 
-    @Transactional
+
     public PostUpdateResponse update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
 
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
-        if(!user.equals(post.getUser())) {throw new CustomException(PostErrorCode.POST_NOT_OWNER);}
+        Post post = postHelper.findByIdOrThrow(postId);
+        postHelper.validateOwner(user, post);
 
         //새로운 이미지 업로드
-        List<String> uploadedUrls = (images != null && !images.isEmpty())
-                ? uploadImagesAndGetUrls(images, "post")
-                : List.of();
+        List<String> uploadedUrls = postHelper.uploadImages(images);
+        List<String> finalImageUrls = postHelper.mergeImageUrls(request.getImageUrls(), uploadedUrls);
 
-        //update 된 url + 새로운 이미지 url
-        List<String> finalImageUrls = new ArrayList<>();
-        finalImageUrls.addAll(request.getImageUrls());
-        finalImageUrls.addAll(uploadedUrls);
 
-        post.update(request.getTitle(), request.getContent(), finalImageUrls);
-
+        List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
+        postHelper.deleteUrls(removedUrl);
         return PostUpdateResponse.from(finalImageUrls);
     }
 
+
+    @Transactional
+    public List<String> update(Post post, String title, String content, List<String> imageUrls){
+        return post.update(title, content, imageUrls);
+    }
+
+
     @Transactional
     public void delete(User user, Long id) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
-        if(!user.equals(post.getUser())) throw new CustomException(PostErrorCode.POST_NOT_OWNER);
+        Post post = postHelper.findByIdOrThrow(id);
+        postHelper.deleteUrls(post.getImageUrls());
+        postHelper.validateOwner(user, post);
         post.delete();
     }
 
-    private List<String> uploadImagesAndGetUrls(List<MultipartFile> images, String dir) {
-        List<String> urls = new ArrayList<>();
-        for(MultipartFile image : images) {
-            urls.add(s3Uploader.upload(image, dir));
-        }
-        return urls;
-    }
-    private Cursor resolveCursor(Long cursorId, LocalDateTime cursorCreatedAt) {
-        if (cursorId != null && cursorCreatedAt != null) {
-            return new Cursor(cursorId, cursorCreatedAt);
-        }
-        Post latest = postRepository.findTopByOrderByCreatedAtDesc();
-        if (latest == null) {
-            return new Cursor(Long.MAX_VALUE, LocalDateTime.now().plusNanos(1));
-        }
-        return new Cursor(latest.getId() + 1, latest.getCreatedAt().plusNanos(1));
-    }
+
 }

@@ -13,34 +13,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PostRepository extends JpaRepository<Post, Long> {
+public interface PostRepository extends JpaRepository<Post, Long>, PostRepositoryCustom {
 
     @NonNull
     Optional<Post> findById(Long id);
 
     boolean existsById(Long id);
-
-    @Query(""" 
-        SELECT p FROM Post p
-        WHERE (p.deletedAt IS NULL)
-            AND ((p.createdAt < :createdAt)
-           OR (p.createdAt = :createdAt AND p.id < :id))
-        ORDER BY p.createdAt DESC, p.id DESC
-    """)
-    List<Post> findNextPage(@Param("createdAt")LocalDateTime createdAt,
-                            @Param("id") Long id,
-                            Pageable pageable);
-
-    @Query("""
-        SELECT p FROM Post p
-        WHERE (p.deletedAt IS NULL)
-           AND ((p.createdAt > :createdAt)
-           OR (p.createdAt = :createdAt AND p.id > :id))
-        ORDER BY p.createdAt ASC, p.id ASC
-    """)
-    List<Post> findNewPosts(@Param("createdAt") LocalDateTime createdAt,
-                            @Param("id") Long id,
-                            Pageable pageable);
 
     Post findTopByOrderByCreatedAtDesc();
 }
