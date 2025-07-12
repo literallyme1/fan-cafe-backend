@@ -6,9 +6,7 @@ import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
-import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
-import com.example.fan_cafe.post.interfaces.dto.PostCreateResponse;
-import com.example.fan_cafe.post.interfaces.dto.PostResponse;
+import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 
@@ -26,6 +24,7 @@ import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,5 +79,32 @@ public class PostServiceTest {
         assertThat(response.getTitle()).isEqualTo("제목입니다.");
     }
 
+    @Test
+    void get_shouldGetPastPost_whenValidRequest(){
+        //given
+        Long cursorId = null;
+        LocalDateTime cursorCreatedAt = null;
+        Cursor mockCursor = new Cursor(100L, LocalDateTime.now());
+
+        when(postHelper.resolveCursor(cursorId, cursorCreatedAt)).thenReturn(mockCursor);
+
+        PostResponse dto1 = new PostResponse(1L, "title1", "content1", "nickname", 0, 0, LocalDateTime.now(), List.of());
+        PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of());
+        List<PostResponse> dtos = List.of(dto1, dto2);
+
+        when(postRepository.findNextPage(mockCursor.createdAt(), mockCursor.id(), 2)).thenReturn(dtos);
+
+        Cursor nextCursor = new Cursor(200L, LocalDateTime.now().plusSeconds(1));
+        when(postHelper.resolveCursor(2L, dto2.getCreatedAt())).thenReturn(nextCursor);
+
+        //when
+        PostListResponse result = postService.get(cursorId, cursorCreatedAt, 2);
+
+        //then
+        assertThat(result.getData()).hasSize(2);
+        assertThat(result.getNextCursorId()).isEqualTo(nextCursor.id());
+        assertThat(result.getNextCursorCreatedAt()).isEqualTo(nextCursor.createdAt());
+        assertThat(result.isHasNext()).isTrue();
+    }
 
 }
