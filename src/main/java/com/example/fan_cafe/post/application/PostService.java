@@ -76,7 +76,7 @@ public class PostService {
     }
 
 
-    public PostUpdateResponse update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
+    public PostResponse update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {
 
         Post post = postHelper.findByIdOrThrow(postId);
         postHelper.validateOwner(user, post);
@@ -88,7 +88,7 @@ public class PostService {
         try{
             List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
             postHelper.deleteUrls(removedUrl);
-            return PostUpdateResponse.from(finalImageUrls);
+            return PostResponse.from(post);
         }catch (Exception e){
             postHelper.deleteUrls(uploadedUrls);
             throw e;

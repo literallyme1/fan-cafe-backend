@@ -57,12 +57,12 @@ public class PostController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<PostUpdateResponse> update(@AuthenticationPrincipal(expression = "user") User user,
+    public ApiResponse<PostResponse> update(@AuthenticationPrincipal(expression = "user") User user,
                                                   @PathVariable Long id,
                                                   @RequestPart("post") @Valid PostUpdateRequest request,
                                                   @RequestPart("images") List<MultipartFile> images)
     {
-        PostUpdateResponse response = postService.update(user, id, request, images);
+        PostResponse response = postService.update(user, id, request, images);
         return ApiResponse.success(ApiResponseStatus.SUCCESS,response);
     }
 

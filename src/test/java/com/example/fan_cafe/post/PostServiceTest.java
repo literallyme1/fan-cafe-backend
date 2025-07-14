@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 public class PostServiceTest {
@@ -36,8 +37,6 @@ public class PostServiceTest {
     @Mock
     private PostHelper postHelper;
 
-    @Mock
-    private S3Uploader s3Uploader;
 
     @InjectMocks
     private PostService postService;
@@ -105,6 +104,36 @@ public class PostServiceTest {
         assertThat(result.getNextCursorId()).isEqualTo(nextCursor.id());
         assertThat(result.getNextCursorCreatedAt()).isEqualTo(nextCursor.createdAt());
         assertThat(result.isHasNext()).isTrue();
+    }
+
+    @Test
+    void update_shouldUpdatePost_whenValidRequest(){
+        //given
+
+        Long postId = 1L;
+        PostUpdateRequest request = PostUpdateRequest.builder()
+                .title("update")
+                .content("update content")
+                .imageUrls(List.of("old1.jpg"))
+                .build();
+        List<MultipartFile> images = List.of(mock(MultipartFile.class));
+        List<String> uploadedUrls = List.of("new-uploaded.jpg");
+        List<String> finalImageUrls = List.of("old1.jpg", "new-uploaded.jpg");
+
+        when(postHelper.findByIdOrThrow(postId)).thenReturn(mockPost);
+        doNothing().when(postHelper).validateOwner(mockUser, mockPost);
+        when(postHelper.uploadImages(any())).thenReturn(uploadedUrls);
+        when(postHelper.mergeImageUrls(request.getImageUrls(), uploadedUrls)).thenReturn(finalImageUrls);
+
+        //when
+        var response = postService.update(mockUser, postId, request, images);
+
+        //then
+        assertThat(response.getTitle()).isEqualTo(request.getTitle());
+        assertThat(response.getImageUrls()).containsExactly("old1.jpg", "new-uploaded.jpg");
+
+        assertThat(mockPost.getContent()).isEqualTo(request.getContent());
+        assertThat(mockPost.getImageUrls()).containsExactly("old1.jpg", "new-uploaded.jpg");
     }
 
 }
