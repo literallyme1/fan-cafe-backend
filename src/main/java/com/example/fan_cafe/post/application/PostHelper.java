@@ -68,5 +68,4 @@ public class PostHelper {
         merged.addAll(uploaded);
         return merged;
     }
-
 }
