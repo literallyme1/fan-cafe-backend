@@ -4,15 +4,21 @@ package com.example.fan_cafe.post;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.post.application.PostHelper;
+import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
+import com.example.fan_cafe.user.domain.Role;
+import com.example.fan_cafe.user.domain.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +39,19 @@ public class PostHelperTest {
     @InjectMocks
     private PostHelper postHelper;
 
+    User mockUser;
+    Post mockPost;
 
+    @BeforeEach
+    void setUp(){
+        mockUser = new User(1L,"test@test.com", "encode_pw", "nickname", Role.USER);
+        mockPost = Post.builder()
+                .id(1L)
+                .user(mockUser)
+                .title("오늘의 송가인")
+                .content("오늘도 아름답네요")
+                .build();
+    }
     @Test
     void findByIdOrThrow_shouldThrowException_whenPostNotFound(){
         //given
@@ -67,8 +85,18 @@ public class PostHelperTest {
     }
 
     @Test
-    void resolveCursor_shouldReturnGivenCursor_whenCursorParamsProvided(){
+    void resolveCursor_shouldReturnGivenCursor_whenCursorParamsAreNull(){
 
+        //given
+        Long cursorId = null;
+        LocalDateTime cursorCreatedAt = null;
+        when(postRepository.findTopByOrderByCreatedAtDesc()).thenReturn(mockPost);
+        ReflectionTestUtils.setField(mockPost, "createdAt", LocalDateTime.of(2025, 1, 1, 0, 0));
+        //when
+        var response = postHelper.resolveCursor(cursorId, cursorCreatedAt);
+
+        //then
+        assertThat(response.id()).isEqualTo(2L);
+        assertThat(response.createdAt()).isEqualTo(LocalDateTime.of(2025, 1, 1, 0, 0).plusNanos(1));
     }
-
 }
