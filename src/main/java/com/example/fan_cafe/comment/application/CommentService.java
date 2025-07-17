@@ -55,6 +55,23 @@ public class CommentService {
         return CommentListResponse.from(rootResponses, comments.hasNext());
     }
 
+    @Transactional
+    public CommentResponse update(User user, Long id, CommentRequest request){
+        Comment comment = findByIdOrThrow(id);
+        validateWriter(user, comment);
+        comment.updateContent(request.getContent());
+
+        return CommentResponse.from(comment);
+    }
+
+
+    @Transactional
+    public void delete(User user, Long id) {
+        Comment comment = findByIdOrThrow(id);
+        validateWriter(user, comment);
+        comment.delete();
+    }
+
     //자식 댓글 parent 기준 그룹핑
     private Map<Long, List<CommentResponse>> groupChildComments(Slice<CommentResponse> comments) {
         return comments.stream()
@@ -71,23 +88,6 @@ public class CommentService {
                     root.getChildren().addAll(children);//자식 리스트 연결
                 })
                 .toList();
-    }
-
-    @Transactional
-    public CommentResponse update(User user, Long id, CommentRequest request){
-        Comment comment = findByIdOrThrow(id);
-        validateWriter(user, comment);
-        comment.updateContent(request.getContent());
-
-        return CommentResponse.from(comment);
-    }
-
-
-    @Transactional
-    public void delete(User user, Long id) {
-        Comment comment = findByIdOrThrow(id);
-        validateWriter(user, comment);
-        comment.delete();
     }
 
     private static void validateWriter(User principalUser, Comment comment) {

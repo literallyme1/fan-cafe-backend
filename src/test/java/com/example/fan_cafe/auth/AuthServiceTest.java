@@ -53,7 +53,7 @@ public class AuthServiceTest {
 
 
     @Test
-    void register_success() {
+    void register_shouldRegister_whenRequestIsValid() {
         //given
         RegisterRequest request = new RegisterRequest("test@test.com", "1234567", "nickname");
         when(userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(false);
@@ -68,7 +68,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void login_success() {
+    void login_shouldLogin_whenCredentialsAreValid() {
         //given
         LoginRequest request = new LoginRequest("test@test.com", "1234567");
         when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
@@ -83,7 +83,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void login_failed() {
+    void login_shouldThrowException_whenPasswordIsInvalid() {
         //given
         LoginRequest request = new LoginRequest("test@test.com", "wrong_pw");
         when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
