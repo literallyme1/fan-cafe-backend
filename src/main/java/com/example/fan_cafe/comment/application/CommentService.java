@@ -50,26 +50,37 @@ public class CommentService {
     public CommentListResponse get(Long postId, int page) {
         validatePostExists(postId);
         Pageable pageable =  PageUtils.createPageRequest( page, 10,"createdAt", "DESC");
-        Slice<Comment> roots = commentRepository.findByPostIdAndParentIsNull(postId, pageable);
-
-        List<Long> rootIds = roots.getContent().stream()
-                .map(Comment::getId)
-                .toList();
-
-        List<Comment> children = commentRepository.findByParentIdIn(rootIds);
-        Map<Long, List<CommentResponse>> childrenMap = mapChildResponses(children);
 
 
-        List<CommentResponse> rootResponses = roots.getContent().stream()
-                .map(root -> buildCommentResponseWithChildren(root, childrenMap))
-                .toList();
-        return CommentListResponse.from(rootResponses, roots.hasNext());
+        Slice<CommentResponse> comments = commentRepository.findAllByPostId(postId, pageable);
+
+        Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
+        List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
+        return CommentListResponse.from(rootResponses, comments.hasNext());
     }
+
+    //자식 댓글 parent 기준 그룹핑
+    private Map<Long, List<CommentResponse>> groupChildComments(Slice<CommentResponse> comments) {
+        return comments.stream()
+                .filter(c -> c.getParentId() != null)
+                .collect(Collectors.groupingBy(CommentResponse::getParentId));
+    }
+
+    //댓글 트리 구조 형성(리스트 연결)
+    private List<CommentResponse> buildCommentTree(Slice<CommentResponse> comments, Map<Long, List<CommentResponse>> childMap) {
+        return comments.stream()
+                .filter(c -> c.getParentId() == null)
+                .peek(root -> {
+                    List<CommentResponse> children = childMap.getOrDefault(root.getId(), List.of());//root id key 를 가지고 옴.
+                    root.getChildren().addAll(children);//자식 리스트 연결
+                })
+                .toList();
+    }
+
 
     @Transactional
     public void delete(User principalUser, Long id) {
-        Comment comment = commentRepository.findById(id)
-                .orElseThrow(() -> new CustomException(CommentErrorCode.COMMENT_NOT_FOUND));
+        Comment comment = findByIdOrThrow(id);
 
         if(!comment.getUser().getId().equals(principalUser.getId())) {
             throw new CustomException(CommentErrorCode.COMMENT_NOT_OWNER);
@@ -90,8 +101,7 @@ public class CommentService {
     }
 
     private Comment createReply(Post post, User user, Long parentId, String content) {
-        Comment parent = commentRepository.findById(parentId)
-                .orElseThrow(() -> new CustomException(CommentErrorCode.COMMENT_NOT_FOUND));
+        Comment parent = findByIdOrThrow(parentId);
 
         if (parent.getParent() != null) {
             throw new CustomException(CommentErrorCode.INVALID_COMMENT_DEPTH);
@@ -99,18 +109,11 @@ public class CommentService {
 
         return Comment.of(post, user, parent, content);
     }
-
-    private Map<Long, List<CommentResponse>> mapChildResponses(List<Comment> children) {
-        return children.stream()
-                .map(CommentResponse::from)
-                .collect(Collectors.groupingBy(CommentResponse::getParentId));
+    private Comment findByIdOrThrow(Long id){
+        return commentRepository.findById(id)
+                .orElseThrow(() -> new CustomException(CommentErrorCode.COMMENT_NOT_FOUND));
     }
 
-    private CommentResponse buildCommentResponseWithChildren(Comment root, Map<Long, List<CommentResponse>> childMap) {
-        CommentResponse response = CommentResponse.from(root);
-        List<CommentResponse> childResponses = childMap.getOrDefault(root.getId(), List.of());
-        response.getChildren().addAll(childResponses);
-        return response;
-    }
+
 }
 

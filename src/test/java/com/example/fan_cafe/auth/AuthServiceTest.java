@@ -60,7 +60,7 @@ public class AuthServiceTest {
         when(userRepository.existsByNicknameAndDeletedAtIsNull(request.getNickname())).thenReturn(false);
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encode_pw");
 
-        //whend
+        //when
         var response = authService.register(request, Role.USER);
 
         //then
