@@ -1,8 +1,5 @@
 package com.example.fan_cafe.comment.interfaces.dto;
 
-import com.example.fan_cafe.comment.domain.Comment;
-import com.example.fan_cafe.post.domain.Post;
-import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -15,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CommentCreateRequest {
+public class CommentRequest {
 
     @NotNull(message = "게시글이 불분명합니다.")
     private Long postId;

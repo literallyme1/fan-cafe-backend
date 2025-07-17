@@ -3,24 +3,20 @@ package com.example.fan_cafe.comment.application;
 import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
-import com.example.fan_cafe.comment.interfaces.dto.CommentCreateRequest;
+import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentListResponse;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.response.ApiResponse;
-import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
-import com.example.fan_cafe.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,7 +31,7 @@ public class CommentService {
 
 
     @Transactional
-    public CommentResponse create(User user, CommentCreateRequest request) {
+    public CommentResponse create(User user, CommentRequest request) {
         Post post = getPostOrThrow(request.getPostId());
 
         Comment comment = (request.getParentId() == null)
@@ -77,16 +73,27 @@ public class CommentService {
                 .toList();
     }
 
+    @Transactional
+    public CommentResponse update(User user, Long id, CommentRequest request){
+        Comment comment = findByIdOrThrow(id);
+        validateWriter(user, comment);
+        comment.updateContent(request.getContent());
+
+        return CommentResponse.from(comment);
+    }
+
 
     @Transactional
-    public void delete(User principalUser, Long id) {
+    public void delete(User user, Long id) {
         Comment comment = findByIdOrThrow(id);
+        validateWriter(user, comment);
+        comment.delete();
+    }
 
+    private static void validateWriter(User principalUser, Comment comment) {
         if(!comment.getUser().getId().equals(principalUser.getId())) {
             throw new CustomException(CommentErrorCode.COMMENT_NOT_OWNER);
         }
-
-        comment.delete();
     }
 
     private Post getPostOrThrow(Long postId) {

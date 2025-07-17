@@ -36,7 +36,7 @@ public class CommentResponse {
         return CommentResponse.builder()
                 .id(comment.getId())
                 .writer(comment.getUser().getNickname())
-                .content(comment.getContent())
+                .content(comment.getDeletedAt() != null ? "[삭제된 댓글입니다]" : comment.getContent())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .children(new ArrayList<>())
                 .build();

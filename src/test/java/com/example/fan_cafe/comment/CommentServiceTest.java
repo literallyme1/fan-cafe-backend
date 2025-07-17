@@ -4,7 +4,7 @@ package com.example.fan_cafe.comment;
 import com.example.fan_cafe.comment.application.CommentService;
 import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
-import com.example.fan_cafe.comment.interfaces.dto.CommentCreateRequest;
+import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
@@ -16,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 
 import java.util.Optional;
 
@@ -70,7 +69,7 @@ public class CommentServiceTest {
     @Test
     void create_root_comment_success() {
         //given
-        CommentCreateRequest request = new CommentCreateRequest(1L, "첫번째 댓글입니다.", null);
+        CommentRequest request = new CommentRequest(1L, "첫번째 댓글입니다.", null);
         when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
 
         //when
@@ -84,7 +83,7 @@ public class CommentServiceTest {
     @Test
     void create_reply_success() {
         //given
-        CommentCreateRequest request = new CommentCreateRequest(2L, "대댓글입니다.", 1L);
+        CommentRequest request = new CommentRequest(2L, "대댓글입니다.", 1L);
         when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
         when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockRootComment));
 //        when(commentRepository.findById(request.getParentId())).thenReturn(Optional.empty());
@@ -101,7 +100,7 @@ public class CommentServiceTest {
     @Test
     void create_reply_depth_2_failed() {
         //given
-        CommentCreateRequest request = new CommentCreateRequest(3L, "대대댓글입니다.", 2L);
+        CommentRequest request = new CommentRequest(3L, "대대댓글입니다.", 2L);
         when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
         when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockReply));
 

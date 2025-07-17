@@ -1,7 +1,7 @@
 package com.example.fan_cafe.comment.interfaces.rest;
 
 import com.example.fan_cafe.comment.application.CommentService;
-import com.example.fan_cafe.comment.interfaces.dto.CommentCreateRequest;
+import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentListResponse;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.response.ApiResponse;
@@ -21,16 +21,21 @@ public class CommentController {
 
     @PostMapping
     public ApiResponse<CommentResponse> create(@AuthenticationPrincipal(expression = "user") User user,
-                                               @RequestBody @Valid CommentCreateRequest request) {
-        CommentResponse response =  commentService.create(user, request);
-        return ApiResponse.success(ApiResponseStatus.CREATED, response);
+                                               @RequestBody @Valid CommentRequest request) {
+        return ApiResponse.success(ApiResponseStatus.CREATED, commentService.create(user, request));
     }
 
     @GetMapping("/{postId}")
     public ApiResponse<CommentListResponse> get(@PathVariable Long postId,
                                                 @RequestParam(defaultValue = "0") int page) {
-        CommentListResponse response = commentService.get(postId, page);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.get(postId, page));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<CommentResponse> update(@AuthenticationPrincipal(expression = "user")User user,
+                                               @PathVariable Long id,
+                                               @RequestBody @Valid CommentRequest request){
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.update(user, id, request));
     }
 
     @DeleteMapping("{id}")
