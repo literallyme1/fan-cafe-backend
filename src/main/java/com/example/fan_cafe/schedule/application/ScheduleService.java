@@ -41,18 +41,8 @@ public class ScheduleService {
     public MonthlyScheduleResponse get(int year, int month) {
 
         DateRange range = DateRange.ofMonth(year, month);
-
-        List<Schedule> schedules = scheduleRepository.findByStartAtBetween(range.start(), range.end());
-
-        Map<LocalDate, List<ScheduleResponse>> grouped = schedules.stream()
-                .map(ScheduleResponse::from)
-                .collect(Collectors.groupingBy(s -> s.getStartAt().toLocalDate()));
-
-        List<ScheduleListResponse> groupedSchedules  = grouped.entrySet().stream()
-                .map(entry -> ScheduleListResponse.of(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparing(ScheduleListResponse::getDate))
-                .toList();
-
+        List<ScheduleResponse> schedules = fetchSchedulesInRange(range);
+        List<ScheduleListResponse> groupedSchedules = groupByDate(schedules);
         return MonthlyScheduleResponse.of(groupedSchedules);
     }
 
@@ -73,4 +63,18 @@ public class ScheduleService {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
+
+    private List<ScheduleResponse> fetchSchedulesInRange(DateRange range) {
+        return scheduleRepository.findByStartAtBetween(range.start(), range.end());
+    }
+
+    private List<ScheduleListResponse> groupByDate(List<ScheduleResponse> schedules) {
+        return schedules.stream()
+                .collect(Collectors.groupingBy(s -> s.getStartAt().toLocalDate()))
+                .entrySet().stream()
+                .map(entry -> ScheduleListResponse.of(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(ScheduleListResponse::getDate))
+                .toList();
+    }
+
 }

@@ -23,23 +23,20 @@ public class ScheduleController {
 //    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ApiResponse<ScheduleResponse> create(@RequestBody @Valid ScheduleRequest request) {
-        ScheduleResponse response = scheduleService.create(request);
-        return ApiResponse.success(ApiResponseStatus.CREATED, response);
+        return ApiResponse.success(ApiResponseStatus.CREATED, scheduleService.create(request));
     }
 
     @GetMapping
     public ApiResponse<MonthlyScheduleResponse> get(@RequestParam int year,
                                                     @RequestParam int month){
-        MonthlyScheduleResponse response = scheduleService.get(year, month);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, scheduleService.get(year, month));
     }
 
     //    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ApiResponse<ScheduleResponse> update(@PathVariable Long id,
                                                 @RequestBody @Valid ScheduleRequest request) {
-        ScheduleResponse response = scheduleService.update(id, request);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, scheduleService.update(id, request));
     }
 
     //    @PreAuthorize("hasRole('ADMIN')")

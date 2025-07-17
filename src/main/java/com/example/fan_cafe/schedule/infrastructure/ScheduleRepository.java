@@ -10,10 +10,9 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
+public interface ScheduleRepository extends JpaRepository<Schedule, Long>, ScheduleRepositoryCustom {
 
     @NonNull
     Optional<Schedule> findById(Long id);
 
-    List<Schedule> findByStartAtBetween(LocalDateTime start, LocalDateTime end);
 }
