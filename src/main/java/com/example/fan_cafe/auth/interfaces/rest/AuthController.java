@@ -27,8 +27,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ApiResponse<UserInfoResponse> register(@RequestBody @Valid RegisterRequest reqeust) {
-        UserInfoResponse response =  authService.register(reqeust, Role.USER);
+    public ApiResponse<UserInfoResponse> register(@RequestBody @Valid RegisterRequest request) {
+        UserInfoResponse response =  authService.register(request, Role.USER);
         return ApiResponse.success(ApiResponseStatus.CREATED, response);
 
     }

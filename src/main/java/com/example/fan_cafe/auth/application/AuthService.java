@@ -31,15 +31,16 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final RedisTokenRepository redisTokenRepository;
 
-    public UserInfoResponse register(RegisterRequest request, Role role)
-    {
+    public UserInfoResponse register(RegisterRequest request, Role role) {
         validateRegisterRequest(request);
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        User user = User.of(request.getEmail(), encodedPassword, request.getNickname(), role);
+        User user = createUser(request, role);
         userRepository.save(user);
-
         return UserInfoResponse.from(user);
+    }
 
+    private User createUser(RegisterRequest request, Role role) {
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        return User.of(request.getEmail(), encodedPassword, request.getNickname(), role);
     }
 
     private void validateRegisterRequest(RegisterRequest request) {
@@ -75,6 +76,7 @@ public class AuthService {
         }
     }
 
+    //jwt 발급 함수
     private JwtToken issueJwtToken(User user) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole());
@@ -94,15 +96,25 @@ public class AuthService {
     }
 
     public JwtTokenResponse reissueAccessToken(String refreshToken) {
-
-        if(!jwtProvider.isValid(refreshToken)) {throw new CustomException(JwtErrorCode.INVALID_REFRESH_TOKEN);}
-        Long userId = jwtProvider.getUserIdFromToken(refreshToken);
+        Long userId = extractAndValidateRefreshToken(refreshToken);
         String userRole = jwtProvider.getRoleFromToken(refreshToken);
-        String savedToken = redisTokenRepository.find(userId);
-
-        if(!refreshToken.equals(savedToken)) {throw new CustomException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);}
 
         String newAccessToken = jwtProvider.createAccessToken(userId, Role.of(userRole));
         return JwtTokenResponse.from(newAccessToken);
+    }
+
+    private Long extractAndValidateRefreshToken(String refreshToken) {
+        if (!jwtProvider.isValid(refreshToken)) {
+            throw new CustomException(JwtErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Long userId = jwtProvider.getUserIdFromToken(refreshToken);
+        String savedToken = redisTokenRepository.find(userId);
+
+        if (!refreshToken.equals(savedToken)) {
+            throw new CustomException(JwtErrorCode.REFRESH_TOKEN_MISMATCH);
+        }
+
+        return userId;
     }
 }
