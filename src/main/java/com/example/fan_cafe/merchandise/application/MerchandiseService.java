@@ -1,8 +1,7 @@
 package com.example.fan_cafe.merchandise.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.response.ApiResponse;
-import com.example.fan_cafe.global.response.ApiResponseStatus;
+import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.merchandise.domain.Category;
@@ -15,17 +14,13 @@ import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseListResponse;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,14 +30,19 @@ public class MerchandiseService {
     private final S3Uploader s3Uploader;
 
     public MerchandiseResponse create(MerchandiseRequest request, MultipartFile image){
-        String imageUrl = image.isEmpty()? null : s3Uploader.upload(image, "merchandise");
-        Merchandise merchandise = this.create(request, imageUrl);
-        return MerchandiseResponse.from(merchandise);
+        String imageUrl = null;
+        try{
+            imageUrl = extractImageUrl(image);
+            Merchandise merchandise = this.saveMerchandise(request, imageUrl);
+            return MerchandiseResponse.from(merchandise);
+        }catch (Exception e){
+            if(imageUrl != null) s3Uploader.delete(imageUrl);
+            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    //트랜잭션 분리
     @Transactional
-    public Merchandise create(MerchandiseRequest request, String imageUrl) {
+    public Merchandise saveMerchandise(MerchandiseRequest request, String imageUrl) {
         Merchandise merchandise = Merchandise.of(request, imageUrl);
         return merchandiseRepository.save(merchandise);
     }
@@ -55,11 +55,7 @@ public class MerchandiseService {
                 : List.of(Category.values());
 
         List<MerchandiseListResponse> groupedResponses = categories.stream()
-                .map(cat -> {
-                    Slice<Merchandise> merchandises = merchandiseRepository.findTopByCategory(Status.SALE, cat, pageable);
-                    List<MerchandiseResponse> responses = toResponseList(merchandises);
-                    return MerchandiseListResponse.of(cat, responses, merchandises.hasNext());
-                })
+                .map(cat -> fetchMerchandiseByCategory(cat, pageable))
                 .toList();
 
         return MerchandiseGroupedResponse.of(groupedResponses);
@@ -84,7 +80,6 @@ public class MerchandiseService {
     public MerchandiseResponse decreaseStock(Long id, int quantity){
         Merchandise merchandise = findByIdOrThrow(id);
         merchandise.decreaseStock(quantity);
-        merchandise.markSoldOutIfNecessary();
         return MerchandiseResponse.from(merchandise);
     }
 
@@ -113,9 +108,13 @@ public class MerchandiseService {
                 .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
     }
 
-    private List<MerchandiseResponse> toResponseList(Slice<Merchandise> slice) {
-        return slice.stream()
-                .map(MerchandiseResponse::from)
-                .toList();
+    private String extractImageUrl(MultipartFile image) {
+        return image.isEmpty() ? null : s3Uploader.upload(image, "merchandise");
+    }
+
+
+    private MerchandiseListResponse fetchMerchandiseByCategory(Category category, Pageable pageable) {
+        Slice<MerchandiseResponse> slice = merchandiseRepository.findTopByCategory(Status.SALE, category, pageable);
+        return MerchandiseListResponse.of(category, slice.getContent(), slice.hasNext());
     }
 }

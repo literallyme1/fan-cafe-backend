@@ -9,7 +9,7 @@ public enum MerchandiseErrorCode implements BaseErrorCode {
 
     OUT_OF_STOCK("M001", HttpStatus.BAD_REQUEST, "재고가 부족합니다."),
     MERCHANDISE_NOT_FOUND("M002", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
-    NO_IMAGE_PROVIDED("M003", HttpStatus.BAD_REQUEST, "이미지를 1개 이상 게시해주세요.");
+    INVALID_MERCHANDISE_PROPERTY("M003", HttpStatus.INTERNAL_SERVER_ERROR, "상품의 속성을 찾을 수 없습니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

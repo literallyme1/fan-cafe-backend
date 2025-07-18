@@ -39,6 +39,7 @@ public class PromotionRepositoryImpl implements PromotionRepositoryCustom{
                                 promotion.endAt
                         ))
                 .from(promotion)
+                .where(promotion.deletedAt.isNull())
                 .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0]))
                 .offset(pageable.getOffset()) // 페이지 시작 위치
                 .limit(pageable.getPageSize() + 1) // 페이지 크기

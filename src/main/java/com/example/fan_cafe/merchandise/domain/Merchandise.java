@@ -4,14 +4,11 @@ import com.example.fan_cafe.global.common.BaseTimeEntity;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
-import com.example.fan_cafe.schedule.domain.Schedule;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Builder
 @NoArgsConstructor
@@ -75,7 +72,8 @@ public class Merchandise extends BaseTimeEntity {
         this.category = dto.getCategory();
         this.imageUrl = imageUrl;
     }
-    public void update(int less){
+
+    public void update(int less) {
         this.stock = less;
     }
 
@@ -90,5 +88,6 @@ public class Merchandise extends BaseTimeEntity {
             throw new CustomException(MerchandiseErrorCode.OUT_OF_STOCK);
         }
         this.stock -= quantity;
+        markSoldOutIfNecessary();
     }
 }
