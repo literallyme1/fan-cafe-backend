@@ -1,8 +1,8 @@
 package com.example.fan_cafe.global.util;
 
-import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.promotion.domain.Promotion;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.PathBuilder;
@@ -13,9 +13,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CommentQueryDslUtil {
+public class PromotionDslUtil {
 
-    public static List<OrderSpecifier<?>> toOrderSpecifiers(Pageable pageable, PathBuilder<Comment> pathBuilder) {
+    public static List<OrderSpecifier<?>> toOrderSpecifiers(Pageable pageable, PathBuilder<Promotion> pathBuilder) {
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
         //정렬꺼내서 정렬 조건과, 필드 확인

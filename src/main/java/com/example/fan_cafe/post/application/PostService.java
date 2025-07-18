@@ -2,6 +2,7 @@ package com.example.fan_cafe.post.application;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
@@ -38,7 +39,7 @@ public class PostService {
             return createWithImages(user, request, imageUrls);
         } catch (Exception e) {
             postHelper.deleteUrls(imageUrls);
-            throw e;
+            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
