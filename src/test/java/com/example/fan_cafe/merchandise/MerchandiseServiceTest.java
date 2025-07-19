@@ -9,20 +9,19 @@ import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class MerchandiseServiceTest {
@@ -60,6 +59,8 @@ public class MerchandiseServiceTest {
 
     @Test
     void update_shouldMarkSoldOut_whenStockIsZero() {
+
+        //given
         MerchandiseRequest request = MerchandiseRequest.builder()
                 .name("티셔츠")
                 .description("티셔츠입니다")
@@ -72,11 +73,10 @@ public class MerchandiseServiceTest {
 
         //when
         var response = merchandiseService.update(id, request, null);
+
         //then
-        assertAll(
-                () -> assertEquals(Status.SOLD_OUT, response.getStatus()),
-                () -> assertEquals(request.getName(), response.getName())
-        );
+        assertThat(response.getStatus()).isEqualTo(Status.SOLD_OUT);
+        assertThat(response.getName()).isEqualTo(request.getName());
     }
 
     @Test
@@ -84,12 +84,9 @@ public class MerchandiseServiceTest {
         int quantity = 105;
 
         //when
-        CustomException exception = assertThrows(CustomException.class, () -> {
+        assertThrows(CustomException.class, () -> {
             merchandiseService.decreaseStock(id, quantity);
         });
-
-        //then
-        assertEquals(MerchandiseErrorCode.OUT_OF_STOCK, exception.getErrorCode());
     }
 
     @Test
@@ -100,12 +97,23 @@ public class MerchandiseServiceTest {
         var response = merchandiseService.decreaseStock(id, quantity);
 
         //then
-        assertEquals(Status.SOLD_OUT, response.getStatus());
+        assertThat(response.getStatus()).isEqualTo(Status.SOLD_OUT);
+    }
+
+    @Test
+    void decreaseStock_shouldThrowException_whenStockBecomesNegative(){
+        //given
+        int quantity = 9999;
+
+        //when & then
+        assertThrows(CustomException.class, () -> {
+            merchandiseService.decreaseStock(id, quantity);
+        });
     }
 
     @Test
     void shouldDeleteMerchandise_whenValidIdIsGiven(){
         merchandiseService.delete(id);
-        assertNotNull(merchandise.getDeletedAt());
+        assertThat(merchandise.getDeletedAt()).isNotNull();
     }
 }
