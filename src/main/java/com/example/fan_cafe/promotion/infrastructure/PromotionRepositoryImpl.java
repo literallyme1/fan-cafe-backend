@@ -2,7 +2,7 @@ package com.example.fan_cafe.promotion.infrastructure;
 
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.PageUtils;
-import com.example.fan_cafe.global.util.dsl.PromotionDslUtil;
+import com.example.fan_cafe.promotion.dsl.PromotionDslUtil;
 import com.example.fan_cafe.promotion.domain.Promotion;
 import com.example.fan_cafe.promotion.domain.QPromotion;
 import com.example.fan_cafe.promotion.interfaces.dto.PromotionResponse;
