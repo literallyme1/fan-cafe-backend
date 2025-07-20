@@ -1,7 +1,8 @@
 package com.example.fan_cafe.merchandise.infrastructure;
 
+import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.PageUtils;
-import com.example.fan_cafe.global.util.PromotionDslUtil;
+import com.example.fan_cafe.global.util.dsl.PromotionDslUtil;
 import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.domain.QMerchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
@@ -47,7 +48,7 @@ public class MerchandiseRepositoryImpl implements MerchandiseRepositoryCustom {
                         ))
                 .from(merchandise)
                 .where(
-                        merchandise.deletedAt.isNull(), // 삭제되지 않은 것
+                        SoftDeleteCondition.isNotDeleted(merchandise.deletedAt),
                         merchandise.status.eq(status), // 상태 일치
                         merchandise.category.eq(category) // 카테고리 일치
                 )

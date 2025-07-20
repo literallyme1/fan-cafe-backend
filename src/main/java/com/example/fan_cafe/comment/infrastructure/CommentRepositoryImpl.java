@@ -3,7 +3,7 @@ package com.example.fan_cafe.comment.infrastructure;
 import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.domain.QComment;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
-import com.example.fan_cafe.global.util.CommentDslUtil;
+import com.example.fan_cafe.global.util.dsl.CommentDslUtil;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.user.domain.QUser;
 import com.querydsl.core.types.OrderSpecifier;

@@ -1,7 +1,8 @@
 package com.example.fan_cafe.promotion.infrastructure;
 
+import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.PageUtils;
-import com.example.fan_cafe.global.util.PromotionDslUtil;
+import com.example.fan_cafe.global.util.dsl.PromotionDslUtil;
 import com.example.fan_cafe.promotion.domain.Promotion;
 import com.example.fan_cafe.promotion.domain.QPromotion;
 import com.example.fan_cafe.promotion.interfaces.dto.PromotionResponse;
@@ -39,7 +40,7 @@ public class PromotionRepositoryImpl implements PromotionRepositoryCustom{
                                 promotion.endAt
                         ))
                 .from(promotion)
-                .where(promotion.deletedAt.isNull())
+                .where(SoftDeleteCondition.isNotDeleted(promotion.deletedAt))
                 .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0]))
                 .offset(pageable.getOffset()) // 페이지 시작 위치
                 .limit(pageable.getPageSize() + 1) // 페이지 크기

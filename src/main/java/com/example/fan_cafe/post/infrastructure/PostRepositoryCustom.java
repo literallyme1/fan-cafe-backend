@@ -9,9 +9,11 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface PostRepositoryCustom {
 
     List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size);
     List<PostResponse> findNewPosts(LocalDateTime createdAt, Long id, int size);
+    Optional<Post> findLatest();
 }

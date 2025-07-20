@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -29,7 +30,7 @@ public class PostHelper {
     }
 
     public Post findByIdOrThrow(Long id){
-        return  postRepository.findById(id)
+        return  postRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
     }
 
@@ -44,11 +45,10 @@ public class PostHelper {
         if (cursorId != null && cursorCreatedAt != null) {
             return new Cursor(cursorId, cursorCreatedAt);
         }
-        Post latest = postRepository.findTopByOrderByCreatedAtDesc();
-        if (latest == null) {
-            return new Cursor(Long.MAX_VALUE, LocalDateTime.now().plusNanos(1));
-        }
-        return new Cursor(latest.getId() + 1, latest.getCreatedAt().plusNanos(1));
+        Optional<Post> latest = postRepository.findLatest();
+        return latest
+                .map(post -> new Cursor(post.getId() + 1, post.getCreatedAt().plusNanos(1)))
+                .orElseGet(() -> new Cursor(Long.MAX_VALUE, LocalDateTime.now().plusNanos(1)));
     }
 
     public void validateOwner(User user, Post post) {

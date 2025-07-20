@@ -104,7 +104,7 @@ public class MerchandiseService {
     }
 
     private Merchandise findByIdOrThrow(Long id){
-        return merchandiseRepository.findById(id)
+        return merchandiseRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
     }
 

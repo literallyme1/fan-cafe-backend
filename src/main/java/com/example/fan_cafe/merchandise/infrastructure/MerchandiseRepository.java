@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface MerchandiseRepository extends JpaRepository<Merchandise, Long>, MerchandiseRepositoryCustom {
 
     @NonNull
-    Optional<Merchandise> findById(Long id);
+    Optional<Merchandise> findByIdAndDeletedAtIsNull(Long id);
 
 }

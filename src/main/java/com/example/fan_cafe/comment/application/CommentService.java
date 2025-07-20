@@ -97,12 +97,12 @@ public class CommentService {
     }
 
     private Post getPostOrThrow(Long postId) {
-        return postRepository.findById(postId)
+        return postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(() -> new CustomException(CommentErrorCode.POST_NOT_FOUND));
     }
 
     private void validatePostExists(Long postId) {
-        if(!postRepository.existsById(postId)){
+        if(!postRepository.existsByIdAndDeletedAtIsNull(postId)){
             throw new CustomException(CommentErrorCode.POST_NOT_FOUND);
         }
     }

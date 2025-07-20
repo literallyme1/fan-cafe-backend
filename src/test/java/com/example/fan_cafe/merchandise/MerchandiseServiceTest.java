@@ -6,7 +6,6 @@ import com.example.fan_cafe.merchandise.application.MerchandiseService;
 import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
-import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +53,7 @@ public class MerchandiseServiceTest {
         id = 1L;
         merchandise = Merchandise.of(request, null);
         ReflectionTestUtils.setField(merchandise, "id", 1L);
-        when(merchandiseRepository.findById(1L)).thenReturn(Optional.of(merchandise));
+        when(merchandiseRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(merchandise));
     }
 
     @Test

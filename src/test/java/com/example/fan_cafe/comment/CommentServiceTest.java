@@ -77,7 +77,7 @@ public class CommentServiceTest {
     void create_shouldCreate_whenRequestIsValid() {
         //given
         CommentRequest request = new CommentRequest(1L, "첫번째 댓글입니다.", null);
-        when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
+        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
 
         ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
         //when
@@ -94,7 +94,7 @@ public class CommentServiceTest {
     void create_shouldCreateReply_whenRequestIsValid() {
         //given
         CommentRequest request = new CommentRequest(2L, "대댓글입니다.", 1L);
-        when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
+        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
         when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockRootComment));
 
         ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
@@ -118,7 +118,7 @@ public class CommentServiceTest {
     void create_shouldThrowException_whenDepthIsMoreThan2() {
         //given
         CommentRequest request = new CommentRequest(3L, "대대댓글입니다.", 2L);
-        when(postRepository.findById(request.getPostId())).thenReturn(Optional.of(mockPost));
+        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
         when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockReply));
 
         // when & then
@@ -137,7 +137,7 @@ public class CommentServiceTest {
         Pageable pageable = PageRequest.of(page, 10, Sort.by("createdAt").descending());
 
         // 게시글 존재 확인
-        when(postRepository.existsById(postId)).thenReturn(true);
+        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
 
         // 댓글 mock 데이터
         CommentResponse root1 = CommentResponse.builder().id(1L).parentId(null).children(new ArrayList<>()).build();

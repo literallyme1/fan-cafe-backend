@@ -1,6 +1,7 @@
 package com.example.fan_cafe.schedule.infrastructure;
 
 
+import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.schedule.domain.QSchedule;
 import com.example.fan_cafe.schedule.interfaces.dto.ScheduleResponse;
 import com.querydsl.core.types.Projections;
@@ -26,7 +27,8 @@ public class ScheduleRepositoryImpl implements ScheduleRepositoryCustom{
                 schedule.endAt
                 ))
                 .from(schedule)
-                .where(schedule.startAt.between(start, end))
+                .where(SoftDeleteCondition.isNotDeleted(schedule.deletedAt),
+                        schedule.startAt.between(start, end))
                 .orderBy(schedule.startAt.asc())
                 .fetch();
     }

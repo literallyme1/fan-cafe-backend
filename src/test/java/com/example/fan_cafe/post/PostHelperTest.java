@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -90,7 +91,7 @@ public class PostHelperTest {
         //given
         Long cursorId = null;
         LocalDateTime cursorCreatedAt = null;
-        when(postRepository.findTopByOrderByCreatedAtDesc()).thenReturn(mockPost);
+        when(postRepository.findLatest()).thenReturn(Optional.of(mockPost));
         ReflectionTestUtils.setField(mockPost, "createdAt", LocalDateTime.of(2025, 1, 1, 0, 0));
         //when
         var response = postHelper.resolveCursor(cursorId, cursorCreatedAt);

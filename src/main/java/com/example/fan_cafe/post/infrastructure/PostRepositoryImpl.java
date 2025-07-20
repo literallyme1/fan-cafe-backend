@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post.infrastructure;
 
+import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.like.domain.QLike;
 import com.example.fan_cafe.like.infrastructure.LikeRepositoryCustom;
 import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class PostRepositoryImpl implements PostRepositoryCustom {
@@ -22,23 +24,12 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     private final JPAQueryFactory queryFactory;
     QPost post = QPost.post;
 
-
-
-    /**
-
-     SELECT p FROM Post p
-     WHERE (p.deletedAt IS NULL)
-     AND ((p.createdAt < :createdAt)
-     OR (p.createdAt = :createdAt AND p.id < :id))
-     ORDER BY p.createdAt DESC, p.id DESC
-     */
-
     @Override
     public List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size) {
 
         List<Post> posts = queryFactory
                 .selectFrom(post)
-                .where( post.deletedAt.isNull(),
+                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
                         post.createdAt.lt(createdAt)
                                 .or(post.createdAt.eq(createdAt).and(post.id.lt(id)))
                 )
@@ -55,7 +46,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     public List<PostResponse> findNewPosts(LocalDateTime createdAt, Long id, int size){
         List<Post> posts = queryFactory
                 .selectFrom(post)
-                .where( post.deletedAt.isNull(),
+                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
                         post.createdAt.gt(createdAt)
                                 .or(post.createdAt.eq(createdAt).and(post.id.gt(id)))
                 )
@@ -68,6 +59,18 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                 .toList();
 
 
+    }
+
+    @Override
+    public Optional<Post> findLatest() {
+        Post result = queryFactory
+                .selectFrom(post)
+                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt))
+                .orderBy(post.createdAt.desc())
+                .limit(1)
+                .fetchOne();
+
+        return Optional.ofNullable(result);
     }
 
 

@@ -17,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class LikeService {
@@ -57,7 +55,7 @@ public class LikeService {
     }
 
     private Post findByPostIdOrThrow(Long id){
-        return postRepository.findById(id)
+        return postRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
     }
 }

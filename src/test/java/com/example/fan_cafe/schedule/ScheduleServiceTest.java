@@ -140,7 +140,7 @@ public class ScheduleServiceTest {
                 .location("수정된 장소")
                 .startAt(LocalDateTime.of(2025, 7, 5, 11, 0))
                 .build();
-        when(scheduleRepository.findById(id)).thenReturn(Optional.of(mockSchedule));
+        when(scheduleRepository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(mockSchedule));
 
         //when
         var response = scheduleService.update(id, request);
@@ -159,7 +159,7 @@ public class ScheduleServiceTest {
                 .startAt(LocalDateTime.of(2025, 7, 1, 12, 0))
                 .build();
 
-        when(scheduleRepository.findById(invalidId)).thenReturn(Optional.empty());
+        when(scheduleRepository.findByIdAndDeletedAtIsNull(invalidId)).thenReturn(Optional.empty());
 
         // when & then
         assertThrows(CustomException.class, () -> scheduleService.update(invalidId, request));
@@ -170,7 +170,7 @@ public class ScheduleServiceTest {
 
         //given
         Long id = 1L;
-        when(scheduleRepository.findById(id)).thenReturn(Optional.of(mockSchedule));
+        when(scheduleRepository.findByIdAndDeletedAtIsNull(id)).thenReturn(Optional.of(mockSchedule));
 
         //when
         scheduleService.delete(id);
@@ -183,7 +183,7 @@ public class ScheduleServiceTest {
     void shouldThrowException_WhenDeleteScheduleWithInvalidId() {
         // given
         Long invalidId = 404L;
-        when(scheduleRepository.findById(invalidId)).thenReturn(Optional.empty());
+        when(scheduleRepository.findByIdAndDeletedAtIsNull(invalidId)).thenReturn(Optional.empty());
 
         // when & then
         assertThrows(CustomException.class, () -> scheduleService.delete(invalidId));

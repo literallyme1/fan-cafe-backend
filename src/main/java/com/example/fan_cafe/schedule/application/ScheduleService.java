@@ -2,8 +2,6 @@ package com.example.fan_cafe.schedule.application;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.global.response.ApiResponse;
-import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.schedule.domain.Schedule;
 import com.example.fan_cafe.schedule.exception.ScheduleErrorCode;
 import com.example.fan_cafe.schedule.infrastructure.ScheduleRepository;
@@ -12,14 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.YearMonth;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,7 +52,7 @@ public class ScheduleService {
     }
 
     private Schedule findByIdOrThrow(Long id){
-        return scheduleRepository.findById(id)
+        return scheduleRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new CustomException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
     }
 
