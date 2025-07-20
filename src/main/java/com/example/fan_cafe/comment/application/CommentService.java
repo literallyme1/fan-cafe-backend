@@ -83,11 +83,14 @@ public class CommentService {
     private List<CommentResponse> buildCommentTree(Slice<CommentResponse> comments, Map<Long, List<CommentResponse>> childMap) {
         return comments.stream()
                 .filter(c -> c.getParentId() == null)
-                .peek(root -> {
-                    List<CommentResponse> children = childMap.getOrDefault(root.getId(), List.of());//root id key 를 가지고 옴.
-                    root.getChildren().addAll(children);//자식 리스트 연결
-                })
+                .map(root -> connectChildren(root, childMap))
                 .toList();
+    }
+
+    private CommentResponse connectChildren(CommentResponse root, Map<Long, List<CommentResponse>> childMap) {
+        List<CommentResponse> children = childMap.getOrDefault(root.getId(), List.of());
+        root.getChildren().addAll(children);
+        return root;
     }
 
     private static void validateWriter(User principalUser, Comment comment) {
