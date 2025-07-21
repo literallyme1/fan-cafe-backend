@@ -55,7 +55,7 @@ public class AuthServiceTest {
     @Test
     void register_shouldRegister_whenRequestIsValid() {
         //given
-        RegisterRequest request = new RegisterRequest("test@test.com", "1234567", "nickname");
+        RegisterRequest request = new RegisterRequest("test@test.com", "1234567", "1234567","nickname");
         when(userRepository.existsByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(false);
         when(userRepository.existsByNicknameAndDeletedAtIsNull(request.getNickname())).thenReturn(false);
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encode_pw");
