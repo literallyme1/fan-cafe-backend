@@ -23,6 +23,9 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+
+    //password 변경(patch)
+    //nickname 변경(patch)
     @Transactional
     public void delete(Long principalUserId){
         //jpa 영속을 위해 다시 한 번 조회
