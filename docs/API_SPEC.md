@@ -43,7 +43,7 @@ Response:
 
 ## 📝 Post - 게시글
 
-### 4. 게시글 목록 조회
+### 4. 게시글 목록 조회 (틀림)
 
 * `GET /api/posts?page=0&size=10&sort=created_at,desc`
 
