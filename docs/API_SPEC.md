@@ -126,7 +126,7 @@ Request:
 
 ---
 
-## 🛍 Merchandise & Promotion
+## 🛍 Merchandise & Promotion (프로모션 추가 상세 이미지)
 
 ### 12. 굿즈 목록 조회
 
