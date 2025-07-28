@@ -1,4 +1,5 @@
 # FanCafe REST API 명세서
+# example
 
 ## 🔐 Auth - 인증/회원가입
 
