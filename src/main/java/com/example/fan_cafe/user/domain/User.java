@@ -34,6 +34,12 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column(nullable=false) //마지막 변경시각
+    private Long passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
+
+    @Column(nullable=false) //소셜 로그인 계정 여부
+    private boolean passwordSet = true;
+
     @Override
     public boolean equals(Object o){
         if(this == o) return true;
