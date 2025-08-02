@@ -1,5 +1,5 @@
 # FanCafe REST API 명세서
-# example11
+# example111
 
 ## 🔐 Auth - 인증/회원가입
 
@@ -10,7 +10,6 @@
 ```json
 Request:
 {
-  "email": "test@example.com",
   "password": "12345678",
   "nickname": "팬123"
 }
