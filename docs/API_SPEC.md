@@ -4,7 +4,7 @@
 ## 🔐 Auth - 인증/회원가입
 
 ### 1. 회원가입
-
+.
 * `POST /api/auth/register`
 
 ```json
