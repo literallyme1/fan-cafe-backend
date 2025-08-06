@@ -69,11 +69,11 @@ public class AuthServiceTest {
     @Test
     void login_shouldLogin_whenCredentialsAreValid() {
         //given
-        LoginRequest request = new LoginRequest("test@test.com", "1234567");
+        LoginRequest request = new LoginRequest("test@test.com", "1234567",false);
         when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
         when(passwordEncoder.matches(request.getPassword(), mockUser.getPassword())).thenReturn(true);
         when(jwtProvider.generateAccessToken(mockUser.getId(), mockUser.getRole())).thenReturn("access-token");
-        when(jwtProvider.generateRefreshToken(mockUser.getId(), mockUser.getRole())).thenReturn("refresh-token");
+        when(jwtProvider.generateRefreshToken(mockUser.getId(), mockUser.getRole(), request.isRememberMe())).thenReturn("refresh-token");
 
         //when
         var response = authService.login(request);
@@ -84,7 +84,7 @@ public class AuthServiceTest {
     @Test
     void login_shouldThrowException_whenPasswordIsInvalid() {
         //given
-        LoginRequest request = new LoginRequest("test@test.com", "wrong_pw");
+        LoginRequest request = new LoginRequest("test@test.com", "wrong_pw", false);
         when(userRepository.findByEmailAndDeletedAtIsNull(request.getEmail())).thenReturn(Optional.of(mockUser));
         when(passwordEncoder.matches(request.getPassword(), mockUser.getPassword())).thenReturn(false);
 
