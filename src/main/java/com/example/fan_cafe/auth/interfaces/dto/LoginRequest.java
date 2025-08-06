@@ -17,4 +17,6 @@ public class LoginRequest {
     @NotBlank(message = "비밀번호를 입력하세요.")
     @Size(min = 6, message = "비밀번호는 6자 이상이어야 합니다.")
     private String password;
+
+    private boolean rememberMe;
 }

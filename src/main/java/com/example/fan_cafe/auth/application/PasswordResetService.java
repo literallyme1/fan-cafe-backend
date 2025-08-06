@@ -41,7 +41,7 @@ public class PasswordResetService {
         );
 
         tokenRepo.save(token, payload, Duration.ofMinutes(3));
-        String link = "https://yourapp.com/reset-password?token=" + token;
+        String link = "http://localhost:8080/reset-password?token=" + token;
 
         mailService.sendResetMail(email, link);
     }
@@ -70,13 +70,14 @@ public class PasswordResetService {
 
     public void resetPassword(String token, String newPassword){
         PasswordResetPayload payload = validateToken(token);
-        userService.changePassword(payload.getUserId(), newPassword);
 
         //기존과 동일한 지 확인
         User user = userService.findById(payload.getUserId());
         if (passwordEncoder.matches(newPassword, user.getPassword())) {
             throw new CustomException(MailErrorCode.PASSWORD_SAME_AS_OLD);
         }
+
+        userService.changePassword(payload.getUserId(), newPassword);
 
         // 토큰 폐기 (재사용 방지)
         tokenRepo.delete(token);

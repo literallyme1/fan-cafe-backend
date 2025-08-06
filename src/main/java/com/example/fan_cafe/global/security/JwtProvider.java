@@ -10,6 +10,7 @@ import io.jsonwebtoken.Jwts;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.time.Duration;
 import java.util.Date;
 
 import com.example.fan_cafe.global.exception.CustomException;
@@ -46,17 +47,18 @@ public class JwtProvider {
         return createAccessToken(userId, role);
     }
 
-    public String generateRefreshToken(Long userId, Role role) {
-        return createRefreshToken(userId, role);
+    public String generateRefreshToken(Long userId, Role role, boolean rememberMe) {
+        long ttl = rememberMe ? Duration.ofDays(30).toMillis() : refreshTokenValidity;
+        return createRefreshToken(userId, role, ttl);
     }
 
-    public String createRefreshToken(Long userId, Role role) {
+    public String createRefreshToken(Long userId, Role role, long ttl) {
 
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenValidity))
+                .expiration(new Date(System.currentTimeMillis() + ttl))
                 .signWith(privateKey)
                 .compact();
     }

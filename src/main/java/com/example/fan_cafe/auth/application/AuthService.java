@@ -65,7 +65,7 @@ public class AuthService {
         User user = findByEmail(request.getEmail());
         validatePassword(request.getPassword(), user.getPassword());
 
-        JwtToken jwtToken = issueJwtToken(user);
+        JwtToken jwtToken = issueJwtToken(user, request.isRememberMe());
         UserInfoResponse userInfo = UserInfoResponse.from(user);
         return LoginResponse.from(jwtToken, userInfo);
     }
@@ -77,9 +77,9 @@ public class AuthService {
     }
 
     //jwt 발급 함수
-    private JwtToken issueJwtToken(User user) {
+    private JwtToken issueJwtToken(User user, Boolean rememberMe) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole());
+        String refreshToken = jwtProvider.generateRefreshToken(user.getId(), user.getRole(), rememberMe);
 
         redisTokenRepository.save(user.getId(), refreshToken);
         return JwtToken.from(accessToken, refreshToken);
