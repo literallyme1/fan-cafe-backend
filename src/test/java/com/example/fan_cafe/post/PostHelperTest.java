@@ -45,7 +45,8 @@ public class PostHelperTest {
 
     @BeforeEach
     void setUp(){
-        mockUser = new User(1L,"test@test.com", "encode_pw", "nickname", Role.USER);
+        mockUser = User.of("test@test.com", "encode_pw", "nickname", Role.USER);
+        ReflectionTestUtils.setField(mockUser, "id", 1L);
         mockPost = Post.builder()
                 .id(1L)
                 .user(mockUser)

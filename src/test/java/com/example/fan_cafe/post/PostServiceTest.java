@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -42,7 +43,8 @@ public class PostServiceTest {
 
     @BeforeEach
     void setUp(){
-        mockUser = new User(1L,"test@test.com", "encode_pw", "nickname", Role.USER);
+        mockUser = User.of("test@test.com", "encode_pw", "nickname", Role.USER);
+        ReflectionTestUtils.setField(mockUser, "id", 1L);
         mockPost = Post.builder()
                 .id(1L)
                 .user(mockUser)

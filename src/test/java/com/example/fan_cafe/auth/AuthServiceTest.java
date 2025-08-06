@@ -1,6 +1,5 @@
 package com.example.fan_cafe.auth;
 
-
 import com.example.fan_cafe.auth.application.AuthService;
 import com.example.fan_cafe.auth.interfaces.dto.LoginRequest;
 import com.example.fan_cafe.auth.interfaces.dto.RegisterRequest;
@@ -16,14 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,7 +46,8 @@ public class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        mockUser = new User(1L,"test@test.com", "encode_pw", "nickname", Role.USER);
+        mockUser = User.of("test@test.com", "encode_pw", "nickname", Role.USER);
+        ReflectionTestUtils.setField(mockUser, "id", 1L);
     }
 
 
