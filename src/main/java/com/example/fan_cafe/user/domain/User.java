@@ -35,10 +35,20 @@ public class User extends BaseTimeEntity {
     private Role role;
 
     @Column(nullable=false) //마지막 변경시각
-    private Long passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
+    private Long passwordUpdatedAtEpochSec;
 
     @Column(nullable=false) //소셜 로그인 계정 여부
     private boolean passwordSet = true;
+
+    void createPassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
+    }
 
     @Override
     public boolean equals(Object o){
@@ -54,12 +64,14 @@ public class User extends BaseTimeEntity {
     }
 
     public static User of(String email, String encodedPassword, String nickname, Role role) {
-        return User.builder()
+        User user = User.builder()
                 .email(email)
-                .password(encodedPassword)
                 .nickname(nickname)
                 .role(role)
                 .build();
+
+        user.createPassword(encodedPassword);
+        return user;
     }
 
 }

@@ -8,7 +8,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PasswordResetPayLoad implements Serializable {
+public class PasswordResetPayload implements Serializable {
     private Long userId;
     private long issuedAtEpochSec;
     private long passwordUpdatedAtEpochSecAtIssue;

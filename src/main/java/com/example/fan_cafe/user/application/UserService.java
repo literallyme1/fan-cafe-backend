@@ -10,6 +10,7 @@ import com.example.fan_cafe.user.infrastructure.UserRepository;
 import com.example.fan_cafe.user.interfaces.dto.UserResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
     public UserResponse get(User user){
@@ -32,6 +34,28 @@ public class UserService {
         User user = userRepository.findByIdAndDeletedAtIsNull(principalUserId)
                         .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
         user.delete();
+    }
+
+    public void changePassword(Long userId, String newPassword) {
+        User user = findById(userId);
+        user.changePassword(passwordEncoder.encode(newPassword)); // 암호화 필요
+        userRepository.save(user);
+    }
+
+    public User findById(Long userId){
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    public User findByEmail(String email){
+        return userRepository.findByEmailAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    public long getPasswordLastUpdatedAt(Long userId){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        return user.getPasswordUpdatedAtEpochSec();
     }
 
 

@@ -5,6 +5,7 @@ import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,10 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "비밀번호는 입력하세요.")
-    @Size(min = 6, message = "비밀번호는 6자 이상이어야 합니다.")
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*?&]{6,}$",
+            message = "비밀번호는 문자와 숫자를 포함한 6자 이상이어야 합니다."
+    )
     private String password;
 
     @NotBlank
