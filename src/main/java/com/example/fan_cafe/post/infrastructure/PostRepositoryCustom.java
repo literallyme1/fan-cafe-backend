@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface PostRepositoryCustom {
 
-    List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size);
-    List<PostResponse> findNewPosts(LocalDateTime createdAt, Long id, int size);
+    List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size, Long userId);
+    List<PostResponse> findNewPosts(LocalDateTime createdAt, Long id, int size, Long userId);
     Optional<Post> findLatest();
 }

@@ -85,17 +85,17 @@ public class PostServiceTest {
 
         when(postHelper.resolveCursor(cursorId, cursorCreatedAt)).thenReturn(mockCursor);
 
-        PostResponse dto1 = new PostResponse(1L, "title1", "content1", "nickname", 0, 0, LocalDateTime.now(), List.of());
-        PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of());
+        PostResponse dto1 = new PostResponse(1L, "title1", "content1", "nickname", 0, 0, LocalDateTime.now(), List.of(), false, false);
+        PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of(), false, false);
         List<PostResponse> dtos = List.of(dto1, dto2);
 
-        when(postRepository.findNextPage(mockCursor.createdAt(), mockCursor.id(), 2)).thenReturn(dtos);
+        when(postRepository.findNextPage(mockCursor.createdAt(), mockCursor.id(), 2, mockUser.getId())).thenReturn(dtos);
 
         Cursor nextCursor = new Cursor(200L, LocalDateTime.now().plusSeconds(1));
         when(postHelper.resolveCursor(2L, dto2.getCreatedAt())).thenReturn(nextCursor);
 
         //when
-        PostListResponse result = postService.get(cursorId, cursorCreatedAt, 2);
+        PostListResponse result = postService.get(cursorId, cursorCreatedAt, 2, mockUser.getId());
 
         //then
         assertThat(result.getData()).hasSize(2);

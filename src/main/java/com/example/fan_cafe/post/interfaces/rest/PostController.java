@@ -41,19 +41,19 @@ public class PostController {
     @GetMapping
     public ApiResponse<PostListResponse> get(@RequestParam(required = false) Long cursorId,
                                              @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                             @RequestParam(defaultValue = "10") int size)
+                                             @RequestParam(defaultValue = "10") int size,
+                                             @AuthenticationPrincipal(expression = "user") User user)
     {
-        PostListResponse response = postService.get(cursorId, cursorCreatedAt, size);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.get(cursorId, cursorCreatedAt, size, user.getId()));
     }
 
     @GetMapping("/new")
     public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Long cursorId,
                                                      @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
-                                                     @RequestParam(defaultValue = "10") int size)
+                                                     @RequestParam(defaultValue = "10") int size,
+                                                     @AuthenticationPrincipal(expression = "user") User user)
     {
-        PostListResponse response = postService.getNewPosts(cursorId, cursorCreatedAt, size);
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.getNewPosts(cursorId, cursorCreatedAt, size, user.getId()));
     }
 
     @PutMapping("/{id}")

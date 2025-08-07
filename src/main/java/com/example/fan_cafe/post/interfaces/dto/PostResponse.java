@@ -21,6 +21,8 @@ public class PostResponse {
     private final int commentCount;
     private final LocalDateTime createdAt;
     private final List<String> imageUrls;
+    boolean isLiked;
+    boolean isBookmarked;
 
     @QueryProjection
     public PostResponse(Long id,
@@ -30,7 +32,9 @@ public class PostResponse {
                         int likeCount,
                         int commentCount,
                         LocalDateTime createdAt,
-                        List<String> imageUrls) {
+                        List<String> imageUrls,
+                        boolean isLiked,
+                        boolean isBookmarked) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -39,10 +43,12 @@ public class PostResponse {
         this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.imageUrls = imageUrls;
+        this.isLiked = isLiked;
+        this.isBookmarked = isBookmarked;
     }
 
 
-    public static PostResponse from(Post post) {
+    public static PostResponse from(Post post, boolean isLiked, boolean isBookmarked) {
         return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -52,6 +58,8 @@ public class PostResponse {
                 .commentCount(post.getCommentCount())
                 .createdAt(post.getCreatedAt())
                 .imageUrls(post.getImageUrls())
+                .isLiked(isLiked)
+                .isBookmarked(isBookmarked)
                 .build();
     }
 }

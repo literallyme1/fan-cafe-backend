@@ -1,6 +1,8 @@
 package com.example.fan_cafe.post.domain;
 
+import com.example.fan_cafe.bookmark.domain.Bookmark;
 import com.example.fan_cafe.global.common.BaseTimeEntity;
+import com.example.fan_cafe.like.domain.Like;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -51,6 +53,13 @@ public class Post extends BaseTimeEntity {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostImage> images = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE)
+    private List<Like> likes = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE)
+    private List<Bookmark> bookmarks = new ArrayList<>();
 
     public List<String> update(String title, String content, List<String> updatedImageUrls) {
         this.title = title;
