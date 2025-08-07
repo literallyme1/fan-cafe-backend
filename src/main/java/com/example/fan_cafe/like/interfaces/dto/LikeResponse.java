@@ -1,7 +1,6 @@
 package com.example.fan_cafe.like.interfaces.dto;
 
 import com.querydsl.core.annotations.QueryProjection;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 

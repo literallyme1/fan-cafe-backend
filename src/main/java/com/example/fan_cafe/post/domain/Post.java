@@ -110,6 +110,13 @@ public class Post extends BaseTimeEntity {
                 .map(PostImage::getImageUrl)
                 .toList();
     }
+
+    public String getThumbnailUrl(){
+        return images != null && !images.isEmpty()
+                ? images.getFirst().getImageUrl()
+                : null;
+    }
+
     public static Post of(User user, String title, String content, List<String> imageUrls) {
         Post post = Post.builder()
                 .user(user)

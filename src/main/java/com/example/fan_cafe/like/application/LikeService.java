@@ -6,6 +6,7 @@ import com.example.fan_cafe.like.exception.LikeErrorCode;
 import com.example.fan_cafe.like.infrastructure.LikeRepository;
 import com.example.fan_cafe.like.interfaces.dto.LikeListResponse;
 import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
+import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
@@ -23,13 +24,14 @@ public class LikeService {
 
     private final LikeRepository likeRepository;
     private final PostRepository postRepository;
+    private final PostHelper postHelper;
 
     @Transactional
     public LikeResponse like(User user, Long postId){
 
-        Post post = findByPostIdOrThrow(postId);
+        Post post = postHelper.findByIdOrThrow(postId);
         Like like = Like.of(user, post);
-
+        //중복 like 막기
         try {
             likeRepository.save(like);
             post.increaseLikeCount();
@@ -41,7 +43,7 @@ public class LikeService {
 
     @Transactional
     public LikeResponse unlike(User user, Long postId){
-        Post post = findByPostIdOrThrow(postId);
+        Post post = postHelper.findByIdOrThrow(postId);
         Like like = likeRepository.findByUserAndPost(user, post)
                 .orElseThrow(() -> new CustomException(LikeErrorCode.LIKED_NOT_FOUND));
         likeRepository.delete(like);
@@ -52,10 +54,5 @@ public class LikeService {
     public LikeListResponse get(User user){
         List<LikeResponse> likeDtos = likeRepository.findLikeResponsesByUser(user);
         return LikeListResponse.from(likeDtos);
-    }
-
-    private Post findByPostIdOrThrow(Long id){
-        return postRepository.findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
     }
 }

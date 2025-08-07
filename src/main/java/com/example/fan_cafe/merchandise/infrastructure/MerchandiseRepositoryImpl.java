@@ -2,6 +2,8 @@ package com.example.fan_cafe.merchandise.infrastructure;
 
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.PageUtils;
+import com.example.fan_cafe.merchandise.domain.Merchandise;
+import com.example.fan_cafe.merchandise.dsl.MerchandiseDslUtil;
 import com.example.fan_cafe.promotion.dsl.PromotionDslUtil;
 import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.domain.QMerchandise;
@@ -28,9 +30,9 @@ public class MerchandiseRepositoryImpl implements MerchandiseRepositoryCustom {
     @Override
     public Slice<MerchandiseResponse> findTopByCategory(Status status, Category category, Pageable pageable){
 
-        List<OrderSpecifier<?>> orderSpecifiers = PromotionDslUtil.toOrderSpecifiers(
+        List<OrderSpecifier<?>> orderSpecifiers = MerchandiseDslUtil.toOrderSpecifiers(
                 pageable,
-                new PathBuilder<Promotion>(Promotion.class, "promotion")
+                new PathBuilder<Merchandise>(Merchandise.class, "merchandise") //q타입 내부 경로
         );
 
         List<MerchandiseResponse> results = queryFactory

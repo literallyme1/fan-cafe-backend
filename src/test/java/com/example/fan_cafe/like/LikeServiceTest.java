@@ -6,8 +6,8 @@ import com.example.fan_cafe.like.domain.Like;
 import com.example.fan_cafe.like.infrastructure.LikeRepository;
 import com.example.fan_cafe.like.interfaces.dto.LikeListResponse;
 import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
+import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.domain.Post;
-import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,9 +34,9 @@ public class LikeServiceTest {
     @Mock
     private LikeRepository likeRepository;
 
-    @Mock
-    private PostRepository postRepository;
 
+    @Mock
+    private PostHelper postHelper;
     @InjectMocks
     private LikeService likeService;
 
@@ -58,7 +58,7 @@ public class LikeServiceTest {
     void create_shouldLikePost_whenNotAlreadyLiked(){
         //given
         Long postId = 1L;
-        when(postRepository.findByIdAndDeletedAtIsNull(any())).thenReturn(Optional.of(mockPost));
+        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
 
         //when
         LikeResponse response = likeService.like(mockUser, postId);
@@ -74,7 +74,7 @@ public class LikeServiceTest {
     void create_shouldThrowLikeError_whenAlreadyLiked(){
         //given
         Long postId = 1L;
-        when(postRepository.findByIdAndDeletedAtIsNull(any())).thenReturn(Optional.of(mockPost));
+        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
         when(likeRepository.save(any())).thenThrow(new DataIntegrityViolationException("중복"));
         //when
         assertThrows(CustomException.class, () -> likeService.like(mockUser, 1L));
@@ -87,7 +87,7 @@ public class LikeServiceTest {
         Like like = Like.of(mockUser, mockPost);
         ReflectionTestUtils.setField(mockPost, "likeCount", 1);
         when(likeRepository.findByUserAndPost(mockUser, mockPost)).thenReturn(Optional.of(like));
-        when(postRepository.findByIdAndDeletedAtIsNull(any())).thenReturn(Optional.of(mockPost));
+        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
 
         //when
         var response = likeService.unlike(mockUser, postId);

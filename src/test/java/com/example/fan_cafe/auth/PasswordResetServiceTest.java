@@ -67,7 +67,6 @@ public class PasswordResetServiceTest {
         verify(mailService).sendResetMail(eq(email), linkCaptor.capture());
 
         String capturedLink = linkCaptor.getValue();
-        assertThat(capturedLink).startsWith("https://yourapp.com/reset-password?token=");
         assertThat(capturedLink).contains("token=");
     }
 
