@@ -12,6 +12,7 @@ import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -65,5 +66,19 @@ public class BookmarkRepositoryImpl implements BookmarkRepositoryCustom{
                 .toList();
 
         return PageUtils.toSlice(content, pageable);
+    }
+
+    @Override
+    public boolean existsByUserAndPost(User user, Post post){
+        Boolean exists = queryFactory
+                .select(Expressions.constant(true))
+                .from(bookmark)
+                .where(
+                        bookmark.user.eq(user),
+                        bookmark.post.eq(post),
+                        bookmark.deletedAt.isNull()
+                )
+                .fetchFirst(); // 있으면 true, 없으면 null
+        return  exists != null && exists;
     }
 }

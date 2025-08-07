@@ -30,6 +30,7 @@ public class LikeService {
     public LikeResponse like(User user, Long postId){
 
         Post post = postHelper.findByIdOrThrow(postId);
+        validateNotSelfLike(post, user);
         Like like = Like.of(user, post);
         //중복 like 막기
         try {
@@ -44,6 +45,7 @@ public class LikeService {
     @Transactional
     public LikeResponse unlike(User user, Long postId){
         Post post = postHelper.findByIdOrThrow(postId);
+        validateNotSelfLike(post, user);
         Like like = likeRepository.findByUserAndPost(user, post)
                 .orElseThrow(() -> new CustomException(LikeErrorCode.LIKED_NOT_FOUND));
         likeRepository.delete(like);
@@ -54,5 +56,11 @@ public class LikeService {
     public LikeListResponse get(User user){
         List<LikeResponse> likeDtos = likeRepository.findLikeResponsesByUser(user);
         return LikeListResponse.from(likeDtos);
+    }
+
+    private void validateNotSelfLike(Post post, User user) {
+        if (post.getUser().getId().equals(user.getId())) {
+            throw new CustomException(LikeErrorCode.SELF_LIKE_FORBIDDEN);
+        }
     }
 }

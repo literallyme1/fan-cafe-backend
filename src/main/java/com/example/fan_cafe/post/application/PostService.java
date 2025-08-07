@@ -1,6 +1,7 @@
 package com.example.fan_cafe.post.application;
 
 
+import com.example.fan_cafe.bookmark.infrastructure.BookmarkRepository;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.post.domain.Post;
@@ -22,6 +23,7 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final PostHelper postHelper;
 
 
@@ -82,7 +84,8 @@ public class PostService {
         try{
             List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
             postHelper.deleteUrls(removedUrl);
-            return PostResponse.from(post, false, false);
+            boolean isBookmarked = bookmarkRepository.existsByUserAndPost(user, post);
+            return PostResponse.from(post, false, isBookmarked);
         }catch (Exception e){
             postHelper.deleteUrls(uploadedUrls);
             throw e;
