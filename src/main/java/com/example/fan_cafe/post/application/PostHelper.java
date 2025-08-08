@@ -5,7 +5,7 @@ import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
-import com.example.fan_cafe.post.interfaces.dto.Cursor;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

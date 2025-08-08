@@ -1,7 +1,9 @@
 package com.example.fan_cafe.post.infrastructure;
 
 import com.example.fan_cafe.bookmark.domain.QBookmark;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
+import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.domain.QLike;
 import com.example.fan_cafe.like.infrastructure.LikeRepositoryCustom;
 import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
@@ -28,27 +30,9 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     QLike like = QLike.like;
     QBookmark bookmark = QBookmark.bookmark;
 
-//    @Override
-//    public List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size) {
-//
-//        List<Post> posts = queryFactory
-//                .selectFrom(post)
-//                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
-//                        post.createdAt.lt(createdAt)
-//                                .or(post.createdAt.eq(createdAt).and(post.id.lt(id)))
-//                )
-//                .orderBy(post.createdAt.desc(), post.id.desc())
-//                .limit(size)
-//                .fetch();
-//
-//        return posts.stream()
-//                .map(PostResponse::from)
-//                .toList();
-//    }
-
 
     @Override
-    public List<PostResponse> findNextPage(LocalDateTime createdAt, Long id, int size, Long userId) {
+    public List<PostResponse> findNextPage(Cursor cursor, int size, Long userId) {
 
         List<Tuple> results = queryFactory
                 .select(post, like.id, bookmark.id)
@@ -57,8 +41,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                 .leftJoin(bookmark).on(bookmark.post.eq(post), bookmark.user.id.eq(userId))
                 .where(
                         SoftDeleteCondition.isNotDeleted(post.deletedAt),
-                        post.createdAt.lt(createdAt)
-                                .or(post.createdAt.eq(createdAt).and(post.id.lt(id)))
+                        CursorUtils.beforeDesc(post.createdAt, post.id, cursor)
                 )
                 .orderBy(post.createdAt.desc(), post.id.desc())
                 .limit(size)
@@ -75,15 +58,14 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     }
 
     @Override
-    public List<PostResponse> findNewPosts(LocalDateTime createdAt, Long id, int size, Long userId){
+    public List<PostResponse> findNewPosts(Cursor cursor, int size, Long userId){
         List<Tuple> results = queryFactory
                 .select(post, like.id, bookmark.id)
                 .from(post)
                 .leftJoin(like).on(like.post.eq(post), like.user.id.eq(userId))
                 .leftJoin(bookmark).on(bookmark.post.eq(post), bookmark.user.id.eq(userId))
                 .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
-                        post.createdAt.gt(createdAt)
-                                .or(post.createdAt.eq(createdAt).and(post.id.gt(id)))
+                        CursorUtils.beforeAsc(post.createdAt, post.id, cursor)
                 )
                 .orderBy(post.createdAt.desc(), post.id.asc())
                 .limit(size)

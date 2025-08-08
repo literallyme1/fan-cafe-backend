@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post;
 
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.domain.Post;
@@ -89,7 +90,7 @@ public class PostServiceTest {
         PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of(), false, false);
         List<PostResponse> dtos = List.of(dto1, dto2);
 
-        when(postRepository.findNextPage(mockCursor.createdAt(), mockCursor.id(), 2, mockUser.getId())).thenReturn(dtos);
+        when(postRepository.findNextPage(mockCursor, 2, mockUser.getId())).thenReturn(dtos);
 
         Cursor nextCursor = new Cursor(200L, LocalDateTime.now().plusSeconds(1));
         when(postHelper.resolveCursor(2L, dto2.getCreatedAt())).thenReturn(nextCursor);
@@ -100,7 +101,7 @@ public class PostServiceTest {
         //then
         assertThat(result.getData()).hasSize(2);
         assertThat(result.getNextCursorId()).isEqualTo(nextCursor.id());
-        assertThat(result.getNextCursorCreatedAt()).isEqualTo(nextCursor.createdAt());
+        assertThat(result.getNextCursorCreatedAt()).isEqualTo(nextCursor.at());
         assertThat(result.isHasNext()).isTrue();
     }
 

@@ -2,6 +2,7 @@ package com.example.fan_cafe.post.application;
 
 
 import com.example.fan_cafe.bookmark.infrastructure.BookmarkRepository;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.post.domain.Post;
@@ -47,27 +48,27 @@ public class PostService {
 
     public PostListResponse get(Long cursorId, LocalDateTime cursorCreatedAt, int size, Long userId) {
         Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
-        List<PostResponse> postDtos = postRepository.findNextPage(cursor.createdAt(), cursor.id(), size, userId);
+        List<PostResponse> postDtos = postRepository.findNextPage(cursor, size, userId);
         boolean hasNext = postDtos.size() == size;
 
         Cursor nextCursor = hasNext ? postHelper.resolveCursor(postDtos.getLast().getId(), postDtos.getLast().getCreatedAt())
                 : postHelper.resolveCursor(null, null);
 
         return PostListResponse.from(
-                postDtos, nextCursor.id(), nextCursor.createdAt(), hasNext
+                postDtos, nextCursor.id(), nextCursor.at(), hasNext
         );
     }
 
     public PostListResponse getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size, Long userId) {
         Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
-        List<PostResponse> postDtos = postRepository.findNewPosts(cursor.createdAt(), cursor.id(), size, userId);
+        List<PostResponse> postDtos = postRepository.findNewPosts(cursor, size, userId);
 
         boolean hasNext = postDtos.size() == size;
         Cursor nextCursor = hasNext ? postHelper.resolveCursor(postDtos.getLast().getId(), postDtos.getLast().getCreatedAt())
                 : postHelper.resolveCursor(null, null);
 
         return PostListResponse.from(
-                postDtos, nextCursor.id(), nextCursor.createdAt(), hasNext
+                postDtos, nextCursor.id(), nextCursor.at(), hasNext
         );
     }
 

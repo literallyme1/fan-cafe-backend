@@ -45,7 +45,7 @@ public class CommentService {
 
     public CommentListResponse get(Long postId, int page) {
         validatePostExists(postId);
-        Pageable pageable =  PageUtils.createPageRequest( page, 10,"createdAt", "DESC");
+        Pageable pageable =  PageUtils.createPageRequest( page, 10,"at", "DESC");
 
 
         Slice<CommentResponse> comments = commentRepository.findAllByPostId(postId, pageable);

@@ -27,8 +27,8 @@ public class CommentDslUtil {
                 case "id" -> orders.add(
                         new OrderSpecifier<>(direction, pathBuilder.getNumber("id", Long.class))
                 );
-                case "createdAt" -> orders.add(
-                        new OrderSpecifier<>(direction, pathBuilder.getDateTime("createdAt", LocalDateTime.class))
+                case "at" -> orders.add(
+                        new OrderSpecifier<>(direction, pathBuilder.getDateTime("at", LocalDateTime.class))
                 );
                 default -> throw new CustomException(CommentErrorCode.INVALID_COMMENT_PROPERTY);
             }

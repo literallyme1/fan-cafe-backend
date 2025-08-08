@@ -2,8 +2,11 @@ package com.example.fan_cafe.follow.infrastructure;
 
 import com.example.fan_cafe.follow.domain.QFollow;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
+import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.user.domain.QUser;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -21,8 +24,13 @@ public class FollowQueryRepositoryImpl implements FollowQueryRepository{
 
     @Override
     public List<FollowerItemResponse> findFollowers(
-            Long targetId, Long viewerId, LocalDateTime cursorAt, Long cursorId, int size) {
+            Long targetId, Long viewerId, Cursor cursor, int size) {
 
+        /**
+         viewerId : 팔로워를 보는 사람
+         targetId : 보여지는 사람
+         existsExpr : 조건식 1. viewer(follower) 가 팔로우 한 게 있는 지 체크 2. viewer 가 팔로잉 한 사람과 같은 사람이 있는 지 체크 (팔로워 중)
+         */
         var existsExpr = JPAExpressions.selectOne().from(follow)
                 .where(follow.id.followerId.eq(viewerId)
                         .and(follow.id.followingId.eq(user.id)))
@@ -37,17 +45,11 @@ public class FollowQueryRepositoryImpl implements FollowQueryRepository{
                 .from(follow)
                 .join(user).on(user.id.eq(follow.id.followerId))
                 .where(
-                        follow.id.followingId.eq(targetId),
-                        cursorLt(cursorAt, cursorId)
+                        follow.id.followingId.eq(targetId), //팔로잉 하는 사람이 target
+                        CursorUtils.beforeDesc(follow.createdAt, follow.id.followerId, cursor)
                 )
                 .orderBy(follow.createdAt.desc(), follow.id.followerId.desc())
                 .limit(size + 1)
                 .fetch();
-    }
-
-    private com.querydsl.core.types.dsl.BooleanExpression cursorLt(LocalDateTime at, Long id) {
-        if (at == null || id == null) return null;
-        return follow.createdAt.lt(at)
-                .or(follow.createdAt.eq(at).and(follow.id.followerId.lt(id)));
     }
 }

@@ -48,7 +48,7 @@ public class BookmarkService {
     }
 
     public BookmarkListResponse get(int page, int size, User user){
-        Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
+        Pageable pageable = PageUtils.createPageRequest(page, size, "at", "DESC");
         Slice<BookmarkListItemResponse> slice = bookmarkRepository.findBookmarkResponsesByUser(user, pageable);
         return BookmarkListResponse.from(slice.getContent(), slice.hasNext());
     }

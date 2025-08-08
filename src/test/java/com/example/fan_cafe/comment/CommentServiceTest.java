@@ -136,7 +136,7 @@ public class CommentServiceTest {
         // given
         Long postId = 1L;
         int page = 0;
-        Pageable pageable = PageRequest.of(page, 10, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, 10, Sort.by("at").descending());
 
         // 게시글 존재 확인
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);

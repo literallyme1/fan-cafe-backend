@@ -43,7 +43,7 @@ public class PromotionService {
     }
 
     public PromotionListResponse get(int page, int size) {
-        Pageable pageable = PageUtils.createPageRequest(page, size, "createdAt", "DESC");
+        Pageable pageable = PageUtils.createPageRequest(page, size, "at", "DESC");
         Slice<PromotionResponse> promotionDtos = promotionRepository.findSliceBy(pageable);
         return PromotionListResponse.of(promotionDtos.getContent(), promotionDtos.hasNext());
     }
