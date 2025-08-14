@@ -24,10 +24,12 @@ public class Follow extends BaseTimeEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("followerId")
+    @JoinColumn(name = "follower_id")
     private User follower;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("followerId")
+    @MapsId("followingId")
+    @JoinColumn(name = "following_id")
     private User following;
 
     private Follow(FollowId id) {

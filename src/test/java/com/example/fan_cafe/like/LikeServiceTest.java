@@ -47,9 +47,13 @@ public class LikeServiceTest {
     void setUp(){
         mockUser = User.of("test@test.com", "encode_pw", "nickname", Role.USER);
         ReflectionTestUtils.setField(mockUser, "id", 1L);
+
+        User author = User.of("author@test.com", "pw", "author", Role.USER);
+        ReflectionTestUtils.setField(author, "id", 2L);
+
         mockPost = Post.builder()
                 .id(1L)
-                .user(mockUser)
+                .user(author)
                 .title("오늘의 송가인")
                 .content("오늘도 아름답네요")
                 .build();

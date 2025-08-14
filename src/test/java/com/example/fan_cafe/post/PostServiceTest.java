@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post;
 
+import com.example.fan_cafe.bookmark.infrastructure.BookmarkRepository;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.application.PostService;
@@ -34,6 +35,9 @@ public class PostServiceTest {
 
     @Mock
     private PostHelper postHelper;
+
+    @Mock
+    BookmarkRepository bookmarkRepository;
 
 
     @InjectMocks
@@ -121,8 +125,10 @@ public class PostServiceTest {
 
         when(postHelper.findByIdOrThrow(postId)).thenReturn(mockPost);
         doNothing().when(postHelper).validateOwner(mockUser, mockPost);
-        when(postHelper.uploadImages(any())).thenReturn(uploadedUrls);
-        when(postHelper.mergeImageUrls(request.getImageUrls(), uploadedUrls)).thenReturn(finalImageUrls);
+
+        when(postHelper.mergeImageUrls(eq(request.getImageUrls()), anyList()))
+                .thenReturn(List.of("old1.jpg", "new-uploaded.jpg"));
+        when(bookmarkRepository.existsByUserAndPost(mockUser, mockPost)).thenReturn(true);
 
         //when
         var response = postService.update(mockUser, postId, request, images);
