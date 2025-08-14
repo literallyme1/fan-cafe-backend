@@ -31,5 +31,10 @@ public class RegisterRequest {
     private String confirmPassword;
 
     @NotBlank(message = "닉네임을 입력하세요.")
+    @Size(max = 10, message = "닉네임은 10자 이하여야 합니다.")
+    @Pattern(
+            regexp = "^[a-zA-Z0-9가-힣_-]+$",
+            message = "닉네임은 한글, 영문, 숫자, 밑줄(_), 하이픈(-)만 사용할 수 있습니다."
+    )
     private String nickname;
 }

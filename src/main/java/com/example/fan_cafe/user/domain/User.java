@@ -34,10 +34,15 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private String introduction = "";
+
     @Column(nullable=false) //마지막 변경시각
     private Long passwordUpdatedAtEpochSec;
 
     @Column(nullable=false) //소셜 로그인 계정 여부
+    @Builder.Default
     private boolean passwordSet = true;
 
     void createPassword(String encodedPassword) {
@@ -72,6 +77,11 @@ public class User extends BaseTimeEntity {
 
         user.createPassword(encodedPassword);
         return user;
+    }
+
+    public void updateProfile(String nickname, String introduction) {
+        this.nickname = nickname;
+        this.introduction = introduction;
     }
 
 }

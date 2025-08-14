@@ -4,7 +4,9 @@ import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.user.application.UserService;
 import com.example.fan_cafe.user.domain.User;
-import com.example.fan_cafe.user.interfaces.dto.UserResponse;
+import com.example.fan_cafe.user.interfaces.dto.ProfileRequest;
+import com.example.fan_cafe.user.interfaces.dto.ProfileResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -16,8 +18,13 @@ public class UserController {
 
     private final UserService userService;
 
+    @PostMapping
+    public ApiResponse<ProfileResponse> create(@AuthenticationPrincipal(expression = "user") User user,
+                                               @Valid ProfileRequest profileRequest) {
+        return ApiResponse.success(ApiResponseStatus.CREATED, userService.create(user.getId(), profileRequest));
+    }
     @GetMapping
-    public ApiResponse<UserResponse> get(@AuthenticationPrincipal(expression = "user") User user) {
+    public ApiResponse<ProfileResponse> get(@AuthenticationPrincipal(expression = "user") User user) {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, userService.get(user));
     }
     @DeleteMapping

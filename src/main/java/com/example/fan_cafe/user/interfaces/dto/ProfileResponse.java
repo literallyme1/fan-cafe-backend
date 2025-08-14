@@ -6,19 +6,21 @@ import lombok.Getter;
 
 @Builder
 @Getter
-public class UserResponse {
+public class ProfileResponse {
 
     private final Long id;
     private final String email;
     private final String nickname;
     private final String role;
+    private final String introduction;
 
-    public static UserResponse from(User user) {
-        return UserResponse.builder()
+    public static ProfileResponse from(User user) {
+        return ProfileResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
                 .role(user.getRole().toString())
+                .introduction(user.getIntroduction())
                 .build();
     }
 }
