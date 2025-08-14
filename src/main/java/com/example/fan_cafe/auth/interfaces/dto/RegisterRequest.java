@@ -1,8 +1,10 @@
 package com.example.fan_cafe.auth.interfaces.dto;
 
 import com.example.fan_cafe.auth.validation.PasswordMatch;
+import com.example.fan_cafe.global.jakson.NoTrimStringDeserializer;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -25,9 +27,11 @@ public class RegisterRequest {
             regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d@$!%*?&]{6,}$",
             message = "비밀번호는 문자와 숫자를 포함한 6자 이상이어야 합니다."
     )
+    @JsonDeserialize(using = NoTrimStringDeserializer.class)
     private String password;
 
     @NotBlank
+    @JsonDeserialize(using = NoTrimStringDeserializer.class)
     private String confirmPassword;
 
     @NotBlank(message = "닉네임을 입력하세요.")

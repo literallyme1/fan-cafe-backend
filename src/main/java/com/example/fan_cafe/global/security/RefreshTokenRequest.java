@@ -1,6 +1,8 @@
 package com.example.fan_cafe.global.security;
 
 
+import com.example.fan_cafe.global.jakson.NoTrimStringDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,5 +15,6 @@ import lombok.NoArgsConstructor;
 public class RefreshTokenRequest {
 
     @NotBlank
+    @JsonDeserialize(using = NoTrimStringDeserializer.class)
     private String refreshToken;
 }

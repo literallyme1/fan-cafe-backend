@@ -21,4 +21,5 @@ public record ProfileRequest (
                 if (introduction != null) {
                         introduction = introduction.trim();
                 }
+        }
 }

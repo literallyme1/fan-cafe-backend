@@ -1,5 +1,7 @@
 package com.example.fan_cafe.auth.interfaces.dto;
 
+import com.example.fan_cafe.global.jakson.NoTrimStringDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -16,6 +18,7 @@ public class LoginRequest {
 
     @NotBlank(message = "비밀번호를 입력하세요.")
     @Size(min = 6, message = "비밀번호는 6자 이상이어야 합니다.")
+    @JsonDeserialize(using = NoTrimStringDeserializer.class)
     private String password;
 
     private boolean rememberMe;
