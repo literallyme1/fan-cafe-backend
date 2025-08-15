@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -22,7 +24,9 @@ public class UserService {
     @Transactional
     public ProfileResponse update(Long userId, ProfileRequest request) {
         User user = findById(userId);
-        validateNickname(user.getNickname(), request.nickname());
+
+        // 닉네임이 바뀌는 경우만 중복체크 (대소문자 무시, 자기자신 제외 후 탐색)
+        validateNickname(user, request.nickname());
         user.updateProfile(request.nickname(), request.introduction());
         return ProfileResponse.from(user);
     }
@@ -63,20 +67,13 @@ public class UserService {
         return user.getPasswordUpdatedAtEpochSec();
     }
 
-    private void validateNickname(String nickname) {
 
-        if (userRepository.existsByNicknameAndDeletedAtIsNull(nickname)) {
-            throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
+    private void validateNickname(User user, String newNickname) {
+
+        if (!Objects.equals(user.getNickname(), newNickname)) {
+            if (userRepository.existsNickname(newNickname, user.getId() )) {
+                throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
+            }
         }
     }
-
-    private void validateNickname(String originalNickname, String changedNickname) {
-
-        if (!originalNickname.isEmpty() && originalNickname.equals(changedNickname)) { return; }
-        if (userRepository.existsByNicknameAndDeletedAtIsNull(changedNickname)) {
-            throw new CustomException(UserErrorCode.NICKNAME_ALREADY_EXISTS);
-        }
-    }
-
-
 }
