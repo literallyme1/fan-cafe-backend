@@ -18,11 +18,11 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ApiResponse<ProfileResponse> create(@AuthenticationPrincipal(expression = "user") User user,
-                                               @Valid ProfileRequest profileRequest) {
-        return ApiResponse.success(ApiResponseStatus.CREATED, userService.create(user.getId(), profileRequest));
-    }
+//    @PostMapping
+//    public ApiResponse<ProfileResponse> create(@AuthenticationPrincipal(expression = "user") User user,
+//                                               @Valid ProfileRequest profileRequest) {
+//        return ApiResponse.success(ApiResponseStatus.CREATED, userService.create(user.getId(), profileRequest));
+//    }
     @GetMapping
     public ApiResponse<ProfileResponse> get(@AuthenticationPrincipal(expression = "user") User user) {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, userService.get(user));
