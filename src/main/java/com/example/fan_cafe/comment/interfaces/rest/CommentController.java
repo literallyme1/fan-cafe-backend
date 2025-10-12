@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/comments")
 @RequiredArgsConstructor
 public class CommentController {
-//.
+//like base update
     private final CommentService commentService;
 
     @PostMapping
