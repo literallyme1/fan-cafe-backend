@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post.interfaces.dto;
 
+import com.example.fan_cafe.global.common.Cursor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,18 +12,15 @@ import java.util.List;
 public class PostListResponse {
 
     private final List<PostResponse> data;
-    private final Long nextCursorId;
-    private final LocalDateTime nextCursorCreatedAt;
+    private final Cursor nextCursor;
     private final boolean hasNext;
 
     public static PostListResponse from(List<PostResponse> data,
-                                        Long nextCursorId,
-                                        LocalDateTime nextCursorCreatedAt,
+                                        Cursor nextCursor,
                                         boolean hasNext) {
         return PostListResponse.builder()
                 .data(data)
-                .nextCursorId(nextCursorId)
-                .nextCursorCreatedAt(nextCursorCreatedAt)
+                .nextCursor(nextCursor)
                 .hasNext(hasNext)
                 .build();
     }

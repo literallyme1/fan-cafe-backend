@@ -84,11 +84,8 @@ public class PostServiceTest {
     @Test
     void get_shouldGetPastPost_whenValidRequest(){
         //given
-        Long cursorId = null;
-        LocalDateTime cursorCreatedAt = null;
         Cursor mockCursor = new Cursor(100L, LocalDateTime.now());
 
-        when(postHelper.resolveCursor(cursorId, cursorCreatedAt)).thenReturn(mockCursor);
 
         PostResponse dto1 = new PostResponse(1L, "title1", "content1", "nickname", 0, 0, LocalDateTime.now(), List.of(), false, false);
         PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of(), false, false);
@@ -100,12 +97,12 @@ public class PostServiceTest {
         when(postHelper.resolveCursor(2L, dto2.getCreatedAt())).thenReturn(nextCursor);
 
         //when
-        PostListResponse result = postService.get(cursorId, cursorCreatedAt, 2, mockUser.getId());
+        PostListResponse result = postService.get(mockCursor, 2, mockUser.getId());
 
         //then
         assertThat(result.getData()).hasSize(2);
-        assertThat(result.getNextCursorId()).isEqualTo(nextCursor.id());
-        assertThat(result.getNextCursorCreatedAt()).isEqualTo(nextCursor.at());
+        assertThat(result.getNextCursor().id()).isEqualTo(nextCursor.id());
+        assertThat(result.getNextCursor().at()).isEqualTo(nextCursor.at());
         assertThat(result.isHasNext()).isTrue();
     }
 

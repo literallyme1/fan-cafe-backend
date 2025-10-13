@@ -1,6 +1,7 @@
 package com.example.fan_cafe.post.interfaces.rest;
 
 
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.post.exception.PostErrorCode;
@@ -39,21 +40,19 @@ public class PostController {
 
     //paged 10개씩
     @GetMapping
-    public ApiResponse<PostListResponse> get(@RequestParam(required = false) Long cursorId,
-                                             @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+    public ApiResponse<PostListResponse> get(@RequestParam(required = false) Cursor cursor,
                                              @RequestParam(defaultValue = "10") int size,
                                              @AuthenticationPrincipal(expression = "user") User user)
     {
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.get(cursorId, cursorCreatedAt, size, user.getId()));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.get(cursor, size, user.getId()));
     }
 
     @GetMapping("/new")
-    public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Long cursorId,
-                                                     @RequestParam(required = false) @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime cursorCreatedAt,
+    public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Cursor cursor,
                                                      @RequestParam(defaultValue = "10") int size,
                                                      @AuthenticationPrincipal(expression = "user") User user)
     {
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.getNewPosts(cursorId, cursorCreatedAt, size, user.getId()));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.getNewPosts(cursor, size, user.getId()));
     }
 
     @PutMapping("/{id}")

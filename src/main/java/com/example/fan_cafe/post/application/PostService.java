@@ -46,8 +46,7 @@ public class PostService {
         return PostResponse.from(post, false, false);
     }
 
-    public PostListResponse get(Long cursorId, LocalDateTime cursorCreatedAt, int size, Long userId) {
-        Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
+    public PostListResponse get(Cursor cursor, int size, Long userId) {
         List<PostResponse> postDtos = postRepository.findNextPage(cursor, size, userId);
         boolean hasNext = postDtos.size() == size;
 
@@ -55,12 +54,11 @@ public class PostService {
                 : postHelper.resolveCursor(null, null);
 
         return PostListResponse.from(
-                postDtos, nextCursor.id(), nextCursor.at(), hasNext
+                postDtos, nextCursor, hasNext
         );
     }
 
-    public PostListResponse getNewPosts(Long cursorId, LocalDateTime cursorCreatedAt, int size, Long userId) {
-        Cursor cursor = postHelper.resolveCursor(cursorId, cursorCreatedAt);
+    public PostListResponse getNewPosts(Cursor cursor, int size, Long userId) {
         List<PostResponse> postDtos = postRepository.findNewPosts(cursor, size, userId);
 
         boolean hasNext = postDtos.size() == size;
@@ -68,7 +66,7 @@ public class PostService {
                 : postHelper.resolveCursor(null, null);
 
         return PostListResponse.from(
-                postDtos, nextCursor.id(), nextCursor.at(), hasNext
+                postDtos, nextCursor, hasNext
         );
     }
 
