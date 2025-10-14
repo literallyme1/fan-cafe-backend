@@ -1,15 +1,25 @@
 package com.example.fan_cafe.global.util;
 
 import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.global.common.HasCreatedAt;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.DateTimePath;
 import com.querydsl.core.types.dsl.NumberPath;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @NoArgsConstructor
 public class CursorUtils {
+
+    public static <T extends HasCreatedAt> Cursor fromLast(List<T> list){
+        if(list == null ||list.isEmpty()){
+            return null;
+        }
+        T last = list.getLast();
+        return new Cursor(last.getId(), last.getCreatedAt());
+    }
 
     public static BooleanExpression beforeDesc(
             DateTimePath<LocalDateTime> createdAtPath,
