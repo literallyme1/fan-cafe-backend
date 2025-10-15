@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CommentDslUtil {
-//.
+
     public static List<OrderSpecifier<?>> toOrderSpecifiers(Pageable pageable, PathBuilder<Comment> pathBuilder) {
         List<OrderSpecifier<?>> orders = new ArrayList<>();
 
