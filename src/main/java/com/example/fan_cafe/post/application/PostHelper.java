@@ -41,15 +41,6 @@ public class PostHelper {
         }
         return urls;
     }
-    public Cursor resolveCursor(Long cursorId, LocalDateTime cursorCreatedAt) {
-        if (cursorId != null && cursorCreatedAt != null) {
-            return new Cursor(cursorId, cursorCreatedAt);
-        }
-        Optional<Post> latest = postRepository.findLatest();
-        return latest
-                .map(post -> new Cursor(post.getId() + 1, post.getCreatedAt().plusNanos(1)))
-                .orElseGet(() -> new Cursor(Long.MAX_VALUE, LocalDateTime.now().plusNanos(1)));
-    }
 
     public void validateOwner(User user, Post post) {
         if (!user.equals(post.getUser())) {

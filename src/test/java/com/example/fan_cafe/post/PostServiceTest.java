@@ -12,6 +12,7 @@ import com.example.fan_cafe.user.domain.User;
 
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 public class PostServiceTest {
@@ -81,31 +83,69 @@ public class PostServiceTest {
         assertThat(response.getTitle()).isEqualTo("제목입니다.");
     }
 
+
     @Test
-    void get_shouldGetPastPost_whenValidRequest(){
+    @DisplayName("커서가 없을 때 첫 페이지 반환")
+    void givenNoCursor_whenGetPosts_thenReturnFirstPage(){
         //given
-        Cursor mockCursor = new Cursor(100L, LocalDateTime.now());
+        Cursor cursor =null;
+        int size = 2;
+        Long userId = 1L;
+        Post latestPost =  Post.builder()
+                            .id(10L)
+                            .user(mockUser)
+                            .title("오늘의 송가인")
+                            .content("오늘도 아름답네요")
+                            .build();
+        ReflectionTestUtils.setField(latestPost, "createdAt", LocalDateTime.of(2025, 10, 16, 11, 0));
 
-
-        PostResponse dto1 = new PostResponse(1L, "title1", "content1", "nickname", 0, 0, LocalDateTime.now(), List.of(), false, false);
-        PostResponse dto2 = new PostResponse(2L, "title2", "content2","nickname",0, 0, LocalDateTime.now(), List.of(), false, false);
-        List<PostResponse> dtos = List.of(dto1, dto2);
-
-        when(postRepository.findNextPage(mockCursor, 2, mockUser.getId())).thenReturn(dtos);
-
-        Cursor nextCursor = new Cursor(200L, LocalDateTime.now().plusSeconds(1));
-        when(postHelper.resolveCursor(2L, dto2.getCreatedAt())).thenReturn(nextCursor);
+        when(postRepository.findLatest()).thenReturn(Optional.of(latestPost));
+        List<PostResponse> posts = List.of(
+                new PostResponse(9L, "title1", "content1", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
+                new PostResponse(8L, "title2", "content2", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
+                new PostResponse(7L, "title3", "content3", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)
+        );
+        when(postRepository.findNextPage(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
 
         //when
-        PostListResponse result = postService.get(mockCursor, 2, mockUser.getId());
+        PostListResponse result = postService.get(cursor, size, userId);
 
         //then
         assertThat(result.getData()).hasSize(2);
-        assertThat(result.getNextCursor().id()).isEqualTo(nextCursor.id());
-        assertThat(result.getNextCursor().at()).isEqualTo(nextCursor.at());
+        assertThat(result.getNextCursor()).isNotNull();
         assertThat(result.isHasNext()).isTrue();
     }
 
+    @Test
+    @DisplayName("커서가 주어졌을 때 커서 이후부터 반환")
+    void givenCursor_whenGetPosts_thenReturnNextPage(){
+        //given
+        Cursor cursor = new Cursor(10L, LocalDateTime.of(2025, 10, 16,10,10,10));
+        int size = 2;
+        Long userId = 1L;
+
+        List<PostResponse> posts = List.of(
+                new PostResponse(9L, "title1", "content1", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
+                new PostResponse(8L, "title2", "content2", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
+                new PostResponse(7L, "title3", "content3", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)
+        );
+        when(postRepository.findNextPage(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
+
+        //when
+        PostListResponse result = postService.get(cursor, size, userId);
+
+        //then
+        assertThat(result.getData()).hasSize(2);
+        assertThat(result.getData().getFirst().getId()).isLessThan(cursor.id());
+        assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.isHasNext()).isTrue();
+    }
     @Test
     void update_shouldUpdatePost_whenValidRequest(){
         //given
