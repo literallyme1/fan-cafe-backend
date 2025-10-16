@@ -85,20 +85,4 @@ public class PostHelperTest {
         assertThat(response).hasSize(2);
         assertThat(response).containsExactly("new-uploaded1.jpg", "new-uploaded2.jpg");
     }
-
-    @Test
-    void resolveCursor_shouldReturnGivenCursor_whenCursorParamsAreNull(){
-
-        //given
-        Long cursorId = null;
-        LocalDateTime cursorCreatedAt = null;
-        when(postRepository.findLatest()).thenReturn(Optional.of(mockPost));
-        ReflectionTestUtils.setField(mockPost, "createdAt", LocalDateTime.of(2025, 1, 1, 0, 0));
-        //when
-        var response = postHelper.resolveCursor(cursorId, cursorCreatedAt);
-
-        //then
-        assertThat(response.id()).isEqualTo(2L);
-        assertThat(response.at()).isEqualTo(LocalDateTime.of(2025, 1, 1, 0, 0).plusNanos(1));
-    }
 }

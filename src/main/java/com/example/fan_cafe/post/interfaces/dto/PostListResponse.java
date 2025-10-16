@@ -4,7 +4,6 @@ import com.example.fan_cafe.global.common.Cursor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Builder
@@ -16,12 +15,12 @@ public class PostListResponse {
     private final boolean hasNext;
 
     public static PostListResponse from(List<PostResponse> data,
-                                        Cursor nextCursor,
-                                        boolean hasNext) {
+                                        Cursor nextCursor
+    ) {
         return PostListResponse.builder()
                 .data(data)
+                .hasNext(nextCursor != null)
                 .nextCursor(nextCursor)
-                .hasNext(hasNext)
                 .build();
     }
 

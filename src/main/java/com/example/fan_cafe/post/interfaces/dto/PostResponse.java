@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post.interfaces.dto;
 
+import com.example.fan_cafe.global.common.HasCreatedAt;
 import com.example.fan_cafe.post.domain.Post;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Builder;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @Builder
 @Getter
-public class PostResponse {
+public class PostResponse implements HasCreatedAt {
 
     private final Long id;
     private final String title;

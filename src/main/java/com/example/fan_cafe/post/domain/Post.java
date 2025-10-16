@@ -2,6 +2,7 @@ package com.example.fan_cafe.post.domain;
 
 import com.example.fan_cafe.bookmark.domain.Bookmark;
 import com.example.fan_cafe.global.common.BaseTimeEntity;
+import com.example.fan_cafe.global.common.HasCreatedAt;
 import com.example.fan_cafe.like.domain.Like;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.persistence.*;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 @Getter
 @Entity
 @Table(name= "posts")
-public class Post extends BaseTimeEntity {
+public class Post extends BaseTimeEntity implements HasCreatedAt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
