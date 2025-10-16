@@ -20,7 +20,7 @@ public class CursorUtils {
         T last = list.getLast();
         return new Cursor(last.getId(), last.getCreatedAt());
     }
-
+    //cursor 기준 최신 정보 가져오는 where 절
     public static BooleanExpression beforeDesc(
             DateTimePath<LocalDateTime> createdAtPath,
             NumberPath<Long> idPath,
