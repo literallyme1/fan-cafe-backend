@@ -44,7 +44,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                         CursorUtils.beforeDesc(post.createdAt, post.id, cursor)
                 )
                 .orderBy(post.createdAt.desc(), post.id.desc())
-                .limit(size)
+                .limit(size + 1)
                 .fetch();
 
         return results.stream()
