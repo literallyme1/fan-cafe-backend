@@ -18,9 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +53,7 @@ public class PostService {
         List<PostResponse> postDtos = postRepository.findNextPage(resolvedCursor, size, userId);
         PageSlice paging = computePageSlice(postDtos, size);
 
-        return PostListResponse.from(
+        return PostListResponse.fromBeforeCursor(
                 paging.posts(), paging.nextCursor()
         );
     }
