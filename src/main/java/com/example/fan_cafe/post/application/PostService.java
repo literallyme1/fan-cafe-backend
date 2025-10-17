@@ -8,6 +8,7 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.post.domain.Post;
+import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
@@ -20,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -60,17 +60,27 @@ public class PostService {
         );
     }
 
-//    public PostListResponse getNewPosts(Cursor cursor, int size, Long userId) {
-//        List<PostResponse> postDtos = postRepository.findNewPosts(cursor, size, userId);
-//
-//        boolean hasNext = postDtos.size() == size;
-//        Cursor nextCursor = hasNext ? postHelper.resolveCursor(postDtos.getLast().getId(), postDtos.getLast().getCreatedAt())
-//                : postHelper.resolveCursor(null, null);
-//
-//        return PostListResponse.from(
-//                postDtos, nextCursor, hasNext
-//        );
-//    }
+
+    //               Post post = postRepository.findLatest()
+//                       .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
+//               PostResponse.from(post, )
+
+
+    public PostListResponse getNewPosts(Cursor cursor, int size, Long userId) {
+        //1. count 확인
+        Long newPostsCont = postRepository.countNewPosts(cursor);
+        if(newPostsCont > 50){
+            return get(cursor, size, userId);
+        }
+
+        Cursor resolvedCursor = (newPostsCont == 1L)? new Cursor(0L, LocalDateTime.MIN) : getResolvedCursor(cursor);
+        List<PostResponse> postDtos = postRepository.findNewPosts(resolvedCursor, size, userId);
+        PageSlice paging = computePageSlice(postDtos, size);
+        return PostListResponse.from(
+                paging.posts(), paging.nextCursor()
+        );
+
+    }
 
 
     public PostResponse update(User user, Long postId, PostUpdateRequest request, List<MultipartFile> images) {

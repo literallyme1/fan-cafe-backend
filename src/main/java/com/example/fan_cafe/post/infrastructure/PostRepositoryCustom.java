@@ -11,5 +11,6 @@ public interface PostRepositoryCustom {
 
     List<PostResponse> findNextPage(Cursor cursor, int size, Long userId);
     List<PostResponse> findNewPosts(Cursor cursor, int size, Long userId);
+    Long countNewPosts(Cursor cursor);
     Optional<Post> findLatest();
 }
