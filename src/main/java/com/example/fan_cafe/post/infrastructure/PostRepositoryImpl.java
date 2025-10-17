@@ -5,20 +5,13 @@ import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.domain.QLike;
-import com.example.fan_cafe.like.infrastructure.LikeRepositoryCustom;
-import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
-import com.example.fan_cafe.like.interfaces.dto.QLikeResponse;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.domain.QPost;
 import com.example.fan_cafe.post.interfaces.dto.PostResponse;
-import com.example.fan_cafe.post.interfaces.dto.QPostResponse;
-import com.example.fan_cafe.user.domain.User;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,16 +51,16 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     }
 
     @Override
-    public List<PostResponse> findNewPosts(Cursor cursor, int size, Long userId){
+    public List<PostResponse> findNewPosts(Cursor cursor, int size, Long userId) {
         List<Tuple> results = queryFactory
                 .select(post, like.id, bookmark.id)
                 .from(post)
                 .leftJoin(like).on(like.post.eq(post), like.user.id.eq(userId))
                 .leftJoin(bookmark).on(bookmark.post.eq(post), bookmark.user.id.eq(userId))
                 .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
-                        CursorUtils.beforeAsc(post.createdAt, post.id, cursor)
+                        CursorUtils.afterDesc(post.createdAt, post.id, cursor)
                 )
-                .orderBy(post.createdAt.desc(), post.id.asc())
+                .orderBy(post.createdAt.desc(), post.id.desc())
                 .limit(size)
                 .fetch();
 
@@ -81,6 +74,17 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                 .toList();
 
 
+    }
+
+    @Override
+    public Long countNewPosts(Cursor cursor) {
+        return queryFactory
+                .select(post.count())
+                .from(post)
+                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
+                        CursorUtils.afterDesc(post.createdAt, post.id, cursor)
+                )
+                .fetchOne();
     }
 
     @Override
