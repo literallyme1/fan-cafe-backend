@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -68,9 +69,9 @@ public class PostService {
 
         Cursor resolvedCursor = (newPostsCont == 1L)? new Cursor(0L, LocalDateTime.MIN) : getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNewPosts(resolvedCursor, size, userId);
-        PageSlice paging = computePageSliceForNew(postDtos, size);
-        return PostListResponse.from(
-                paging.posts(), paging.nextCursor()
+        Cursor afterCursor = CursorUtils.fromFirst(postDtos);
+        return PostListResponse.fromAfterCursor(
+                postDtos, afterCursor
         );
 
     }
@@ -124,17 +125,6 @@ public class PostService {
         }
         posts = posts.subList(0, size);
         Cursor nextCursor = CursorUtils.fromLast(posts);
-        return new PageSlice(posts, nextCursor);
-
-    }
-
-    //반환 할 beforeCursor 생성
-    private PageSlice computePageSliceForNew(List<PostResponse> posts, int size){
-        if (posts.size() <= size) {
-            return new PageSlice(posts, null);
-        }
-        posts = posts.subList(0, size);
-        Cursor nextCursor = CursorUtils.fromFirst(posts);
         return new PageSlice(posts, nextCursor);
 
     }
