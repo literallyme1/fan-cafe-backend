@@ -8,7 +8,6 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.post.domain.Post;
-import com.example.fan_cafe.post.exception.PostErrorCode;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
@@ -53,17 +52,12 @@ public class PostService {
 
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNextPage(resolvedCursor, size, userId);
-        PageSlice paging = computePageSlice(postDtos, size);
+        PageSlice paging = computePageSliceForOld(postDtos, size);
 
         return PostListResponse.from(
                 paging.posts(), paging.nextCursor()
         );
     }
-
-
-    //               Post post = postRepository.findLatest()
-//                       .orElseThrow(() -> new CustomException(PostErrorCode.POST_NOT_FOUND));
-//               PostResponse.from(post, )
 
 
     public PostListResponse getNewPosts(Cursor cursor, int size, Long userId) {
@@ -75,7 +69,7 @@ public class PostService {
 
         Cursor resolvedCursor = (newPostsCont == 1L)? new Cursor(0L, LocalDateTime.MIN) : getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNewPosts(resolvedCursor, size, userId);
-        PageSlice paging = computePageSlice(postDtos, size);
+        PageSlice paging = computePageSliceForNew(postDtos, size);
         return PostListResponse.from(
                 paging.posts(), paging.nextCursor()
         );
@@ -124,13 +118,24 @@ public class PostService {
                 : CursorResolver.resolve(null, null, postRepository::findLatest);
     }
 
-    //반환 할 cursor 생성
-    private PageSlice computePageSlice(List<PostResponse> posts, int size){
+    //반환 할 beforeCursor 생성
+    private PageSlice computePageSliceForOld(List<PostResponse> posts, int size){
         if (posts.size() <= size) {
             return new PageSlice(posts, null);
         }
         posts = posts.subList(0, size);
         Cursor nextCursor = CursorUtils.fromLast(posts);
+        return new PageSlice(posts, nextCursor);
+
+    }
+
+    //반환 할 beforeCursor 생성
+    private PageSlice computePageSliceForNew(List<PostResponse> posts, int size){
+        if (posts.size() <= size) {
+            return new PageSlice(posts, null);
+        }
+        posts = posts.subList(0, size);
+        Cursor nextCursor = CursorUtils.fromFirst(posts);
         return new PageSlice(posts, nextCursor);
 
     }
