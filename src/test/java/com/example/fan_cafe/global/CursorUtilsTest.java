@@ -23,6 +23,25 @@ public class CursorUtilsTest {
 
     @Test
     @DisplayName("리스트의 마지막 요소 기준으로 커서가 반환된다.")
+    void givenList_whenFromFirst_thenReturnsCursorFromFirstElement(){
+
+        //given
+        List<TestEntity> list = List.of(
+                new TestEntity(1L, LocalDateTime.of(2025, 10, 14, 13, 23, 0)),
+                new TestEntity(2L, LocalDateTime.of(2025, 10, 14, 13, 24, 0))
+        );
+
+        //when
+        Cursor result = CursorUtils.fromFirst(list);
+
+        //then
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.at()).isEqualTo(LocalDateTime.of(2025, 10, 14, 13, 23, 0));
+
+    }
+
+    @Test
+    @DisplayName("리스트의 마지막 요소 기준으로 커서가 반환된다.")
     void givenList_whenFromLast_thenReturnsCursorFromLastElement(){
 
         //given

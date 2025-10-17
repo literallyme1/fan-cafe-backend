@@ -13,6 +13,15 @@ import java.util.List;
 @NoArgsConstructor
 public class CursorUtils {
 
+    //조회한 글 중 가장 최신 글을 찾아 AfterCursor 를 생성
+    public static <T extends HasCreatedAt> Cursor fromFirst(List<T> list){
+        if(list == null ||list.isEmpty()){
+            return null;
+        }
+        T first = list.getFirst();
+        return new Cursor(first.getId(), first.getCreatedAt());
+    }
+    //조회한 글 중 가장 오래된 글을 통해 BeforeCursor 를 생성
     public static <T extends HasCreatedAt> Cursor fromLast(List<T> list){
         if(list == null ||list.isEmpty()){
             return null;
