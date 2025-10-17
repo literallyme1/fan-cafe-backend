@@ -85,6 +85,57 @@ public class PostServiceTest {
 
 
     @Test
+    @DisplayName("커서가 없고, 최신 글이 하나 있으면 최신 글 하나 반환")
+    void givenNoCursor_whenGetNewPosts_thenReturnFirstPost(){
+        //given
+        Cursor cursor =null;
+        int size = 2;
+        Long userId = 1L;
+
+        when(postRepository.countNewPosts(any(Cursor.class))).thenReturn(1L);
+        when(postRepository.findNewPosts(any(Cursor.class), eq(size), eq(userId))).thenReturn(List.of(
+                new PostResponse(1L, "title1", "content1", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)));
+
+        //when
+        PostListResponse result = postService.getNewPosts(cursor, size, userId);
+
+        //then
+        assertThat(result.getData()).hasSize(1);
+        assertThat(result.getAfterCursor()).isNotNull();
+        assertThat(result.isHasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("커서가 주어졌을 때 커서보다 최신 글 반환")
+    void givenCursor_whenGetNewPosts_thenReturnNewPosts(){
+        //given
+        Cursor cursor = new Cursor(10L, LocalDateTime.of(2025, 10, 16,10,10,10));
+        int size = 2;
+        Long userId = 1L;
+
+        when(postRepository.countNewPosts(any(Cursor.class))).thenReturn(3L);
+        List<PostResponse> posts = List.of(
+                new PostResponse(13L, "title1", "content1", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false),
+                new PostResponse(12L, "title2", "content2", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false),
+                new PostResponse(11L, "title3", "content3", "nickname", 0,
+                        0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false)
+        );
+        when(postRepository.findNewPosts(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
+
+        //when
+        PostListResponse result = postService.getNewPosts(cursor, size, userId);
+
+        //then
+        assertThat(result.getData()).hasSize(3);
+        assertThat(result.getData().getFirst().getId()).isGreaterThan(cursor.id());
+        assertThat(result.getAfterCursor()).isNotNull();
+        assertThat(result.isHasNext()).isFalse();
+    }
+
+    @Test
     @DisplayName("커서가 없을 때 첫 페이지 반환")
     void givenNoCursor_whenGetPosts_thenReturnFirstPage(){
         //given
@@ -92,11 +143,11 @@ public class PostServiceTest {
         int size = 2;
         Long userId = 1L;
         Post latestPost =  Post.builder()
-                            .id(10L)
-                            .user(mockUser)
-                            .title("오늘의 송가인")
-                            .content("오늘도 아름답네요")
-                            .build();
+                .id(10L)
+                .user(mockUser)
+                .title("오늘의 송가인")
+                .content("오늘도 아름답네요")
+                .build();
         ReflectionTestUtils.setField(latestPost, "createdAt", LocalDateTime.of(2025, 10, 16, 11, 0));
 
         when(postRepository.findLatest()).thenReturn(Optional.of(latestPost));

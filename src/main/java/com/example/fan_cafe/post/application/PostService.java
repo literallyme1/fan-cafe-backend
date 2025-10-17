@@ -61,19 +61,22 @@ public class PostService {
 
 
     public PostListResponse getNewPosts(Cursor cursor, int size, Long userId) {
-        //1. count 확인
-        Long newPostsCont = postRepository.countNewPosts(cursor);
-        if(newPostsCont > 50){
-            return get(cursor, size, userId);
+        //cursor 가 null 일 시
+        if (cursor == null || cursor.id() == null || cursor.at() == null) {
+            cursor = new Cursor(0L, LocalDateTime.MIN);
         }
 
-        Cursor resolvedCursor = (newPostsCont == 1L)? new Cursor(0L, LocalDateTime.MIN) : getResolvedCursor(cursor);
+        //1. count 확인
+        Long newPostsCount = postRepository.countNewPosts(cursor);
+        if(newPostsCount > 50) return get(cursor, size, userId);
+        if (newPostsCount == 0) return PostListResponse.fromAfterCursor(List.of(), null);
+
+        Cursor resolvedCursor = (newPostsCount == 1L)? cursor : getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNewPosts(resolvedCursor, size, userId);
         Cursor afterCursor = CursorUtils.fromFirst(postDtos);
         return PostListResponse.fromAfterCursor(
                 postDtos, afterCursor
         );
-
     }
 
 
