@@ -167,6 +167,7 @@ public class PostServiceTest {
         //then
         assertThat(result.getData()).hasSize(2);
         assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.getAfterCursor()).isNotNull();
         assertThat(result.isHasNext()).isTrue();
     }
 
@@ -195,6 +196,7 @@ public class PostServiceTest {
         assertThat(result.getData()).hasSize(2);
         assertThat(result.getData().getFirst().getId()).isLessThan(cursor.id());
         assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.getAfterCursor()).isNull();
         assertThat(result.isHasNext()).isTrue();
     }
     @Test
