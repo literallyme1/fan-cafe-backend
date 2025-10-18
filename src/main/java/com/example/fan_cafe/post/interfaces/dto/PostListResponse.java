@@ -15,17 +15,6 @@ public class PostListResponse {
     private final Cursor afterCursor;
     private final boolean hasNext;
 
-    public static PostListResponse fromBeforeCursor(List<PostResponse> data,
-                                                    Cursor nextCursor
-    ) {
-        return PostListResponse.builder()
-                .data(data)
-                .hasNext(nextCursor != null)
-                .nextCursor(nextCursor)
-                .afterCursor(null)
-                .build();
-    }
-
     public static PostListResponse fromAfterCursor(List<PostResponse> data,
                                                     Cursor afterCursor
     ) {
