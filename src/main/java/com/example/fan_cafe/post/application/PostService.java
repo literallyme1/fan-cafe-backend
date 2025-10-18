@@ -52,10 +52,10 @@ public class PostService {
 
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNextPage(resolvedCursor, size, userId);
-        PageSlice paging = computePageSliceForOld(postDtos, size);
+        PageSlice paging = computePageSlice(postDtos, size, cursor);
 
-        return PostListResponse.fromBeforeCursor(
-                paging.posts(), paging.nextCursor()
+        return PostListResponse.fromCursors(
+                paging.posts(), paging.nextCursor(), paging.afterCursor
         );
     }
 
@@ -122,17 +122,17 @@ public class PostService {
     }
 
     //반환 할 beforeCursor 생성
-    private PageSlice computePageSliceForOld(List<PostResponse> posts, int size){
-        if (posts.size() <= size) {
-            return new PageSlice(posts, null);
-        }
-        posts = posts.subList(0, size);
-        Cursor nextCursor = CursorUtils.fromLast(posts);
-        return new PageSlice(posts, nextCursor);
+    private PageSlice computePageSlice(List<PostResponse> posts, int size, Cursor cursor){
+        //첫 페이지 일 시 가장 최신글 커서 반환
+        Cursor afterCursor = (cursor == null)? CursorUtils.fromFirst(posts) : null;
+        Cursor nextCursor = (posts.size() > size)? CursorUtils.fromLast(posts) : null;
+        //hasNext 확인 후 size 대로 cut
+        if(nextCursor != null)  posts = posts.subList(0, size);
+        return new PageSlice(posts, nextCursor, afterCursor);
 
     }
 
-    private record PageSlice(List<PostResponse> posts, Cursor nextCursor){}
+    private record PageSlice(List<PostResponse> posts, Cursor nextCursor, Cursor afterCursor){}
 
 
 }
