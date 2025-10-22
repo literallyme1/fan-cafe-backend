@@ -6,6 +6,8 @@ import com.example.fan_cafe.comment.infrastructure.CommentRepository;
 import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentListResponse;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
+import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
@@ -43,8 +45,9 @@ public class CommentService {
         return CommentResponse.from(comment);
     }
 
-    public CommentListResponse get(Long postId, int page) {
+    public CommentListResponse get(Long postId, Cursor cursor, int size) {
         validatePostExists(postId);
+        Cursor resolvedCursor =
         Pageable pageable =  PageUtils.createPageRequest( page, 10,"at", "DESC");
 
 
@@ -53,6 +56,11 @@ public class CommentService {
         Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
         List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
         return CommentListResponse.from(rootResponses, comments.hasNext());
+    }
+
+    private Cursor getResolvedCursor(Cursor cursor){
+        return (cursor != null) ?
+                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest)
     }
 
     @Transactional
