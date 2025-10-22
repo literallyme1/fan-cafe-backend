@@ -1,6 +1,7 @@
 package com.example.fan_cafe.comment.domain;
 
 import com.example.fan_cafe.global.common.BaseTimeEntity;
+import com.example.fan_cafe.global.common.HasCreatedAt;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.user.domain.User;
 import jakarta.persistence.*;
@@ -18,7 +19,7 @@ import java.util.List;
 @Getter
 @Entity
 @Table(name = "comments")
-public class Comment extends BaseTimeEntity {
+public class Comment extends BaseTimeEntity implements HasCreatedAt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
