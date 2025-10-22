@@ -4,6 +4,7 @@ import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.domain.QComment;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.comment.dsl.CommentDslUtil;
+import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.user.domain.QUser;
 import com.querydsl.core.types.OrderSpecifier;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @RequiredArgsConstructor
@@ -45,13 +47,26 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                 .from(comment)
                 .join(comment.user, user)
                 .leftJoin(comment.parent)
-                .where(comment.post.id.eq(postId))
+                .where(comment.post.id.eq(postId),
+                        SoftDeleteCondition.isNotDeleted(comment.deletedAt))
                 .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0])) // 정렬 조건
                 .offset(pageable.getOffset()) // 페이지 시작 위치
                 .limit(pageable.getPageSize() + 1) // 페이지 크기
                 .fetch();
 
         return PageUtils.toSlice(results, pageable);
+    }
+
+    @Override
+    public Optional<Comment> findLatest(){
+        Comment result = queryFactory
+                .select(comment)
+                .from(comment)
+                .where(SoftDeleteCondition.isNotDeleted(comment.deletedAt))
+                .orderBy(comment.createdAt.desc())
+                .limit(1)
+                .fetchOne();
+        return Optional.ofNullable(result);
     }
 
 
