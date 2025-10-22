@@ -10,13 +10,18 @@ import java.util.List;
 @Getter
 public class CommentListResponse {
     private List<CommentResponse> comments;
+    private final Cursor afterCursor;
     private final Cursor nextCursor;
     private boolean hasNext;
 
-    public static CommentListResponse from(List<CommentResponse> comments, Cursor nextCursor, boolean hasNext) {
+    public static CommentListResponse from(List<CommentResponse> comments,
+                                           Cursor afterCursor,
+                                           Cursor nextCursor) {
         return CommentListResponse.builder()
                 .comments(comments)
-                .hasNext(hasNext)
+                .afterCursor(afterCursor)
+                .nextCursor(nextCursor)
+                .hasNext(nextCursor != null)
                 .build();
     }
 }
