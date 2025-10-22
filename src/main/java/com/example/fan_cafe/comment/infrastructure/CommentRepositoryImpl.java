@@ -48,7 +48,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                         comment.post.id.eq(postId),
                         SoftDeleteCondition.isNotDeleted(comment.deletedAt))
                 .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
-                .limit(size)
+                .limit(size + 1)
                 .fetch();
     }
 
