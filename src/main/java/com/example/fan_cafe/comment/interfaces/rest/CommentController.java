@@ -4,6 +4,7 @@ import com.example.fan_cafe.comment.application.CommentService;
 import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentListResponse;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.response.ApiResponse;
 import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.user.domain.User;
@@ -27,8 +28,9 @@ public class CommentController {
 
     @GetMapping("/{postId}")
     public ApiResponse<CommentListResponse> get(@PathVariable Long postId,
-                                                @RequestParam(defaultValue = "0") int page) {
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.get(postId, page));
+                                                @RequestParam(required = false) Cursor cursor,
+                                                @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.get(postId, cursor, size));
     }
 
     @PutMapping("/{id}")

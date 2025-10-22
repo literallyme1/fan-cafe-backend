@@ -9,6 +9,7 @@ import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
@@ -46,21 +47,35 @@ public class CommentService {
     }
 
     public CommentListResponse get(Long postId, Cursor cursor, int size) {
+        //request 해석 후 DB 요청
         validatePostExists(postId);
-        Cursor resolvedCursor =
-        Pageable pageable =  PageUtils.createPageRequest( page, 10,"at", "DESC");
+        Cursor resolvedCursor = getResolvedCursor(cursor);
+        List<CommentResponse> comments = commentRepository.findAllByPostId(postId, resolvedCursor, size);
 
-
-        Slice<CommentResponse> comments = commentRepository.findAllByPostId(postId, pageable);
-
+        //대댓글 구조 조립
         Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
         List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
-        return CommentListResponse.from(rootResponses, comments.hasNext());
+
+        //반환을 위한 cursor 생성
+        PageSlice paging = computePageSlice(rootResponses, cursor, size);
+
+        return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
     }
+
+    private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
+        //get 요청이 처음일때만 반환
+        Cursor afterCursor = (cursor == null)? CursorUtils.fromFirst(comments) : null;
+        //다음 페이지가 있을 때만 반환
+        Cursor nextCursor = (comments.size() > size)? CursorUtils.fromLast(comments) : null;
+        if(nextCursor != null) comments = comments.subList(0, size);
+        return new PageSlice(comments, afterCursor, nextCursor);
+    }
+    private record PageSlice(List<CommentResponse> comments, Cursor afterCursor, Cursor nextCursor){}
 
     private Cursor getResolvedCursor(Cursor cursor){
         return (cursor != null) ?
-                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest)
+                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest) :
+                CursorResolver.resolve(null, null, commentRepository::findLatest);
     }
 
     @Transactional
@@ -81,14 +96,14 @@ public class CommentService {
     }
 
     //자식 댓글 parent 기준 그룹핑
-    private Map<Long, List<CommentResponse>> groupChildComments(Slice<CommentResponse> comments) {
+    private Map<Long, List<CommentResponse>> groupChildComments(List<CommentResponse> comments) {
         return comments.stream()
                 .filter(c -> c.getParentId() != null)
                 .collect(Collectors.groupingBy(CommentResponse::getParentId));
     }
 
     //댓글 트리 구조 형성(리스트 연결)
-    private List<CommentResponse> buildCommentTree(Slice<CommentResponse> comments, Map<Long, List<CommentResponse>> childMap) {
+    private List<CommentResponse> buildCommentTree(List<CommentResponse> comments, Map<Long, List<CommentResponse>> childMap) {
         return comments.stream()
                 .filter(c -> c.getParentId() == null)
                 .map(root -> connectChildren(root, childMap))
