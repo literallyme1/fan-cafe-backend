@@ -1,12 +1,14 @@
 package com.example.fan_cafe.comment.interfaces.dto;
 
 import com.example.fan_cafe.comment.domain.Comment;
+import com.example.fan_cafe.global.common.HasCreatedAt;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,9 +17,10 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CommentResponse {
+public class CommentResponse implements HasCreatedAt {
 
     private Long id;
+    private LocalDateTime createdAt;
     private String writer;
     private String content;
     private Long parentId;

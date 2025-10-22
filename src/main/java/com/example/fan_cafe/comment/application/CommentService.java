@@ -9,6 +9,7 @@ import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
@@ -55,9 +56,21 @@ public class CommentService {
         Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
         List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
 
+        //반환을 위한 cursor 생성
+        PageSlice paging = computePageSlice(rootResponses, cursor, size);
 
-        return CommentListResponse.from(rootResponses, comments.hasNext());
+        return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
     }
+
+    private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
+        //get 요청이 처음일때만 반환
+        Cursor afterCursor = (cursor == null)? CursorUtils.fromFirst(comments) : null;
+        //다음 페이지가 있을 때만 반환
+        Cursor nextCursor = (comments.size() > size)? CursorUtils.fromLast(comments) : null;
+        if(nextCursor != null) comments = comments.subList(0, size);
+        return new PageSlice(comments, afterCursor, nextCursor);
+    }
+    private record PageSlice(List<CommentResponse> comments, Cursor afterCursor, Cursor nextCursor){}
 
     private Cursor getResolvedCursor(Cursor cursor){
         return (cursor != null) ?
