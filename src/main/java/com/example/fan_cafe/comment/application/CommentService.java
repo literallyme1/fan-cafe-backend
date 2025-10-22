@@ -47,11 +47,9 @@ public class CommentService {
 
     public CommentListResponse get(Long postId, Cursor cursor, int size) {
         validatePostExists(postId);
-        Cursor resolvedCursor =
-        Pageable pageable =  PageUtils.createPageRequest( page, 10,"at", "DESC");
+        Cursor resolvedCursor = getResolvedCursor(cursor);
 
-
-        Slice<CommentResponse> comments = commentRepository.findAllByPostId(postId, pageable);
+        Slice<CommentResponse> comments = commentRepository.findAllByPostId(postId, cursor);
 
         Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
         List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
@@ -60,7 +58,8 @@ public class CommentService {
 
     private Cursor getResolvedCursor(Cursor cursor){
         return (cursor != null) ?
-                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest)
+                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest) :
+                CursorResolver.resolve(null, null, commentRepository::findLatest);
     }
 
     @Transactional

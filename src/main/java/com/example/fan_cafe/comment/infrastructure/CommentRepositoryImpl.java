@@ -4,7 +4,9 @@ import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.domain.QComment;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.comment.dsl.CommentDslUtil;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
+import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.user.domain.QUser;
 import com.querydsl.core.types.OrderSpecifier;
@@ -28,14 +30,9 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
     QUser user = QUser.user;
 
     @Override
-    public Slice<CommentResponse> findAllByPostId(Long postId, Pageable pageable){
+    public List<CommentResponse> findAllByPostId(Long postId, Cursor cursor, int size){
 
-        List<OrderSpecifier<?>> orderSpecifiers = CommentDslUtil.toOrderSpecifiers(
-                pageable,
-                new PathBuilder<Comment>(Comment.class, "comment") //인자 (엔티티 명시, qComment 별칭)
-        );
-
-        List<CommentResponse> results = queryFactory
+        return queryFactory
                 .select(Projections.constructor(CommentResponse.class,
                         comment.id,
                         comment.content,
@@ -46,15 +43,13 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                 ))
                 .from(comment)
                 .join(comment.user, user)
-                .leftJoin(comment.parent)
-                .where(comment.post.id.eq(postId),
+                .leftJoin(comment.parent) //parent 를 가져오는 이유가 뭔가?
+                .where(CursorUtils.beforeDesc(comment.createdAt, comment.id, cursor),
+                        comment.post.id.eq(postId),
                         SoftDeleteCondition.isNotDeleted(comment.deletedAt))
-                .orderBy(orderSpecifiers.toArray(new OrderSpecifier[0])) // 정렬 조건
-                .offset(pageable.getOffset()) // 페이지 시작 위치
-                .limit(pageable.getPageSize() + 1) // 페이지 크기
+                .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
+                .limit(size)
                 .fetch();
-
-        return PageUtils.toSlice(results, pageable);
     }
 
     @Override
