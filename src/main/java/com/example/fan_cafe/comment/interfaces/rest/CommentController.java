@@ -33,6 +33,13 @@ public class CommentController {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getComments(postId, cursor, size));
     }
 
+    @GetMapping("{commentId}/replies")
+    public ApiResponse<CommentListResponse> getReplys(@PathVariable Long commentId,
+                                                     @RequestParam(required = false) Cursor cursor,
+                                                     @RequestParam(defaultValue = "10") int size){
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getReplys(commentId, cursor, size));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<CommentResponse> update(@AuthenticationPrincipal(expression = "user")User user,
                                                @PathVariable Long id,
