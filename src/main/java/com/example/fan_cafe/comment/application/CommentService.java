@@ -52,13 +52,18 @@ public class CommentService {
         //반환을 위한 cursor 생성
         PageSlice paging = computePageSlice(comments, cursor, size);
 
-        return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
+        return CommentListResponse.from(paging.comments, paging.afterCursor, paging.nextCursor);
     }
 
     //대댓글만 가져오는 함수
     public CommentListResponse getReplies(Long commentId, Cursor cursor, int size) {
         validateCommentExists(commentId);
-        Cursor resolvedCursor = getCommentsResolvedCursor(cursor); // --TODO : reply 에 맞는 함수 다시 만들어야 함.
+        Cursor resolvedCursor = getRepliesResolvedCursor(cursor, commentId);
+        List<CommentResponse> replies = commentRepository.findRepliesByParentId(commentId, resolvedCursor, size);
+        PageSlice paging = computePageSlice(replies, cursor, size);
+
+        return CommentListResponse.from(paging.comments, paging.afterCursor, paging.nextCursor);
+
     }
 
     private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
@@ -124,7 +129,7 @@ public class CommentService {
     }
 
     private void validateCommentExists(Long commentId) {
-        if(!commentRepository.existsByIdAndDeletedAtIsNull(commentId)){
+        if(!commentRepository.existsByParentIdAndDeletedAtIsNull(commentId)){
             throw new CustomException(CommentErrorCode.COMMENT_NOT_FOUND);
         }
     }
