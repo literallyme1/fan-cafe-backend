@@ -47,7 +47,7 @@ public class CommentService {
     }
 
     //부모 댓글만 가져오는 함수
-    public CommentListResponse get(Long postId, Cursor cursor, int size) {
+    public CommentListResponse getComments(Long postId, Cursor cursor, int size) {
         //request 해석 후 DB 요청
         validatePostExists(postId);
         Cursor resolvedCursor = getResolvedCursor(cursor);
