@@ -131,34 +131,34 @@ public class CommentServiceTest {
         assertThat(exception.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    @Test
-    void get_shouldReturnCommentTree_whenFlatCommentsProvided(){
-        // given
-        Long postId = 1L;
-        int page = 0;
-        Pageable pageable = PageRequest.of(page, 10, Sort.by("at").descending());
-
-        // 게시글 존재 확인
-        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
-
-        // 댓글 mock 데이터
-        CommentResponse root1 = CommentResponse.builder().id(1L).parentId(null).children(new ArrayList<>()).build();
-        CommentResponse root2 = CommentResponse.builder().id(2L).parentId(null).children(new ArrayList<>()).build();
-        CommentResponse child1 = CommentResponse.builder().id(3L).parentId(1L).children(new ArrayList<>()).build();
-        CommentResponse child2 = CommentResponse.builder().id(4L).parentId(1L).children(new ArrayList<>()).build();
-
-        List<CommentResponse> flat = List.of(root1, root2, child1, child2);
-        Slice<CommentResponse> slice = new SliceImpl<>(flat, pageable, false);
-        when(commentRepository.findAllByPostId(postId, pageable)).thenReturn(slice);
-
-        CommentListResponse response = commentService.get(postId, page);
-
-        // then
-        assertThat(response.getComments()).hasSize(2); // root만 2개
-        assertThat(response.getComments().get(0).getChildren()).hasSize(2); // root1의 자식 2개
-        assertThat(response.getComments().get(1).getChildren()).isEmpty();   // root2는 자식 없음
-        assertThat(response.isHasNext()).isFalse();
-    }
+//    @Test
+//    void get_shouldReturnCommentTree_whenFlatCommentsProvided(){
+//        // given
+//        Long postId = 1L;
+//        int page = 0;
+//        Pageable pageable = PageRequest.of(page, 10, Sort.by("at").descending());
+//
+//        // 게시글 존재 확인
+//        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
+//
+//        // 댓글 mock 데이터
+//        CommentResponse root1 = CommentResponse.builder().id(1L).parentId(null).children(new ArrayList<>()).build();
+//        CommentResponse root2 = CommentResponse.builder().id(2L).parentId(null).children(new ArrayList<>()).build();
+//        CommentResponse child1 = CommentResponse.builder().id(3L).parentId(1L).children(new ArrayList<>()).build();
+//        CommentResponse child2 = CommentResponse.builder().id(4L).parentId(1L).children(new ArrayList<>()).build();
+//
+//        List<CommentResponse> flat = List.of(root1, root2, child1, child2);
+//        Slice<CommentResponse> slice = new SliceImpl<>(flat, pageable, false);
+//        when(commentRepository.findAllByPostId(postId, pageable)).thenReturn(slice);
+//
+//        CommentListResponse response = commentService.get(postId, page);
+//
+//        // then
+//        assertThat(response.getComments()).hasSize(2); // root만 2개
+//        assertThat(response.getComments().get(0).getChildren()).hasSize(2); // root1의 자식 2개
+//        assertThat(response.getComments().get(1).getChildren()).isEmpty();   // root2는 자식 없음
+//        assertThat(response.isHasNext()).isFalse();
+//    }
 
     @Test
     void update_shouldUpdate_whenRequestIsValid() {

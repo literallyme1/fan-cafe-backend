@@ -46,6 +46,7 @@ public class CommentService {
         return CommentResponse.from(comment);
     }
 
+    //부모 댓글만 가져오는 함수
     public CommentListResponse get(Long postId, Cursor cursor, int size) {
         //request 해석 후 DB 요청
         validatePostExists(postId);
@@ -53,11 +54,11 @@ public class CommentService {
         List<CommentResponse> comments = commentRepository.findAllByPostId(postId, resolvedCursor, size);
 
         //대댓글 구조 조립
-        Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
-        List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
+//        Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
+//        List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
 
         //반환을 위한 cursor 생성
-        PageSlice paging = computePageSlice(rootResponses, cursor, size);
+        PageSlice paging = computePageSlice(comments, cursor, size);
 
         return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
     }
