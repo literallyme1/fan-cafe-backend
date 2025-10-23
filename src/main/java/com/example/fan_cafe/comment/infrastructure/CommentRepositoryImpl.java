@@ -54,7 +54,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
     }
 
     @Override
-    public List<CommentResponse> findRepliesByCommentId(Long commentId, Cursor cursor, int size){
+    public List<CommentResponse> findRepliesByParentId(Long parentId, Cursor cursor, int size){
 
         return queryFactory
                 .select(Projections.constructor(CommentResponse.class,
@@ -69,7 +69,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                 .join(comment.user, user)
                 .leftJoin(comment.parent) //parent 를 가져오는 이유가 뭔가?
                 .where(CursorUtils.beforeDesc(comment.createdAt, comment.id, cursor),
-                        comment.parent.id.eq(commentId),
+                        comment.parent.id.eq(parentId),
                         SoftDeleteCondition.isNotDeleted(comment.deletedAt))
                 .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
                 .limit(size + 1)
@@ -77,14 +77,27 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
     }
 
     @Override
-    public Optional<Comment> findLatest(){
+    public Optional<Comment> findLatestParentComment(){
         Comment result = queryFactory
                 .select(comment)
                 .from(comment)
                 .where(SoftDeleteCondition.isNotDeleted(comment.deletedAt))
-                .orderBy(comment.createdAt.desc())
+                .orderBy(comment.createdAt.desc(), comment.id.desc())
                 .limit(1)
-                .fetchOne();
+                .fetchFirst();
+        return Optional.ofNullable(result);
+    }
+
+    @Override
+    public Optional<Comment> findLatestRepliesByParentId(Long parentId){
+        Comment result = queryFactory
+                .select(comment)
+                .from(comment)
+                .where(SoftDeleteCondition.isNotDeleted(comment.deletedAt),
+                        comment.parent.id.eq(parentId))
+                .orderBy(comment.createdAt.desc(), comment.id.desc())
+                .limit(1)
+                .fetchFirst();
         return Optional.ofNullable(result);
     }
 

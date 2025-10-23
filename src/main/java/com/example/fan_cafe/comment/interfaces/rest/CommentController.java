@@ -34,10 +34,10 @@ public class CommentController {
     }
 
     @GetMapping("{commentId}/replies")
-    public ApiResponse<CommentListResponse> getReplys(@PathVariable Long commentId,
+    public ApiResponse<CommentListResponse> getReplies(@PathVariable Long commentId,
                                                      @RequestParam(required = false) Cursor cursor,
                                                      @RequestParam(defaultValue = "10") int size){
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getReplys(commentId, cursor, size));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getReplies(commentId, cursor, size));
     }
 
     @PutMapping("/{id}")

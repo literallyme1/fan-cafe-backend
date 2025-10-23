@@ -46,7 +46,7 @@ public class CommentService {
     public CommentListResponse getComments(Long postId, Cursor cursor, int size) {
         //request 해석 후 DB 요청
         validatePostExists(postId);
-        Cursor resolvedCursor = getResolvedCursor(cursor);
+        Cursor resolvedCursor = getCommentsResolvedCursor(cursor);
         List<CommentResponse> comments = commentRepository.findCommentsByPostId(postId, resolvedCursor, size);
 
         //반환을 위한 cursor 생성
@@ -56,9 +56,9 @@ public class CommentService {
     }
 
     //대댓글만 가져오는 함수
-    public CommentListResponse getReplys(Long commentId, Cursor cursor, int size) {
+    public CommentListResponse getReplies(Long commentId, Cursor cursor, int size) {
         validateCommentExists(commentId);
-        Cursor resolvedCursor = getResolvedCursor(cursor); // --TODO : reply 에 맞는 함수 다시 만들어야 함.
+        Cursor resolvedCursor = getCommentsResolvedCursor(cursor); // --TODO : reply 에 맞는 함수 다시 만들어야 함.
     }
 
     private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
@@ -71,10 +71,16 @@ public class CommentService {
     }
     private record PageSlice(List<CommentResponse> comments, Cursor afterCursor, Cursor nextCursor){}
 
-    private Cursor getResolvedCursor(Cursor cursor){
+    private Cursor getCommentsResolvedCursor(Cursor cursor){
         return (cursor != null) ?
-                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest) :
-                CursorResolver.resolve(null, null, commentRepository::findLatest);
+                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatestParentComment) :
+                CursorResolver.resolve(null, null, commentRepository::findLatestParentComment);
+    }
+
+    private Cursor getRepliesResolvedCursor(Cursor cursor, Long parentId){
+        return (cursor != null) ?
+                CursorResolver.resolve(cursor.id(), cursor.at(), () -> commentRepository.findLatestRepliesByParentId(parentId)) :
+                CursorResolver.resolve(null, null, () -> commentRepository.findLatestRepliesByParentId(parentId));
     }
 
     @Transactional
