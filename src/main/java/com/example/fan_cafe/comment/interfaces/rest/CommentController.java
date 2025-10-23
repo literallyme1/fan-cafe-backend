@@ -30,7 +30,7 @@ public class CommentController {
     public ApiResponse<CommentListResponse> get(@PathVariable Long postId,
                                                 @RequestParam(required = false) Cursor cursor,
                                                 @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.get(postId, cursor, size));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getComments(postId, cursor, size));
     }
 
     @PutMapping("/{id}")

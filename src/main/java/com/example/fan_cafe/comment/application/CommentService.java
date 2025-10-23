@@ -46,18 +46,15 @@ public class CommentService {
         return CommentResponse.from(comment);
     }
 
-    public CommentListResponse get(Long postId, Cursor cursor, int size) {
+    //부모 댓글만 가져오는 함수
+    public CommentListResponse getComments(Long postId, Cursor cursor, int size) {
         //request 해석 후 DB 요청
         validatePostExists(postId);
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<CommentResponse> comments = commentRepository.findAllByPostId(postId, resolvedCursor, size);
 
-        //대댓글 구조 조립
-        Map<Long, List<CommentResponse>> childMap = groupChildComments(comments);
-        List<CommentResponse> rootResponses = buildCommentTree(comments, childMap);
-
         //반환을 위한 cursor 생성
-        PageSlice paging = computePageSlice(rootResponses, cursor, size);
+        PageSlice paging = computePageSlice(comments, cursor, size);
 
         return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
     }
@@ -93,21 +90,6 @@ public class CommentService {
         Comment comment = findByIdOrThrow(id);
         validateWriter(user, comment);
         comment.delete();
-    }
-
-    //자식 댓글 parent 기준 그룹핑
-    private Map<Long, List<CommentResponse>> groupChildComments(List<CommentResponse> comments) {
-        return comments.stream()
-                .filter(c -> c.getParentId() != null)
-                .collect(Collectors.groupingBy(CommentResponse::getParentId));
-    }
-
-    //댓글 트리 구조 형성(리스트 연결)
-    private List<CommentResponse> buildCommentTree(List<CommentResponse> comments, Map<Long, List<CommentResponse>> childMap) {
-        return comments.stream()
-                .filter(c -> c.getParentId() == null)
-                .map(root -> connectChildren(root, childMap))
-                .toList();
     }
 
     private CommentResponse connectChildren(CommentResponse root, Map<Long, List<CommentResponse>> childMap) {

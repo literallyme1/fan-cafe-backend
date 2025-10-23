@@ -3,16 +3,19 @@ package com.example.fan_cafe.comment;
 
 import com.example.fan_cafe.comment.application.CommentService;
 import com.example.fan_cafe.comment.domain.Comment;
+import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
 import com.example.fan_cafe.comment.interfaces.dto.CommentListResponse;
 import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
+import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,11 +23,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.domain.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -131,34 +136,7 @@ public class CommentServiceTest {
         assertThat(exception.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    @Test
-    void get_shouldReturnCommentTree_whenFlatCommentsProvided(){
-        // given
-        Long postId = 1L;
-        int page = 0;
-        Pageable pageable = PageRequest.of(page, 10, Sort.by("at").descending());
 
-        // 게시글 존재 확인
-        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
-
-        // 댓글 mock 데이터
-        CommentResponse root1 = CommentResponse.builder().id(1L).parentId(null).children(new ArrayList<>()).build();
-        CommentResponse root2 = CommentResponse.builder().id(2L).parentId(null).children(new ArrayList<>()).build();
-        CommentResponse child1 = CommentResponse.builder().id(3L).parentId(1L).children(new ArrayList<>()).build();
-        CommentResponse child2 = CommentResponse.builder().id(4L).parentId(1L).children(new ArrayList<>()).build();
-
-        List<CommentResponse> flat = List.of(root1, root2, child1, child2);
-        Slice<CommentResponse> slice = new SliceImpl<>(flat, pageable, false);
-        when(commentRepository.findAllByPostId(postId, pageable)).thenReturn(slice);
-
-        CommentListResponse response = commentService.get(postId, page);
-
-        // then
-        assertThat(response.getComments()).hasSize(2); // root만 2개
-        assertThat(response.getComments().get(0).getChildren()).hasSize(2); // root1의 자식 2개
-        assertThat(response.getComments().get(1).getChildren()).isEmpty();   // root2는 자식 없음
-        assertThat(response.isHasNext()).isFalse();
-    }
 
     @Test
     void update_shouldUpdate_whenRequestIsValid() {
@@ -186,4 +164,59 @@ public class CommentServiceTest {
 
     }
 
+    @Test
+    @DisplayName("없는 글 id 를 줄 경우, 예외가 발생한다.")
+    void givenInvalidPostId_whenGetComments_thenThrowsException(){
+        //given
+        Long postId = 999L;
+        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(false);
+
+        //when & then
+        assertThatThrownBy(() -> commentService.getComments(postId, null, 3))
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining(CommentErrorCode.POST_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("커서가 null 일 경우 afterCursor 가 생성된다.")
+    void givenNullCursor_whenGetComments_thenAfterCursorIsCreated(){
+        //given
+        Long postId = 1L;
+        int size = 3;
+        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
+        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
+                List.of(new CommentResponse(3L,  "user1", "content", null))
+        );
+
+        //when
+        CommentListResponse result = commentService.getComments(postId, null, size);
+
+        //then
+        assertThat(result.getAfterCursor()).isNotNull();
+        assertThat(result.getNextCursor()).isNull();
+        assertThat(result.getComments()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("커서가 존재할 경우 nextCursor가 생성된다.")
+    void givenValidCursor_whenGetComments_thenNextCursorIsCreated(){
+        //given
+        Long postId = 1L;
+        int size = 5;
+        Cursor cursor = new Cursor(7L, LocalDateTime.of(2025, 10, 23, 8,8,8));
+        when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
+        List<CommentResponse> comments = new ArrayList<>();
+        for (long i= 6; i>0; i--) {
+            comments.add(new CommentResponse(i,  "user1", "content", null));
+        }
+        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
+
+        //when
+        CommentListResponse result = commentService.getComments(postId, cursor, size);
+
+        //then
+        assertThat(result.getAfterCursor()).isNull();
+        assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.getComments()).hasSize(5);
+    }
 }

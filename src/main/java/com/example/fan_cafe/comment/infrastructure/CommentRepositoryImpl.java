@@ -46,6 +46,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                 .leftJoin(comment.parent) //parent 를 가져오는 이유가 뭔가?
                 .where(CursorUtils.beforeDesc(comment.createdAt, comment.id, cursor),
                         comment.post.id.eq(postId),
+                        comment.parent.isNull(),
                         SoftDeleteCondition.isNotDeleted(comment.deletedAt))
                 .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
                 .limit(size + 1)
