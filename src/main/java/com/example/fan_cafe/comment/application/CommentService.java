@@ -10,19 +10,15 @@ import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.util.CursorUtils;
-import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -50,13 +46,24 @@ public class CommentService {
     public CommentListResponse getComments(Long postId, Cursor cursor, int size) {
         //request 해석 후 DB 요청
         validatePostExists(postId);
-        Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<CommentResponse> comments = commentRepository.findAllByPostId(postId, resolvedCursor, size);
+        Cursor resolvedCursor = getCommentsResolvedCursor(cursor);
+        List<CommentResponse> comments = commentRepository.findCommentsByPostId(postId, resolvedCursor, size);
 
         //반환을 위한 cursor 생성
         PageSlice paging = computePageSlice(comments, cursor, size);
 
-        return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
+        return CommentListResponse.from(paging.comments, paging.afterCursor, paging.nextCursor);
+    }
+
+    //대댓글만 가져오는 함수
+    public CommentListResponse getReplies(Long commentId, Cursor cursor, int size) {
+        validateCommentExists(commentId);
+        Cursor resolvedCursor = getRepliesResolvedCursor(cursor, commentId);
+        List<CommentResponse> replies = commentRepository.findRepliesByParentId(commentId, resolvedCursor, size);
+        PageSlice paging = computePageSlice(replies, cursor, size);
+
+        return CommentListResponse.from(paging.comments, paging.afterCursor, paging.nextCursor);
+
     }
 
     private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
@@ -69,10 +76,16 @@ public class CommentService {
     }
     private record PageSlice(List<CommentResponse> comments, Cursor afterCursor, Cursor nextCursor){}
 
-    private Cursor getResolvedCursor(Cursor cursor){
+    private Cursor getCommentsResolvedCursor(Cursor cursor){
         return (cursor != null) ?
-                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatest) :
-                CursorResolver.resolve(null, null, commentRepository::findLatest);
+                CursorResolver.resolve(cursor.id(), cursor.at(), commentRepository::findLatestParentComment) :
+                CursorResolver.resolve(null, null, commentRepository::findLatestParentComment);
+    }
+
+    private Cursor getRepliesResolvedCursor(Cursor cursor, Long parentId){
+        return (cursor != null) ?
+                CursorResolver.resolve(cursor.id(), cursor.at(), () -> commentRepository.findLatestRepliesByParentId(parentId)) :
+                CursorResolver.resolve(null, null, () -> commentRepository.findLatestRepliesByParentId(parentId));
     }
 
     @Transactional
@@ -110,8 +123,14 @@ public class CommentService {
     }
 
     private void validatePostExists(Long postId) {
-        if(!postRepository.existsByIdAndDeletedAtIsNull(postId)){
+        if (!postRepository.existsByIdAndDeletedAtIsNull(postId)) {
             throw new CustomException(CommentErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private void validateCommentExists(Long commentId) {
+        if(!commentRepository.existsByParentIdAndDeletedAtIsNull(commentId)){
+            throw new CustomException(CommentErrorCode.COMMENT_NOT_FOUND);
         }
     }
 

@@ -21,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.data.domain.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -78,6 +77,8 @@ public class CommentServiceTest {
                 .content("첫번째 댓글의 댓글")
                 .parent(mockRootComment)
                 .build();
+
+        ReflectionTestUtils.setField(mockReply, "createdAt", LocalDateTime.of(2025,10,23,3,3,3));
     }
 
     @Test
@@ -184,7 +185,7 @@ public class CommentServiceTest {
         Long postId = 1L;
         int size = 3;
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
-        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
+        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
                 List.of(new CommentResponse(3L,  "user1", "content", null))
         );
 
@@ -209,10 +210,68 @@ public class CommentServiceTest {
         for (long i= 6; i>0; i--) {
             comments.add(new CommentResponse(i,  "user1", "content", null));
         }
-        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
+        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
 
         //when
         CommentListResponse result = commentService.getComments(postId, cursor, size);
+
+        //then
+        assertThat(result.getAfterCursor()).isNull();
+        assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.getComments()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("댓글 id 를 없을 경우, 예외가 발생한다.")
+    void givenInvalidParentId_whenGetReplies_thenThrowsException(){
+        //given
+        Long parentId = 999L;
+        when(commentRepository.existsByParentIdAndDeletedAtIsNull(parentId)).thenReturn(false);
+
+        //when & then
+        assertThatThrownBy(() -> commentService.getReplies(parentId, null, 3))
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining(CommentErrorCode.COMMENT_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("대댓글 get 함수 호출 시 커서가 null 일 경우 afterCursor 가 생성된다.")
+    void givenNullCursor_whenGetReplies_thenAfterCursorIsCreated(){
+        //given
+        Long parentId = 1L;
+        int size = 3;
+        when(commentRepository.existsByParentIdAndDeletedAtIsNull(parentId)).thenReturn(true);
+        when(commentRepository.findLatestRepliesByParentId(parentId)).thenReturn(Optional.of(mockReply));
+        when(commentRepository.findRepliesByParentId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
+                List.of(new CommentResponse(3L,  "user1", "content", parentId))
+        );
+
+        //when
+        CommentListResponse result = commentService.getReplies(parentId, null, size);
+
+        //then
+        assertThat(result.getAfterCursor()).isNotNull();
+        assertThat(result.getNextCursor()).isNull();
+        assertThat(result.getComments()).hasSize(1);
+    }
+
+
+    @Test
+    @DisplayName("대댓글 get 시, 커서가 존재할 경우 nextCursor가 생성된다.")
+    void givenValidCursor_whenGetReplies_thenNextCursorIsCreated(){
+        //given
+        Long commentId = 1L;
+        int size = 5;
+        Cursor cursor = new Cursor(7L, LocalDateTime.of(2025, 10, 23, 8,8,8));
+        when(commentRepository.existsByParentIdAndDeletedAtIsNull(commentId)).thenReturn(true);
+        List<CommentResponse> replies = new ArrayList<>();
+        for (long i= 6; i>0; i--) {
+            replies.add(new CommentResponse(i,  "user1", "content", commentId));
+        }
+        when(commentRepository.findRepliesByParentId(anyLong(), any(Cursor.class), anyInt())).thenReturn(replies);
+
+        //when
+        CommentListResponse result = commentService.getReplies(commentId, cursor, size);
 
         //then
         assertThat(result.getAfterCursor()).isNull();
