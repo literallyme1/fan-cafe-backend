@@ -21,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.data.domain.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -184,7 +183,7 @@ public class CommentServiceTest {
         Long postId = 1L;
         int size = 3;
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
-        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
+        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
                 List.of(new CommentResponse(3L,  "user1", "content", null))
         );
 
@@ -209,7 +208,7 @@ public class CommentServiceTest {
         for (long i= 6; i>0; i--) {
             comments.add(new CommentResponse(i,  "user1", "content", null));
         }
-        when(commentRepository.findAllByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
+        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
 
         //when
         CommentListResponse result = commentService.getComments(postId, cursor, size);

@@ -30,7 +30,7 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
     QUser user = QUser.user;
 
     @Override
-    public List<CommentResponse> findAllByPostId(Long postId, Cursor cursor, int size){
+    public List<CommentResponse> findCommentsByPostId(Long postId, Cursor cursor, int size){
 
         return queryFactory
                 .select(Projections.constructor(CommentResponse.class,
@@ -47,6 +47,29 @@ public class CommentRepositoryImpl implements CommentRepositoryCustom{
                 .where(CursorUtils.beforeDesc(comment.createdAt, comment.id, cursor),
                         comment.post.id.eq(postId),
                         comment.parent.isNull(),
+                        SoftDeleteCondition.isNotDeleted(comment.deletedAt))
+                .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public List<CommentResponse> findRepliesByCommentId(Long commentId, Cursor cursor, int size){
+
+        return queryFactory
+                .select(Projections.constructor(CommentResponse.class,
+                        comment.id,
+                        comment.content,
+                        comment.parent.id,
+                        comment.user.id,
+                        comment.user.nickname,
+                        comment.createdAt
+                ))
+                .from(comment)
+                .join(comment.user, user)
+                .leftJoin(comment.parent) //parent 를 가져오는 이유가 뭔가?
+                .where(CursorUtils.beforeDesc(comment.createdAt, comment.id, cursor),
+                        comment.parent.id.eq(commentId),
                         SoftDeleteCondition.isNotDeleted(comment.deletedAt))
                 .orderBy(comment.createdAt.desc(), comment.id.desc()) // 정렬 조건
                 .limit(size + 1)

@@ -18,4 +18,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, Comment
     @EntityGraph(attributePaths = {"user", "parent"})
     Optional<Comment> findById(Long id);
 
+    boolean existsByIdAndDeletedAtIsNull(Long id);
+
 }

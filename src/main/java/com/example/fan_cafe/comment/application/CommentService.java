@@ -10,19 +10,15 @@ import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.util.CursorUtils;
-import com.example.fan_cafe.global.util.PageUtils;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -51,12 +47,18 @@ public class CommentService {
         //request 해석 후 DB 요청
         validatePostExists(postId);
         Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<CommentResponse> comments = commentRepository.findAllByPostId(postId, resolvedCursor, size);
+        List<CommentResponse> comments = commentRepository.findCommentsByPostId(postId, resolvedCursor, size);
 
         //반환을 위한 cursor 생성
         PageSlice paging = computePageSlice(comments, cursor, size);
 
         return CommentListResponse.from(paging.comments(), paging.afterCursor, paging.nextCursor);
+    }
+
+    //대댓글만 가져오는 함수
+    public CommentListResponse getReplys(Long commentId, Cursor cursor, int size) {
+        validateCommentExists(commentId);
+        Cursor resolvedCursor = getResolvedCursor(cursor); // --TODO : reply 에 맞는 함수 다시 만들어야 함.
     }
 
     private PageSlice computePageSlice(List<CommentResponse> comments, Cursor cursor, int size){
@@ -110,8 +112,14 @@ public class CommentService {
     }
 
     private void validatePostExists(Long postId) {
-        if(!postRepository.existsByIdAndDeletedAtIsNull(postId)){
+        if (!postRepository.existsByIdAndDeletedAtIsNull(postId)) {
             throw new CustomException(CommentErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    private void validateCommentExists(Long commentId) {
+        if(!commentRepository.existsByIdAndDeletedAtIsNull(commentId)){
+            throw new CustomException(CommentErrorCode.COMMENT_NOT_FOUND);
         }
     }
 
