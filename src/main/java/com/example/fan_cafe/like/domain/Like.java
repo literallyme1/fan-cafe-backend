@@ -35,6 +35,10 @@ public class Like {
     @Enumerated(EnumType.STRING)
     private LikeTargetType targetType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private Post post;
+
     public static Like of(User user, LikeTargetType targetType, Long targetId) {
         return Like.builder()
                 .user(user)

@@ -16,14 +16,14 @@ public class LikeRepositoryImpl implements LikeRepositoryCustom{
     private final JPAQueryFactory queryFactory;
     QLike like = QLike.like;
 
-    @Override
-    public List<LikeResponse> findLikeResponsesByUser(User user) {
-
-        return queryFactory
-                .select(new QLikeResponse(like.post.id, Expressions.constant(true), like.post.likeCount))
-                .from(like)
-                .where(like.user.eq(user))
-                .fetch();
-    }
+//    @Override
+//    public List<LikeResponse> findLikeResponsesByUser(User user) {
+//
+//        return queryFactory
+//                .select(new QLikeResponse(like.post.id, Expressions.constant(true), like.post.likeCount))
+//                .from(like)
+//                .where(like.user.eq(user))
+//                .fetch();
+//    }
 
 }

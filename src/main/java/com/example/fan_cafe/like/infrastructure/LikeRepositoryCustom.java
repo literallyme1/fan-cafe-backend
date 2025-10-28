@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface LikeRepositoryCustom {
 
-    List<LikeResponse> findLikeResponsesByUser(User user);
+    //List<LikeResponse> findLikeResponsesByUser(User user);
 }

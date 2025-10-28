@@ -17,21 +17,6 @@ public class LikeController {
 
     private final LikeService likeService;
 
-    @PostMapping("/{postId}")
-    public ApiResponse<LikeResponse> like(@AuthenticationPrincipal(expression = "user") User user,
-                                            @PathVariable Long postId){
-        return ApiResponse.success(ApiResponseStatus.CREATED, likeService.like(user, postId));
-    }
 
-    @DeleteMapping("/{postId}")
-    public ApiResponse<LikeResponse> unLike(@AuthenticationPrincipal(expression = "user")User user,
-                                            @PathVariable Long postId){
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, likeService.unlike(user, postId));
-    }
-
-    @GetMapping
-    public ApiResponse<LikeListResponse> get(@AuthenticationPrincipal(expression = "user")User user){
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, likeService.get(user));
-    }
 
 }
