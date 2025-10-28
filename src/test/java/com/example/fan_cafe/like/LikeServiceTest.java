@@ -3,6 +3,7 @@ package com.example.fan_cafe.like;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.Like;
+import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.like.infrastructure.LikeRepository;
 import com.example.fan_cafe.like.interfaces.dto.LikeListResponse;
 import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
@@ -11,6 +12,7 @@ import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,9 +36,6 @@ public class LikeServiceTest {
     @Mock
     private LikeRepository likeRepository;
 
-
-    @Mock
-    private PostHelper postHelper;
     @InjectMocks
     private LikeService likeService;
 
@@ -58,67 +57,51 @@ public class LikeServiceTest {
                 .content("오늘도 아름답네요")
                 .build();
     }
+
+    @DisplayName("타켓 정보와 유저가 주어졌을 때 기존 liked 정보가 있을 시 삭제한다.")
     @Test
-    void create_shouldLikePost_whenNotAlreadyLiked(){
+    void givenTargetAndUser_whenAlreadyLiked_thenDeleteLiked(){
         //given
-        Long postId = 1L;
-        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
+        User user = mockUser;
+        Long targetId = 1L;
+        LikeTargetType targetType = LikeTargetType.POST;
+
+        when(likeRepository.findByTargetIdAndTargetTypeAndUserId(targetId, targetType, user)).thenReturn(Optional.ofNullable(Like.of(user, targetType, targetId)));
 
         //when
-        LikeResponse response = likeService.like(mockUser, postId);
+        likeService.toggleLike(user, targetId, targetType);
+        //then
+        verify(likeRepository, times(1)).delete(any(Like.class));
+    }
+
+    @DisplayName("타켓 정보와 유저가 주어졌을 때 기존 liked 정보가 없을 시 생성한다.")
+    @Test
+    void givenTargetAndUser_whenNotLiked_thenSaveLiked(){
+        //given
+        User user = mockUser;
+        Long targetId = 1L;
+        LikeTargetType targetType = LikeTargetType.POST;
+
+        when(likeRepository.findByTargetIdAndTargetTypeAndUserId(targetId, targetType, user)).thenReturn(Optional.empty());
+
+        //when
+        likeService.toggleLike(user, targetId, targetType);
 
         //then
         verify(likeRepository, times(1)).save(any(Like.class));
-        assertThat(mockPost.getLikeCount()).isEqualTo(1);
-        assertThat(response.isLiked()).isTrue();
-        assertThat(response.getLikeCount()).isEqualTo(1);
     }
 
+    @DisplayName("동시에 좋아요 요청이 들어오면 이미 좋아요로 판단한다.")
     @Test
-    void create_shouldThrowLikeError_whenAlreadyLiked(){
-        //given
-        Long postId = 1L;
-        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
-        when(likeRepository.save(any())).thenThrow(new DataIntegrityViolationException("중복"));
-        //when
-        assertThrows(CustomException.class, () -> likeService.like(mockUser, 1L));
-    }
+    void givenConcurrentRequest_whenSaveDuplicateLike_thenThrowCustomException() {
+        when(likeRepository.findByTargetIdAndTargetTypeAndUserId(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        doThrow(DataIntegrityViolationException.class).when(likeRepository).save(any(Like.class));
 
-    @Test
-    void delete_shouldDeleteLike_when_likeExists(){
-        //given
-        Long postId = 1L;
-        Like like = Like.of(mockUser, mockPost);
-        ReflectionTestUtils.setField(mockPost, "likeCount", 1);
-        when(likeRepository.findByUserAndPost(mockUser, mockPost)).thenReturn(Optional.of(like));
-        when(postHelper.findByIdOrThrow(any())).thenReturn(mockPost);
+        // when & then
+        assertThrows(CustomException.class,
+                () -> likeService.toggleLike(mockUser, 1L, LikeTargetType.POST));
 
-        //when
-        var response = likeService.unlike(mockUser, postId);
-
-        //then
-        verify(likeRepository, times(1)).delete(any(Like.class));
-        assertThat(mockPost.getLikeCount()).isEqualTo(0);
-        assertThat(response.getLikeCount()).isEqualTo(0);
-    }
-
-    @Test
-    void should_returnLikeList_when_userIsGiven() {
-        // given
-        LikeResponse like1 = new LikeResponse(1L, true, 10);
-        LikeResponse like2 = new LikeResponse(2L, true, 5);
-        List<LikeResponse> mockLikes = List.of(like1, like2);
-
-        when(likeRepository.findLikeResponsesByUser(mockUser)).thenReturn(mockLikes);
-
-        // when
-        LikeListResponse response = likeService.get(mockUser);
-
-        // then
-        assertThat(response.getLikes()).hasSize(2);
-        assertThat(response.getLikes())
-                .extracting("postId")
-                .containsExactly(1L, 2L);
     }
 
 }
