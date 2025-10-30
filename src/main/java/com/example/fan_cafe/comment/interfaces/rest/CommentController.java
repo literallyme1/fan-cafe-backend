@@ -53,4 +53,14 @@ public class CommentController {
         commentService.delete(user, id);
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
+
+    //like
+    @PostMapping("/{commentId}/like")
+    public ApiResponse<Void> toggleLike(@AuthenticationPrincipal(expression = "user") User user,
+                                        @PathVariable Long id){
+        commentService.toggleLike(user, id);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
+
+
 }
