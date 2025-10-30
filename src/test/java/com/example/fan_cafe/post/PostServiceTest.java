@@ -2,6 +2,8 @@ package com.example.fan_cafe.post;
 
 import com.example.fan_cafe.bookmark.infrastructure.BookmarkRepository;
 import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.like.application.LikeService;
+import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.application.PostHelper;
 import com.example.fan_cafe.post.application.PostService;
 import com.example.fan_cafe.post.domain.Post;
@@ -40,6 +42,9 @@ public class PostServiceTest {
 
     @Mock
     BookmarkRepository bookmarkRepository;
+
+    @Mock
+    LikeService likeService;
 
 
     @InjectMocks
@@ -229,6 +234,40 @@ public class PostServiceTest {
 
         assertThat(mockPost.getContent()).isEqualTo(request.getContent());
         assertThat(mockPost.getImageUrls()).containsExactly("old1.jpg", "new-uploaded.jpg");
+    }
+
+    @Test
+    @DisplayName("toggleLike()가 true를 반환했을 때, toggleLike 를 호출하면 likecount 가 올라간다.")
+    void givenIdAndIsLikedIsTrue_whenToggleLike_thenFetchIncreaseLikeCount(){
+        //given
+        User user = mock(User.class);
+        Post post = mock(Post.class);
+        Long postId = 1L;
+        when(postHelper.findByIdOrThrow(anyLong())).thenReturn(post);
+        when(likeService.toggleLike(any(User.class), anyLong(), any(LikeTargetType.class))).thenReturn(true);
+
+        //when
+        postService.toggleLike(user, postId);
+
+        //then
+        verify(post, times(1)).increaseLikeCount();
+    }
+
+    @Test
+    @DisplayName("toggleLike()가 false를 반환했을 때, toggleLike 를 호출하면 likecount 가 감소한다.")
+    void givenIdAndIsLikedIsFalse_whenToggleLike_thenFetchDecreaseLikeCount(){
+        //given
+        User user = mock(User.class);
+        Post post = mock(Post.class);
+        Long postId = 1L;
+        when(postHelper.findByIdOrThrow(anyLong())).thenReturn(post);
+        when(likeService.toggleLike(any(User.class), anyLong(), any(LikeTargetType.class))).thenReturn(false);
+
+        //when
+        postService.toggleLike(user, postId);
+
+        //then
+        verify(post, times(1)).decreaseLikeCount();
     }
 
 }
