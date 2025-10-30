@@ -69,9 +69,10 @@ public class LikeServiceTest {
         when(likeRepository.findByTargetIdAndTargetTypeAndUserId(targetId, targetType, user)).thenReturn(Optional.ofNullable(Like.of(user, targetType, targetId)));
 
         //when
-        likeService.toggleLike(user, targetId, targetType);
+        boolean isLiked = likeService.toggleLike(user, targetId, targetType);
         //then
         verify(likeRepository, times(1)).delete(any(Like.class));
+        assertThat(isLiked).isFalse();
     }
 
     @DisplayName("타켓 정보와 유저가 주어졌을 때 기존 liked 정보가 없을 시 생성한다.")
@@ -85,10 +86,11 @@ public class LikeServiceTest {
         when(likeRepository.findByTargetIdAndTargetTypeAndUserId(targetId, targetType, user)).thenReturn(Optional.empty());
 
         //when
-        likeService.toggleLike(user, targetId, targetType);
+        boolean isLiked = likeService.toggleLike(user, targetId, targetType);
 
         //then
         verify(likeRepository, times(1)).save(any(Like.class));
+        assertThat(isLiked).isTrue();
     }
 
     @DisplayName("동시에 좋아요 요청이 들어오면 이미 좋아요로 판단한다.")

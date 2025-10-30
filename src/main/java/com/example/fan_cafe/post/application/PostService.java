@@ -7,14 +7,17 @@ import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.util.CursorUtils;
+import com.example.fan_cafe.like.application.LikeService;
+import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
-import com.example.fan_cafe.post.interfaces.dto.*;
+import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
+import com.example.fan_cafe.post.interfaces.dto.PostListResponse;
+import com.example.fan_cafe.post.interfaces.dto.PostResponse;
+import com.example.fan_cafe.post.interfaces.dto.PostUpdateRequest;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,12 +31,12 @@ public class PostService {
     private final PostRepository postRepository;
     private final BookmarkRepository bookmarkRepository;
     private final PostHelper postHelper;
-
+    private final LikeService likeService;
 
 
     public PostResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
         List<String> imageUrls = postHelper.uploadImagesAndGetUrls(images, "post");
-        try{
+        try {
             return createWithImages(user, request, imageUrls);
         } catch (Exception e) {
             postHelper.deleteUrls(imageUrls);
@@ -68,10 +71,10 @@ public class PostService {
 
         //1. count 확인
         Long newPostsCount = postRepository.countNewPosts(cursor);
-        if(newPostsCount > 50) return get(cursor, size, userId);
+        if (newPostsCount > 50) return get(cursor, size, userId);
         if (newPostsCount == 0) return PostListResponse.fromAfterCursor(List.of(), null);
 
-        Cursor resolvedCursor = (newPostsCount == 1L)? cursor : getResolvedCursor(cursor);
+        Cursor resolvedCursor = (newPostsCount == 1L) ? cursor : getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNewPosts(resolvedCursor, size, userId);
         Cursor afterCursor = CursorUtils.fromFirst(postDtos);
         return PostListResponse.fromAfterCursor(
@@ -89,12 +92,12 @@ public class PostService {
         List<String> uploadedUrls = postHelper.uploadImages(images);
         List<String> finalImageUrls = postHelper.mergeImageUrls(request.getImageUrls(), uploadedUrls);
 
-        try{
+        try {
             List<String> removedUrl = update(post, request.getTitle(), request.getContent(), finalImageUrls);
             postHelper.deleteUrls(removedUrl);
             boolean isBookmarked = bookmarkRepository.existsByUserAndPost(user, post);
             return PostResponse.from(post, false, isBookmarked);
-        }catch (Exception e){
+        } catch (Exception e) {
             postHelper.deleteUrls(uploadedUrls);
             throw e;
         }
@@ -102,7 +105,7 @@ public class PostService {
 
 
     @Transactional
-    public List<String> update(Post post, String title, String content, List<String> imageUrls){
+    public List<String> update(Post post, String title, String content, List<String> imageUrls) {
         return post.update(title, content, imageUrls);
     }
 
@@ -115,24 +118,36 @@ public class PostService {
         post.delete();
     }
 
-    private Cursor getResolvedCursor(Cursor cursor){
-         return (cursor != null) ?
+    @Transactional
+    public void toggleLike(User user, Long id) {
+        Post post = postHelper.findByIdOrThrow(id);
+        boolean isLiked = likeService.toggleLike(user, id, LikeTargetType.POST);
+        if (isLiked) {
+            post.increaseLikeCount();
+        } else {
+            post.decreaseLikeCount();
+        }
+    }
+
+    private Cursor getResolvedCursor(Cursor cursor) {
+        return (cursor != null) ?
                 CursorResolver.resolve(cursor.id(), cursor.at(), postRepository::findLatest)
                 : CursorResolver.resolve(null, null, postRepository::findLatest);
     }
 
     //반환 할 beforeCursor 생성
-    private PageSlice computePageSlice(List<PostResponse> posts, int size, Cursor cursor){
+    private PageSlice computePageSlice(List<PostResponse> posts, int size, Cursor cursor) {
         //첫 페이지 일 시 가장 최신글 커서 반환
-        Cursor afterCursor = (cursor == null)? CursorUtils.fromFirst(posts) : null;
-        Cursor nextCursor = (posts.size() > size)? CursorUtils.fromLast(posts) : null;
+        Cursor afterCursor = (cursor == null) ? CursorUtils.fromFirst(posts) : null;
+        Cursor nextCursor = (posts.size() > size) ? CursorUtils.fromLast(posts) : null;
         //hasNext 확인 후 size 대로 cut
-        if(nextCursor != null)  posts = posts.subList(0, size);
+        if (nextCursor != null) posts = posts.subList(0, size);
         return new PageSlice(posts, nextCursor, afterCursor);
 
     }
 
-    private record PageSlice(List<PostResponse> posts, Cursor nextCursor, Cursor afterCursor){}
+    private record PageSlice(List<PostResponse> posts, Cursor nextCursor, Cursor afterCursor) {
+    }
 
 
 }

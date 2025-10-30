@@ -47,13 +47,13 @@ public class PostController {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.get(cursor, size, user.getId()));
     }
 
-//    @GetMapping("/new")
-//    public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Cursor cursor,
-//                                                     @RequestParam(defaultValue = "10") int size,
-//                                                     @AuthenticationPrincipal(expression = "user") User user)
-//    {
-//        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.getNewPosts(cursor, size, user.getId()));
-//    }
+    @GetMapping("/new")
+    public ApiResponse<PostListResponse> getNewPosts(@RequestParam(required = false) Cursor cursor,
+                                                     @RequestParam(defaultValue = "10") int size,
+                                                     @AuthenticationPrincipal(expression = "user") User user)
+    {
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, postService.getNewPosts(cursor, size, user.getId()));
+    }
 
     @PutMapping("/{id}")
     public ApiResponse<PostResponse> update(@AuthenticationPrincipal(expression = "user") User user,
@@ -74,5 +74,11 @@ public class PostController {
     }
 
     //like
+    @PostMapping("/{postId}/like")
+    public ApiResponse<Void> toggleLike(@AuthenticationPrincipal(expression = "user") User user,
+                                        @PathVariable Long id){
+        postService.toggleLike(user, id);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS);
+    }
 
 }

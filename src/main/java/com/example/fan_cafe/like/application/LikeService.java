@@ -19,22 +19,27 @@ public class LikeService {
 
     private final LikeRepository likeRepository;
 
-    @Transactional
-    public void toggleLike(User user, Long targetId, LikeTargetType targetType) {
 
+    public boolean toggleLike(User user, Long targetId, LikeTargetType targetType) {
+
+        //기존 like 존재 여부 확인
         Optional<Like> alreadyLiked = likeRepository.findByTargetIdAndTargetTypeAndUserId(targetId, targetType, user);
 
         Like newLike = Like.of(user, targetType, targetId);
 
-        alreadyLiked.ifPresentOrElse(
-                likeRepository::delete,
-                () -> {
-                    try {
-                        likeRepository.save(newLike);
-                    } catch (DataIntegrityViolationException e) {
-                        throw new CustomException(LikeErrorCode.ALREADY_LIKED);
-                    }
-                }
-        );
+        boolean liked;
+        if(alreadyLiked.isPresent()){
+            likeRepository.delete(alreadyLiked.get());
+            liked = false;
+        }else{
+            try {
+                likeRepository.save(newLike);
+                liked = true;
+            } catch (DataIntegrityViolationException e) {
+                throw new CustomException(LikeErrorCode.ALREADY_LIKED);
+            }
+        }
+
+        return liked;
     }
 }
