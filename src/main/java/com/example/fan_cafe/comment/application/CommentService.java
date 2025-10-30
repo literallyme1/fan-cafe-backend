@@ -10,6 +10,8 @@ import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.util.CursorUtils;
+import com.example.fan_cafe.like.application.LikeService;
+import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
@@ -27,6 +29,7 @@ public class CommentService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final LikeService likeService;
 
 
     @Transactional
@@ -105,11 +108,22 @@ public class CommentService {
         comment.delete();
     }
 
-    private CommentResponse connectChildren(CommentResponse root, Map<Long, List<CommentResponse>> childMap) {
-        List<CommentResponse> children = childMap.getOrDefault(root.getId(), List.of());
-        root.getChildren().addAll(children);
-        return root;
+    @Transactional
+    public void toggleLike(User user, Long id) {
+        Comment comment = findByIdOrThrow(id);
+        boolean isLiked = likeService.toggleLike(user, id, LikeTargetType.POST);
+        if (isLiked) {
+            comment.increaseLikeCount();
+        } else {
+            comment.decreaseLikeCount();
+        }
     }
+
+//    private CommentResponse connectChildren(CommentResponse root, Map<Long, List<CommentResponse>> childMap) {
+//        List<CommentResponse> children = childMap.getOrDefault(root.getId(), List.of());
+//        root.getChildren().addAll(children);
+//        return root;
+//    }
 
     private static void validateWriter(User principalUser, Comment comment) {
         if(!comment.getUser().getId().equals(principalUser.getId())) {
