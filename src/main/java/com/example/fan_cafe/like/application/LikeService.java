@@ -19,7 +19,7 @@ public class LikeService {
 
     private final LikeRepository likeRepository;
 
-    @Transactional
+
     public boolean toggleLike(User user, Long targetId, LikeTargetType targetType) {
 
         //기존 like 존재 여부 확인
