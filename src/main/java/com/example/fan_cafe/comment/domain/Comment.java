@@ -44,6 +44,10 @@ public class Comment extends BaseTimeEntity implements HasCreatedAt {
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> children = new ArrayList<>();
 
+    @Builder.Default
+    @Column(nullable = false)
+    private int likeCount = 0;
+
     public void addChild(Comment child) {
         this.children.add(child);
         child.parent = this;
