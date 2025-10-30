@@ -10,6 +10,8 @@ import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
 import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.like.application.LikeService;
+import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.Role;
@@ -44,6 +46,9 @@ public class CommentServiceTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private LikeService likeService;
+
     @InjectMocks
     private CommentService commentService;
 
@@ -51,6 +56,7 @@ public class CommentServiceTest {
     private Post mockPost;
     private Comment mockRootComment;
     private Comment mockReply;
+
 
     @BeforeEach
     void setUp() {
@@ -277,5 +283,39 @@ public class CommentServiceTest {
         assertThat(result.getAfterCursor()).isNull();
         assertThat(result.getNextCursor()).isNotNull();
         assertThat(result.getComments()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("toggleLike()가 true를 반환했을 때, toggleLike 를 호출하면 likecount 가 올라간다.")
+    void givenIdAndIsLikedIsTrue_whenToggleLike_thenFetchIncreaseLikeCount(){
+        //given
+        User user = mock(User.class);
+        Comment comment = mock(Comment.class);
+        Long commentId = 1L;
+        when(commentRepository.findById(anyLong())).thenReturn(Optional.of(comment));
+        when(likeService.toggleLike(any(User.class), anyLong(), any(LikeTargetType.class))).thenReturn(true);
+
+        //when
+        commentService.toggleLike(user, commentId);
+
+        //then
+        verify(comment, times(1)).increaseLikeCount();
+    }
+
+    @Test
+    @DisplayName("toggleLike()가 false를 반환했을 때, toggleLike 를 호출하면 likecount 가 감소한다.")
+    void givenIdAndIsLikedIsFalse_whenToggleLike_thenFetchDecreaseLikeCount(){
+        //given
+        User user = mock(User.class);
+        Comment comment = mock(Comment.class);
+        Long postId = 1L;
+        when(commentRepository.findById(anyLong())).thenReturn(Optional.of(comment));
+        when(likeService.toggleLike(any(User.class), anyLong(), any(LikeTargetType.class))).thenReturn(false);
+
+        //when
+        commentService.toggleLike(user, postId);
+
+        //then
+        verify(comment, times(1)).decreaseLikeCount();
     }
 }
