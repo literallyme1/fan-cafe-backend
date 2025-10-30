@@ -77,5 +77,8 @@ public class Comment extends BaseTimeEntity implements HasCreatedAt {
         this.content = content;
     }
 
+    public void increaseLikeCount(){ this.likeCount += 1; }
+    public void decreaseLikeCount(){ if(this.likeCount > 0) this.likeCount -= 1; }
+
 
 }
