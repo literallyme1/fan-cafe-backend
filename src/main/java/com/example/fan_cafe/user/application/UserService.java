@@ -2,6 +2,7 @@ package com.example.fan_cafe.user.application;
 
 
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.user.domain.User;
@@ -25,23 +26,38 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final S3Uploader s3Uploader;
 
-    @Transactional
     public ProfileResponse update(Long userId, ProfileRequest request, MultipartFile image) {
+
         User user = findById(userId);
 
+        //프로필 이미지 변경 여부 확인
+        String newAvatarUrl = null;
+        if(request.isImageChanged()){
+            if(image == null){
+                s3Uploader.delete(s3Uploader.extractFileKey(user.getAvatarUrl()));
+            }else{
+                newAvatarUrl = s3Uploader.upload(image, "user");
+            }
+        }
+        return updateWithImage(user, request, newAvatarUrl);
+
+    }
+
+    @Transactional
+    private ProfileResponse updateWithImage(User user, ProfileRequest request, String avatarUrl){
         // 닉네임이 바뀌는 경우만 중복체크 (대소문자 무시, 자기자신 제외 후 탐색)
         validateNickname(user, request.nickname());
-
-        //이미지 존재 여부 확인
-        if(image != null){
-            if(user.getAvatarUrl() != null){
-                s3Uploader.delete(s3Uploader.extractFileKey(user.getAvatarUrl()));
-            }
-            String avatarUrl = s3Uploader.upload(image, "user");
+        if(request.isImageChanged()){
+            user.updateProfile(request.nickname(), request.introduction(), avatarUrl);
+        }else{
+            user.updateProfile(request.nickname(), request.introduction());
         }
-        user.updateProfile(request.nickname(), request.introduction(), avatarUrl);
         return ProfileResponse.from(user);
     }
+
+
+
+
 
     public ProfileResponse get(User user){
         return ProfileResponse.from(user);
