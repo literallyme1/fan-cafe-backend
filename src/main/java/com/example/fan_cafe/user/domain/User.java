@@ -88,4 +88,9 @@ public class User extends BaseTimeEntity {
         this.avatarUrl = avatarUrl;
     }
 
+    public void updateProfile(String nickname, String introduction) {
+        this.nickname = nickname;
+        this.introduction = introduction;
+    }
+
 }
