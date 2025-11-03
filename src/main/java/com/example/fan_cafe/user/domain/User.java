@@ -82,9 +82,10 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
-    public void updateProfile(String nickname, String introduction) {
+    public void updateProfile(String nickname, String introduction, String avatarUrl) {
         this.nickname = nickname;
         this.introduction = introduction;
+        this.avatarUrl = avatarUrl;
     }
 
 }
