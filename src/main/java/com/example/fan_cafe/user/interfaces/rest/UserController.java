@@ -32,7 +32,7 @@ public class UserController {
     @PutMapping
     public ApiResponse<ProfileResponse> update(@AuthenticationPrincipal(expression = "user") User user,
                                                @RequestPart("profile") @Valid ProfileRequest request,
-                                               @RequestPart("image")MultipartFile image) {
+                                               @RequestPart(value = "image", required = false)MultipartFile image) {
 
         ProfileResponse response = userService.update(user.getId(), request, image);
         return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
