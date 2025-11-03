@@ -34,6 +34,9 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column
+    private String avatarUrl;
+
     @Column(nullable = false)
     @Builder.Default
     private String introduction = "";
@@ -77,6 +80,12 @@ public class User extends BaseTimeEntity {
 
         user.createPassword(encodedPassword);
         return user;
+    }
+
+    public void updateProfile(String nickname, String introduction, String avatarUrl) {
+        this.nickname = nickname;
+        this.introduction = introduction;
+        this.avatarUrl = avatarUrl;
     }
 
     public void updateProfile(String nickname, String introduction) {
