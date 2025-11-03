@@ -1,5 +1,6 @@
 package com.example.fan_cafe.user;
 
+import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.user.application.UserService;
 import com.example.fan_cafe.user.domain.Role;
@@ -14,16 +15,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {
@@ -58,8 +60,9 @@ public class UserServiceTest {
         String url = "right_url";
 
         when(userRepository.findByIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(mockUser));
-        when(s3Uploader.upload(any(MultipartFile.class), anyString())).thenReturn(url);
         when(userRepository.existsNickname(anyString(), anyLong())).thenReturn(false);
+        when(s3Uploader.upload(any(MultipartFile.class), anyString())).thenReturn(url);
+
 
         //when
         ProfileResponse result = userService.update(userId, request, image);
@@ -87,7 +90,7 @@ public class UserServiceTest {
         ProfileResponse result = userService.update(userId, request, image);
 
         //then
-        assertThat(result.getAvatarUrl()).isEqualTo(url);
+        assertThat(result.getAvatarUrl()).isEqualTo("user_url");
         assertThat(result.getNickname()).isEqualTo("example");
         assertThat(result.getIntroduction()).isEqualTo("소개글");
     }
@@ -96,16 +99,43 @@ public class UserServiceTest {
     @DisplayName("DB에 있는 NickName 과 동일 할 시 에러 던짐")
     void givenSameNickname_whenUpdate_thenThrowsError(){
         //given
-        //when
-        //then
+        Long userId = 1L;
+        ProfileRequest request = new ProfileRequest("소개글", "example", false);
+        MultipartFile image = null;
+        String url = "right_url";
+
+        when(userRepository.findByIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(mockUser));
+        when(userRepository.existsNickname(anyString(), anyLong())).thenReturn(true);
+
+        //when & then
+        assertThrows(CustomException.class,
+                () -> userService.update(userId, request, image));
     }
 
     @Test
     @DisplayName("s3 실패했을 때 롤백되어 DB 관련 함수 실행 X")
     void givenS3Error_whenUpdate_thenThrowsError(){
         //given
-        //when
-        //then
+
+        // given
+        Long userId = 1L;
+        User mockUser = mock(User.class);
+        MultipartFile image = mock(MultipartFile.class);
+        ProfileRequest request = new ProfileRequest("example", "example", true);
+
+        when(userRepository.findByIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(mockUser));
+        // S3Uploader가 예외 던지도록 설정
+        when(s3Uploader.upload(any(MultipartFile.class), eq("user")))
+                .thenThrow(new RuntimeException("S3 error"));
+
+        // when & then
+        assertThrows(RuntimeException.class, () ->
+                userService.update(userId, request, image)
+        );
+
+        // DB 관련 함수들이 실행되지 않았는지 검증
+        verify(mockUser, never()).updateProfile(any(), any(), any());
+        verify(userRepository, never()).save(any());
     }
 
 }

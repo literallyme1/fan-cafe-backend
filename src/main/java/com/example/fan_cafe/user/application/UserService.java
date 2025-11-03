@@ -30,6 +30,9 @@ public class UserService {
 
         User user = findById(userId);
 
+        // 닉네임이 바뀌는 경우만 중복체크 (대소문자 무시, 자기자신 제외 후 탐색)
+        validateNickname(user, request.nickname());
+
         //프로필 이미지 변경 여부 확인
         String newAvatarUrl = null;
         if(request.isImageChanged()){
@@ -46,8 +49,6 @@ public class UserService {
 
     @Transactional
     private ProfileResponse updateWithImage(User user, ProfileRequest request, String avatarUrl){
-        // 닉네임이 바뀌는 경우만 중복체크 (대소문자 무시, 자기자신 제외 후 탐색)
-        validateNickname(user, request.nickname());
         if(request.isImageChanged()){
             user.updateProfile(request.nickname(), request.introduction(), avatarUrl);
         }else{
