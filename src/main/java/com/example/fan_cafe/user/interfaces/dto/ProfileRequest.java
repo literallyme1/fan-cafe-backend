@@ -1,6 +1,7 @@
 package com.example.fan_cafe.user.interfaces.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -15,7 +16,10 @@ public record ProfileRequest (
                 regexp = "^[a-zA-Z0-9가-힣_-]+$",
                 message = "닉네임은 한글, 영문, 숫자, 밑줄(_), 하이픈(-)만 사용할 수 있습니다."
         )
-        String nickname
+        String nickname,
+
+        @NotNull(message = "isImageChanged 값은 필수입니다.")
+        Boolean isImageChanged
 ){
         public ProfileRequest {
                 if (introduction != null) {
