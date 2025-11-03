@@ -33,9 +33,10 @@ public class UserService {
         //프로필 이미지 변경 여부 확인
         String newAvatarUrl = null;
         if(request.isImageChanged()){
-            if(image == null){
+            if(user.getAvatarUrl() != null){
                 s3Uploader.delete(s3Uploader.extractFileKey(user.getAvatarUrl()));
-            }else{
+            }
+            if(image != null){
                 newAvatarUrl = s3Uploader.upload(image, "user");
             }
         }
