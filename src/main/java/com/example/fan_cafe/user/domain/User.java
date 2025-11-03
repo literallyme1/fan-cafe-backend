@@ -34,6 +34,9 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
+    @Column
+    private String avatarUrl;
+
     @Column(nullable = false)
     @Builder.Default
     private String introduction = "";

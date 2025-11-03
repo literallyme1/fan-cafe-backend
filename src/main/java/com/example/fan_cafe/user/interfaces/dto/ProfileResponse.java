@@ -13,6 +13,7 @@ public class ProfileResponse {
     private final String nickname;
     private final String role;
     private final String introduction;
+    private final String avatarUrl;
 
     public static ProfileResponse from(User user) {
         return ProfileResponse.builder()
@@ -21,6 +22,7 @@ public class ProfileResponse {
                 .nickname(user.getNickname())
                 .role(user.getRole().toString())
                 .introduction(user.getIntroduction())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 }

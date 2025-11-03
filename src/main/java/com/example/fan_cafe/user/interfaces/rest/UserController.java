@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/users/me")
@@ -18,11 +19,6 @@ public class UserController {
 
     private final UserService userService;
 
-//    @PostMapping
-//    public ApiResponse<ProfileResponse> create(@AuthenticationPrincipal(expression = "user") User user,
-//                                               @Valid ProfileRequest profileRequest) {
-//        return ApiResponse.success(ApiResponseStatus.CREATED, userService.create(user.getId(), profileRequest));
-//    }
     @GetMapping
     public ApiResponse<ProfileResponse> get(@AuthenticationPrincipal(expression = "user") User user) {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, userService.get(user));
@@ -32,6 +28,16 @@ public class UserController {
         userService.delete(user.getId());
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
+
+    @PutMapping
+    public ApiResponse<ProfileResponse> update(@AuthenticationPrincipal(expression = "user") User user,
+                                               @RequestPart("profile") @Valid ProfileRequest request,
+                                               @RequestPart("image")MultipartFile image) {
+
+        ProfileResponse response = userService.update(user.getId(), request, image);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+    }
+
 
 
 
