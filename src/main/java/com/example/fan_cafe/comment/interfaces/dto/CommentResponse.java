@@ -24,17 +24,28 @@ public class CommentResponse implements HasCreatedAt {
     private Long authorId;
     private String nickname;
     private String avatarUrl;
+    private int likeCount;
+    private boolean liked;
     private String content;
     private Long parentId;
     private List<CommentResponse> children;
 
     @QueryProjection
-    public CommentResponse(Long id, Long authorId, String nickname, String avatarUrl, String content, Long parentId) {
+    public CommentResponse(Long id,
+                           Long authorId,
+                           String nickname,
+                           String avatarUrl,
+                           String content,
+                           int likeCount,
+                           boolean liked,
+                           Long parentId) {
         this.id = id;
         this.authorId = authorId;
         this.nickname = nickname;
         this.avatarUrl = avatarUrl;
         this.content = content;
+        this.likeCount = likeCount;
+        this.liked = liked;
         this.parentId = parentId;
         this.children = new ArrayList<>();
     }
