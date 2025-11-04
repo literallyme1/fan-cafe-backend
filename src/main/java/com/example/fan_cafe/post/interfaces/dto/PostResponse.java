@@ -5,7 +5,6 @@ import com.example.fan_cafe.post.domain.Post;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Builder;
 import lombok.Getter;
-import org.hibernate.dialect.function.PostgreSQLTruncRoundFunction;
 
 import java.time.LocalDateTime;
 import java.util.List;

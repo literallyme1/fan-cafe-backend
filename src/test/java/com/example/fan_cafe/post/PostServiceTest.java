@@ -99,7 +99,7 @@ public class PostServiceTest {
 
         when(postRepository.countNewPosts(any(Cursor.class))).thenReturn(1L);
         when(postRepository.findNewPosts(any(Cursor.class), eq(size), eq(userId))).thenReturn(List.of(
-                new PostResponse(1L, "title1", "content1", "nickname", 0,
+                new PostResponse(1L, "title1", "content1", 1L, "nickname", "avatar_url", 0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)));
 
         //when
@@ -121,11 +121,11 @@ public class PostServiceTest {
 
         when(postRepository.countNewPosts(any(Cursor.class))).thenReturn(3L);
         List<PostResponse> posts = List.of(
-                new PostResponse(13L, "title1", "content1", "nickname", 0,
+                new PostResponse(13L, "title1", "content1", 1L, "nickname", "avatar_url", 0,
                         0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false),
-                new PostResponse(12L, "title2", "content2", "nickname", 0,
+                new PostResponse(12L, "title2", "content2", 1L, "nickname", "avatar_url",0,
                         0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false),
-                new PostResponse(11L, "title3", "content3", "nickname", 0,
+                new PostResponse(11L, "title3", "content3", 1L, "nickname", "avatar_url", 0,
                         0, LocalDateTime.of(2025, 10, 17, 11, 0), List.of(), false, false)
         );
         when(postRepository.findNewPosts(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
@@ -157,11 +157,11 @@ public class PostServiceTest {
 
         when(postRepository.findLatest()).thenReturn(Optional.of(latestPost));
         List<PostResponse> posts = List.of(
-                new PostResponse(9L, "title1", "content1", "nickname", 0,
+                new PostResponse(9L, "title1", "content1", 1L, "nickname", "avatar_url",0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
-                new PostResponse(8L, "title2", "content2", "nickname", 0,
+                new PostResponse(8L, "title2", "content2", 1L, "nickname", "avatar_url", 0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
-                new PostResponse(7L, "title3", "content3", "nickname", 0,
+                new PostResponse(7L, "title3", "content3", 1L, "nickname", "avatar_url", 0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)
         );
         when(postRepository.findNextPage(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
@@ -185,11 +185,11 @@ public class PostServiceTest {
         Long userId = 1L;
 
         List<PostResponse> posts = List.of(
-                new PostResponse(9L, "title1", "content1", "nickname", 0,
+                new PostResponse(9L, "title1", "content1", 1L, "nickname", "avatar_url",0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
-                new PostResponse(8L, "title2", "content2", "nickname", 0,
+                new PostResponse(8L, "title2", "content2", 1L, "nickname", "avatar_url",0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false),
-                new PostResponse(7L, "title3", "content3", "nickname", 0,
+                new PostResponse(7L, "title3", "content3", 1L, "nickname", "avatar_url",0,
                         0, LocalDateTime.of(2025, 10, 16, 11, 0), List.of(), false, false)
         );
         when(postRepository.findNextPage(any(Cursor.class), eq(size), eq(userId))).thenReturn(posts);
