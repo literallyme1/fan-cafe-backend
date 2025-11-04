@@ -9,8 +9,8 @@ import java.util.Optional;
 
 public interface CommentRepositoryCustom {
 
-    List<CommentResponse> findCommentsByPostId(Long postId, Cursor cursor, int size);
-    List<CommentResponse> findRepliesByParentId(Long parentId, Cursor cursor, int size);
+    List<CommentResponse> findCommentsByPostId(Long postId, Long userId, Cursor cursor, int size);
+    List<CommentResponse> findRepliesByParentId(Long parentId, Long userId, Cursor cursor, int size);
     Optional<Comment> findLatestParentComment();
     Optional<Comment> findLatestRepliesByParentId(Long parentId);
 }
