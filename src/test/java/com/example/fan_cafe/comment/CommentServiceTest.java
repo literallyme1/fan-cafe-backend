@@ -179,7 +179,7 @@ public class CommentServiceTest {
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(false);
 
         //when & then
-        assertThatThrownBy(() -> commentService.getComments(postId, null, 3))
+        assertThatThrownBy(() -> commentService.getComments(postId, 1L, null, 3))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining(CommentErrorCode.POST_NOT_FOUND.getMessage());
     }
@@ -191,12 +191,12 @@ public class CommentServiceTest {
         Long postId = 1L;
         int size = 3;
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
-        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
-                List.of(new CommentResponse(3L,  "user1", "content", null))
+        when(commentRepository.findCommentsByPostId(anyLong(), anyLong(), any(Cursor.class), anyInt())).thenReturn(
+                List.of(new CommentResponse(3L,  1L, "user1", "avatar_url","content", 1, true, null))
         );
 
         //when
-        CommentListResponse result = commentService.getComments(postId, null, size);
+        CommentListResponse result = commentService.getComments(postId, 1L, null, size);
 
         //then
         assertThat(result.getAfterCursor()).isNotNull();
@@ -214,12 +214,12 @@ public class CommentServiceTest {
         when(postRepository.existsByIdAndDeletedAtIsNull(postId)).thenReturn(true);
         List<CommentResponse> comments = new ArrayList<>();
         for (long i= 6; i>0; i--) {
-            comments.add(new CommentResponse(i,  "user1", "content", null));
+            comments.add(new CommentResponse(i,  1L, "user1", "avatar_url","content", 1, true, null));
         }
-        when(commentRepository.findCommentsByPostId(anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
+        when(commentRepository.findCommentsByPostId(anyLong(),anyLong(), any(Cursor.class), anyInt())).thenReturn(comments);
 
         //when
-        CommentListResponse result = commentService.getComments(postId, cursor, size);
+        CommentListResponse result = commentService.getComments(postId, 1L, cursor, size);
 
         //then
         assertThat(result.getAfterCursor()).isNull();
@@ -235,7 +235,7 @@ public class CommentServiceTest {
         when(commentRepository.existsByParentIdAndDeletedAtIsNull(parentId)).thenReturn(false);
 
         //when & then
-        assertThatThrownBy(() -> commentService.getReplies(parentId, null, 3))
+        assertThatThrownBy(() -> commentService.getReplies(parentId, 1L,null, 3))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining(CommentErrorCode.COMMENT_NOT_FOUND.getMessage());
     }
@@ -248,12 +248,12 @@ public class CommentServiceTest {
         int size = 3;
         when(commentRepository.existsByParentIdAndDeletedAtIsNull(parentId)).thenReturn(true);
         when(commentRepository.findLatestRepliesByParentId(parentId)).thenReturn(Optional.of(mockReply));
-        when(commentRepository.findRepliesByParentId(anyLong(), any(Cursor.class), anyInt())).thenReturn(
-                List.of(new CommentResponse(3L,  "user1", "content", parentId))
+        when(commentRepository.findRepliesByParentId(anyLong(), anyLong(), any(Cursor.class), anyInt())).thenReturn(
+                List.of(new CommentResponse(3L,  1L, "user1", "avatar_url","content", 1, true, parentId))
         );
 
         //when
-        CommentListResponse result = commentService.getReplies(parentId, null, size);
+        CommentListResponse result = commentService.getReplies(parentId, 1L,null, size);
 
         //then
         assertThat(result.getAfterCursor()).isNotNull();
@@ -272,12 +272,12 @@ public class CommentServiceTest {
         when(commentRepository.existsByParentIdAndDeletedAtIsNull(commentId)).thenReturn(true);
         List<CommentResponse> replies = new ArrayList<>();
         for (long i= 6; i>0; i--) {
-            replies.add(new CommentResponse(i,  "user1", "content", commentId));
+            replies.add(new CommentResponse(i,  1L, "user1", "avatar_url","content", 1, true, commentId));
         }
-        when(commentRepository.findRepliesByParentId(anyLong(), any(Cursor.class), anyInt())).thenReturn(replies);
+        when(commentRepository.findRepliesByParentId(anyLong(), anyLong(), any(Cursor.class), anyInt())).thenReturn(replies);
 
         //when
-        CommentListResponse result = commentService.getReplies(commentId, cursor, size);
+        CommentListResponse result = commentService.getReplies(commentId, 1L, cursor, size);
 
         //then
         assertThat(result.getAfterCursor()).isNull();

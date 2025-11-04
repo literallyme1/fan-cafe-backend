@@ -28,16 +28,18 @@ public class CommentController {
 
     @GetMapping("/{postId}")
     public ApiResponse<CommentListResponse> get(@PathVariable Long postId,
+                                                @AuthenticationPrincipal(expression = "user") User user,
                                                 @RequestParam(required = false) Cursor cursor,
                                                 @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getComments(postId, cursor, size));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getComments(postId, user.getId(), cursor, size));
     }
 
     @GetMapping("{commentId}/replies")
     public ApiResponse<CommentListResponse> getReplies(@PathVariable Long commentId,
+                                                       @AuthenticationPrincipal(expression = "user") User user,
                                                      @RequestParam(required = false) Cursor cursor,
                                                      @RequestParam(defaultValue = "10") int size){
-        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getReplies(commentId, cursor, size));
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, commentService.getReplies(commentId, user.getId(), cursor, size));
     }
 
     @PutMapping("/{id}")

@@ -21,16 +21,31 @@ public class CommentResponse implements HasCreatedAt {
 
     private Long id;
     private LocalDateTime createdAt;
-    private String writer;
+    private Long authorId;
+    private String nickname;
+    private String avatarUrl;
+    private int likeCount;
+    private boolean liked;
     private String content;
     private Long parentId;
     private List<CommentResponse> children;
 
     @QueryProjection
-    public CommentResponse(Long id, String writer, String content, Long parentId) {
+    public CommentResponse(Long id,
+                           Long authorId,
+                           String nickname,
+                           String avatarUrl,
+                           String content,
+                           int likeCount,
+                           boolean liked,
+                           Long parentId) {
         this.id = id;
-        this.writer = writer;
+        this.authorId = authorId;
+        this.nickname = nickname;
+        this.avatarUrl = avatarUrl;
         this.content = content;
+        this.likeCount = likeCount;
+        this.liked = liked;
         this.parentId = parentId;
         this.children = new ArrayList<>();
     }
@@ -38,7 +53,9 @@ public class CommentResponse implements HasCreatedAt {
     public static CommentResponse from(Comment comment) {
         return CommentResponse.builder()
                 .id(comment.getId())
-                .writer(comment.getUser().getNickname())
+                .authorId(comment.getUser().getId())
+                .nickname(comment.getUser().getNickname())
+                .avatarUrl(comment.getUser().getAvatarUrl())
                 .content(comment.getDeletedAt() != null ? "[삭제된 댓글입니다]" : comment.getContent())
                 .parentId(comment.getParent() != null ? comment.getParent().getId() : null)
                 .children(new ArrayList<>())
