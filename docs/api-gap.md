@@ -43,8 +43,8 @@
 
 ## 👤 Profiles (프로필 / 팔로우) //TODO - 팔로우와 분리 예정
 | 상태 | 기능 | Method | Endpoint | 설명                                             | 이슈번호 |
-|------|------|-------|-----------|------------------------------------------------| [#53](https://github.com/literallyme1/fan-cafe-backend/issues/53)
-| ☐ | 내 프로필 조회 | PUT   | `/users/me` | 기존 `avatarUrl`이 존재 X, 추가 후 put 시 업데이트 가능하도록 설정 |
+|------|------|-------|-----------|------------------------------------------------| -------|
+| ☐ | 내 프로필 조회 | PUT   | `/users/me` | 기존 `avatarUrl`이 존재 X, 추가 후 put 시 업데이트 가능하도록 설정 |  [#53](https://github.com/literallyme1/fan-cafe-backend/issues/53) |
 | ☐ | 내 프로필 조회 | GET   | `/users/me` | JWT 기반 인증 연동 필요                                |
 | ☐ | 사용자 프로필 조회 | GET   | `/users/{userId}` | 프론트에서 필요                                       |
 | ☐ | 팔로우 등록 | POST  | `/users/{userId}/follow` |                                                |
