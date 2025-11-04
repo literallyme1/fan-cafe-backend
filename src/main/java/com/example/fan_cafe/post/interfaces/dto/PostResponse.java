@@ -17,7 +17,11 @@ public class PostResponse implements HasCreatedAt {
     private final Long id;
     private final String title;
     private final String content;
+
+    //user정보
+    private final Long authorId;
     private final String nickname;
+    private final String avatarUrl;
     private final int likeCount;
     private final int commentCount;
     private final LocalDateTime createdAt;
@@ -29,7 +33,9 @@ public class PostResponse implements HasCreatedAt {
     public PostResponse(Long id,
                         String title,
                         String content,
+                        Long authorId,
                         String nickname,
+                        String avatarUrl,
                         int likeCount,
                         int commentCount,
                         LocalDateTime createdAt,
@@ -39,7 +45,9 @@ public class PostResponse implements HasCreatedAt {
         this.id = id;
         this.title = title;
         this.content = content;
+        this. authorId = authorId;
         this.nickname = nickname;
+        this.avatarUrl = avatarUrl;
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.createdAt = createdAt;
