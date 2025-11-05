@@ -31,27 +31,29 @@
 ## 🧾 Like Domain
 
 
-| 상태 | 구분 | 항목 | 설명                                                                                               | 이슈 번호                                                        |
-|------|------|------|--------------------------------------------------------------------------------------------------|--------------------------------------------------------------|
-| ☑ | 도메인 구조 | `post.like`, `comment.like` | 현재 `/like` 통합 도메인 사용 중. 독립 도메인은 유지하되 각 `post`, `comment` 도메인 `service`에 가져와서 구현                  | [#45](https://github.com/literallyme1/fan-cafe-backend/issues/45) |
-| ☑ | 요청 방식 | Path Parameter 기반 | 현재 body `{ targetId, targetType }` 형식. 도메인별 경로(`/posts/{id}/like`, `/comments/{id}/like`)로 변경 필요 | [#3](https://github.com/literallyme1/fan-cafe-backend/issues/3) |
-| ☑ | 응답 구조 | `void (200 OK)` | 현재 `LikeResponse` 반환 중. 상태코드만 반환하도록 수정 필요                                                        | [#3](https://github.com/literallyme1/fan-cafe-backend/issues/3) |
-| ☑ | 페이징 | 제거 | 좋아요 목록(`LikeListResponse`)은 페이지 기반. 단순 토글용 API에서는 제거 권장                                          |
-| ☑ | 조회 구조 | 댓글/대댓글 분리 조회 | 모든 댓글을 한 번에 조회하는 구조 개선 필요 | [#38](https://github.com/literallyme1/fan-cafe-backend/issues/38) |
-
+| 상태 | 구분                               | 항목 | 설명                                                                 | 이슈 번호                                                        |
+|------|----------------------------------|------|--------------------------------------------------------------------|--------------------------------------------------------------|
+| ☑ | 도메인 구조                           | `post.like`, `comment.like` | 현재 `/like` 통합 도메인 사용 중. 독립 도메인은 유지하되 각 `post`, `comment` 도메인 `service`에 가져와서 구현 | [#45](https://github.com/literallyme1/fan-cafe-backend/issues/45) |
+| ☑ | 요청 방식                            | Path Parameter 기반 | 현재 body `{ targetId, targetType }` 형식. 도메인별 경로(`/posts/{id}/like`, `/comments/{id}/like`)로 변경 필요 | [#3](https://github.com/literallyme1/fan-cafe-backend/issues/3) |
+| ☑ | 응답 구조                            | `void (200 OK)` | 현재 `LikeResponse` 반환 중. 상태코드만 반환하도록 수정 필요                          | [#3](https://github.com/literallyme1/fan-cafe-backend/issues/3) |
+| ☑ | 페이징                              | 제거 | 좋아요 목록(`LikeListResponse`)은 페이지 기반. 단순 토글용 API에서는 제거 권장            |
+| ☑ | 조회 구조                            | 댓글/대댓글 분리 조회 | 모든 댓글을 한 번에 조회하는 구조 개선 필요 | [#38](https://github.com/literallyme1/fan-cafe-backend/issues/38) |
+| ☐ | [개선]`likeCount`를 redis 로 cashing |   | redis로 caching 하여 실시간 반영                       |
+| ☐ | [개선] like 시 post, delete 로 받기    |   | 현재 `toggle` controller 단위에서 post, delete 로 받기                    |
 ---
 
 ## 👤 Profiles (프로필 / 팔로우) //TODO - 팔로우와 분리 예정
-| 상태 | 기능 | Method | Endpoint | 설명                                             | 이슈번호 |
-|------|------|-------|-----------|------------------------------------------------| -------|
-| ☐ | 내 프로필 조회 | PUT   | `/users/me` | 기존 `avatarUrl`이 존재 X, 추가 후 put 시 업데이트 가능하도록 설정 |  [#53](https://github.com/literallyme1/fan-cafe-backend/issues/53) |
-| ☐ | 내 프로필 조회 | GET   | `/users/me` | JWT 기반 인증 연동 필요                                |
-| ☐ | 사용자 프로필 조회 | GET   | `/users/{userId}` | 프론트에서 필요                                       |
-| ☐ | 팔로우 등록 | POST  | `/users/{userId}/follow` |                                                |
-| ☐ | 팔로우 취소 | DELETE | `/users/{userId}/follow` | toggle API 필요                                  |
-| ☐ | 팔로워 목록 조회 | GET   | `/users/{userId}/followers` |                                                |
-| ☐ | 팔로잉 목록 조회 | GET   | `/users/{userId}/following` |                                                |
-
+| 상태 | 구문                                     | Method | Endpoint & 구분               | 설명                                             | 이슈번호                                                             |
+|------|----------------------------------------|------|-----------------------------|------------------------------------------------|------------------------------------------------------------------|
+| ☑| 내 프로필 업데이트                             | PUT  | `/users/me`                 | 기존 `avatarUrl`이 존재 X, 추가 후 put 시 업데이트 가능하도록 설정 | [#53](https://github.com/literallyme1/fan-cafe-backend/issues/53) |
+| ☑ | 내 프로필 조회                               | GET  | `/users/me`                 | JWT 기반 인증 연동 필요                                |                                               |
+| ☐ | 사용자 프로필 조회                             | GET  | `/users/{userId}`           | 프론트에서 필요                                       |                                                |
+| ☐ | 팔로우 등록                                 | POST | `/users/{userId}/follow`    |                                                |                                              
+| ☐ | 팔로우 취소                                 | DELETE | `/users/{userId}/follow`    | toggle API 필요                                  |                                              
+| ☐ | 팔로워 목록 조회                              | GET  | `/users/{userId}/followers` |                                                |                                             
+| ☐ | 팔로잉 목록 조회                              | GET  | `/users/{userId}/following` |                                                |                                              |
+| ☐ | 팔로잉 여부 파악                              |   |                             | 팔로우 상태 확인 로직도 추가해야 함.                          |
+| ☐ | [개선]`followCount`를 redis 로 cashing|   |                             | redis로 caching 하여 실시간 반영                       |
 ---
 
 ## 🛍️ Merchandise (굿즈)
@@ -64,7 +66,9 @@
 | ☐ | 장바구니 삭제 | DELETE | `/merch/cart/{id}` |  |
 
 ---
+# ADMIN PAGE
 
+-----TODO----
 # 🧰 Tool & Policy Layer Gaps (도구 / 기술 정책)
 
 ## 🔄 Cursor System
