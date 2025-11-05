@@ -9,21 +9,21 @@
 
 ## 📘 Posts (게시글)
 
-| 상태 | 구분 | 항목 | 설명 |
-|------|------|------|------|
-| ☐ | 응답 필드 | `authorId`, `authorAvatarUrl` | 프론트에서 게시글 작성자 프로필 표시 시 필요. `PostResponse`에 필드 추가 |
-| ☑ | 목록 구조 | `nextCursor` | 현재 `PostListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Post[], nextCursor: { id, at } }` 형태로 반환 |
-| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) |
+| 상태 | 구분 | 항목 | 설명 | 이슈 번호                                                             |
+|------|------|------|------|-------------------------------------------------------------------|
+| ☑ | 응답 필드 | `authorId`, `authorAvatarUrl` | 프론트에서 게시글 작성자 프로필 표시 시 필요. `PostResponse`에 필드 추가 | #[59](https://github.com/literallyme1/fan-cafe-backend/issues/59) |
+| ☑ | 목록 구조 | `nextCursor` | 현재 `PostListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Post[], nextCursor: { id, at } }` 형태로 반환 | #[12](https://github.com/literallyme1/fan-cafe-backend/issues/12) |
+| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) | 
 
 ---
 
 ---
 
 ## 💬 Comments (댓글)
-| 상태 | 구분 | 항목 | 설명 |
-|------|------|------|------|
-| ☐ | 응답 필드 | `authorId`, `authorAvatarUrl`, `likeCount`, `liked` | 프론트에서 댓글 작성자 정보 및 좋아요 상태 표시 시 필요. `CommentResponse`에 필드 추가 필요 |
-| ☑ | 목록 구조 | `nextCursor` | 현재 `CommentListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Comment[], nextCursor: { id, at } }` 형태로 반환 |
+| 상태 | 구분 | 항목 | 설명 | 이슈번호    |
+|------|------|------|------|---------|
+| ☑ | 응답 필드 | `authorId`, `authorAvatarUrl`, `likeCount`, `liked` | 프론트에서 댓글 작성자 정보 및 좋아요 상태 표시 시 필요. `CommentResponse`에 필드 추가 필요 | #[60](https://github.com/literallyme1/fan-cafe-backend/issues/60) |
+| ☑ | 목록 구조 | `nextCursor` | 현재 `CommentListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Comment[], nextCursor: { id, at } }` 형태로 반환 | #[13](https://github.com/literallyme1/fan-cafe-backend/issues/13) |
 | ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) |
 
 ---
