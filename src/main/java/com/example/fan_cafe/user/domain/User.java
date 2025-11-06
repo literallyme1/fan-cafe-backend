@@ -57,6 +57,26 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private int followingCount = 0;
 
+    private void increaseFollowerCount(){
+        this.followerCount += 1;
+    }
+
+    private void increaseFollowingCount(){
+        this.followingCount += 1;
+    }
+
+    private void decreaseFollowerCount(){
+        if(this.followerCount > 0){
+            this.followerCount -= 1;
+        }
+    }
+
+    private void decreaseFollowingCount(){
+        if(this.followingCount > 0){
+            this.followingCount -= 1;
+        }
+    }
+
     void createPassword(String encodedPassword) {
         this.password = encodedPassword;
         this.passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
