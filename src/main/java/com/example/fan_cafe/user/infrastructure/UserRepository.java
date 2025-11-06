@@ -4,6 +4,7 @@ import com.example.fan_cafe.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -15,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryRepo
     boolean existsByEmailAndDeletedAtIsNotNull(String email);
 
     boolean existsByNicknameAndDeletedAtIsNull(String nickname);
+
+    List<User> findAllByIdIn(List<Long> ids);
 
     Optional<User> findByEmailAndDeletedAtIsNull(String email);
 
