@@ -40,6 +40,8 @@
 | ☑ | 조회 구조                            | 댓글/대댓글 분리 조회 | 모든 댓글을 한 번에 조회하는 구조 개선 필요 | [#38](https://github.com/literallyme1/fan-cafe-backend/issues/38) |
 | ☐ | [개선]`likeCount`를 redis 로 cashing |   | redis로 caching 하여 실시간 반영                       |
 | ☐ | [개선] like 시 post, delete 로 받기    |   | 현재 `toggle` controller 단위에서 post, delete 로 받기                    |
+| ☐ | [개선] 서로 차단된 관계면 follow 불가능하게 막기  |   |                  |
+
 ---
 
 ## 👤 Profiles (프로필 / 팔로우) //TODO - 팔로우와 분리 예정
