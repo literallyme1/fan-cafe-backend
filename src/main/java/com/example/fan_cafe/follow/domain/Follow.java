@@ -8,8 +8,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Builder
 @NoArgsConstructor
@@ -17,7 +19,7 @@ import java.io.Serializable;
 @Getter
 @Entity
 @Table(name = "follow")
-public class Follow extends BaseTimeEntity {
+public class Follow {
 
     @EmbeddedId
     private FollowId id;
@@ -31,6 +33,12 @@ public class Follow extends BaseTimeEntity {
     @MapsId("followingId")
     @JoinColumn(name = "following_id")
     private User following;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+
 
     private Follow(FollowId id) {
         this.id = id;
