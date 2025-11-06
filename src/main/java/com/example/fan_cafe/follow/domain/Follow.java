@@ -44,8 +44,7 @@ public class Follow {
         this.id = id;
     }
 
-    public static Follow create(Long followerId, Long followingId, FollowPolicy policy) {
-        policy.validate(followerId, followingId);
+    public static Follow create(Long followerId, Long followingId) {
         return new Follow(new FollowId(followerId, followingId));
     }
 }
