@@ -9,7 +9,7 @@ public enum FollowErrorCode implements BaseErrorCode {
 
     SELF_FOLLOW("F001", HttpStatus.BAD_REQUEST, "이미 북마크를 했습니다."),
     ALREADY_FOLLOWED("F002", HttpStatus.BAD_REQUEST, "사용자는 이미 팔로우 하셨습니다."),
-    BLOCKED("F003", HttpStatus.BAD_REQUEST, "이미지를 1개 이상 게시해주세요.");
+    FOLLOW_NOT_FOUND("F003", HttpStatus.NOT_FOUND, "Follow 여부가 없습니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

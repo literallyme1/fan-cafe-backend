@@ -4,6 +4,7 @@ package com.example.fan_cafe.follow.application;
 import com.example.fan_cafe.follow.domain.Follow;
 import com.example.fan_cafe.follow.domain.FollowId;
 import com.example.fan_cafe.follow.domain.FollowPolicy;
+import com.example.fan_cafe.follow.exception.FollowErrorCode;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
@@ -30,8 +31,7 @@ public class FollowService {
     public void follow(Long followerId, Long followingId){
 
         //user 가 실제 존재하는 지 확인 후 User 를 가져옴.
-        long userCount = userRepository.countByIdIn(List.of(followerId, followingId));
-        if(userCount < 2) { throw new CustomException(UserErrorCode.USER_NOT_FOUND);}
+        validateUser(followerId, followingId);
 
         //Follow 타당성 여부 확인
         followPolicy.validate(followerId, followingId);
@@ -51,10 +51,24 @@ public class FollowService {
         // TODO: 이벤트 발행 (알림/피드)
     }
 
+    private void validateUser(Long followerId, Long followingId){
+        long userCount = userRepository.countByIdIn(List.of(followerId, followingId));
+        if(userCount < 2) { throw new CustomException(UserErrorCode.USER_NOT_FOUND);}
+    }
+
 
     @Transactional
-    public void unfollow(Long followerId, Long targetId) {
-        followRepository.deleteById(new FollowId(followerId, targetId));
+    public void unfollow(Long followerId, Long followingId) {
+
+        //해당 follow 가져오고 각 user decrease 후 삭제
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, followingId)
+                        .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND));
+
+        follow.getFollower().decreaseFollowingCount();
+        follow.getFollowing().decreaseFollowerCount();
+
+        followRepository.delete(follow);
+
         // TODO: 이벤트 발행
     }
 

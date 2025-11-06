@@ -5,9 +5,12 @@ import com.example.fan_cafe.follow.domain.FollowId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Optional;
+
 public interface FollowRepository extends JpaRepository<Follow, FollowId>, FollowQueryRepository  {
 
     boolean existsByFollowerIdAndFollowingId(Long followerId, Long followingId);
+    Optional<Follow> findByFollowerIdAndFollowingId(Long followerId, Long followingId);
     boolean existsById(FollowId id);
     void deleteById(FollowId id);
 
