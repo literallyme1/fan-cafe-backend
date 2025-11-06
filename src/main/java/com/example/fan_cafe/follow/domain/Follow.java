@@ -40,12 +40,15 @@ public class Follow {
 
 
 
-    private Follow(FollowId id) {
-        this.id = id;
+    private Follow(User follower, User following) {
+        this.follower = follower;
+        this.following = following;
+        this.id = new FollowId(follower.getId(), following.getId());
     }
 
-    public static Follow create(Long followerId, Long followingId, FollowPolicy policy) {
-        policy.validate(followerId, followingId);
-        return new Follow(new FollowId(followerId, followingId));
+
+
+    public static Follow create(User follower, User following) {
+        return new Follow(follower, following);
     }
 }

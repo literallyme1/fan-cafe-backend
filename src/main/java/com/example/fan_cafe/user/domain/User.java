@@ -57,21 +57,21 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private int followingCount = 0;
 
-    private void increaseFollowerCount(){
+    public void increaseFollowerCount(){
         this.followerCount += 1;
     }
 
-    private void increaseFollowingCount(){
+    public void increaseFollowingCount(){
         this.followingCount += 1;
     }
 
-    private void decreaseFollowerCount(){
+    public void decreaseFollowerCount(){
         if(this.followerCount > 0){
             this.followerCount -= 1;
         }
     }
 
-    private void decreaseFollowingCount(){
+    public void decreaseFollowingCount(){
         if(this.followingCount > 0){
             this.followingCount -= 1;
         }
