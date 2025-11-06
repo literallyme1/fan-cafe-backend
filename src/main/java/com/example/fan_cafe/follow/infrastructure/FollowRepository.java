@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface FollowRepository extends JpaRepository<Follow, FollowId>, FollowQueryRepository  {
 
+    boolean existsByFollowerIdAndFollowingId(Long followerId, Long followingId);
     boolean existsById(FollowId id);
     void deleteById(FollowId id);
 
@@ -16,6 +17,4 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId>, Follo
             """)
     boolean exists(Long followerId, Long followingId);
 
-    long countById_FollowingId(Long userId);
-    long countById_FollowerId(Long userId);
 }

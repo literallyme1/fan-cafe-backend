@@ -14,7 +14,7 @@ public class FollowPolicy {
         if (followerId.equals(followingId))
             throw new CustomException(FollowErrorCode.SELF_FOLLOW);
         if (existsPort.exists(followerId, followingId))
-            throw new CustomException(FollowErrorCode.SELF_FOLLOW);
+            throw new CustomException(FollowErrorCode.ALREADY_FOLLOWED);
     }
 
     public interface ExistsFollowPort { boolean exists(Long followerId, Long followingId); }
