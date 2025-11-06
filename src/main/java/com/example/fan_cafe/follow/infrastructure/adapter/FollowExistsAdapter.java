@@ -4,7 +4,9 @@ package com.example.fan_cafe.follow.infrastructure.adapter;
 import com.example.fan_cafe.follow.domain.FollowPolicy;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
+@Component
 @RequiredArgsConstructor
 public class FollowExistsAdapter implements FollowPolicy.ExistsFollowPort {
 
