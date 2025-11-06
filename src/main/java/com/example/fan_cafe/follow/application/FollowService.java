@@ -8,6 +8,7 @@ import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
 import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,18 +20,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FollowService {
     private final FollowRepository followRepository;
+    private final UserRepository userRepository;
     @Transactional
     public void follow(Long followerId, Long targetId){
-        FollowPolicy policy = new FollowPolicy(
-                followRepository::exists,
-                null
-        );
 
-        Follow entity = Follow.create(followerId, targetId, policy);
-        followRepository.save(entity);
+        //user 가 실제 존재하는 지 확인
+
+//        Follow entity = Follow.create(followerId, targetId);
+//        followRepository.save(entity);
         // TODO: 이벤트 발행 (알림/피드)
     }
 
+    private boolean isValidateUser(Long followerId, Long targetId){
+
+    }
     @Transactional
     public void unfollow(Long followerId, Long targetId) {
         followRepository.deleteById(new FollowId(followerId, targetId));
