@@ -48,6 +48,15 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private boolean passwordSet = true;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private int followerCount = 0;
+
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int followingCount = 0;
+
     void createPassword(String encodedPassword) {
         this.password = encodedPassword;
         this.passwordUpdatedAtEpochSec = System.currentTimeMillis() / 1000;
