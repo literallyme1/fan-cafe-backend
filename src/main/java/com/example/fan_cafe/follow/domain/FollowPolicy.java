@@ -4,9 +4,7 @@ package com.example.fan_cafe.follow.domain;
 import com.example.fan_cafe.follow.exception.FollowErrorCode;
 import com.example.fan_cafe.global.exception.CustomException;
 import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Service;
 
-@Service
 @AllArgsConstructor
 public class FollowPolicy {
 
