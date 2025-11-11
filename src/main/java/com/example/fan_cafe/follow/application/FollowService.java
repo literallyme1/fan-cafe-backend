@@ -23,9 +23,10 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class FollowService {
+    private final FollowPolicy followPolicy;
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
-//    private final FollowPolicy followPolicy;
+
 
     @Transactional
     public void follow(Long followerId, Long followingId){
@@ -34,7 +35,7 @@ public class FollowService {
         validateUser(followerId, followingId);
 
         //Follow 타당성 여부 확인
-//        followPolicy.validate(followerId, followingId);
+        followPolicy.validate(followerId, followingId);
 
         User follower = userRepository.getReferenceById(followerId);
         User following = userRepository.getReferenceById(followingId);
@@ -61,7 +62,7 @@ public class FollowService {
     public void unfollow(Long followerId, Long followingId) {
 
         //해당 follow 가져오고 각 user decrease 후 삭제
-        Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, followingId)
+        Follow follow = followRepository.findByFollower_IdAndFollowing_Id(followerId, followingId)
                         .orElseThrow(() -> new CustomException(FollowErrorCode.FOLLOW_NOT_FOUND));
 
         follow.getFollower().decreaseFollowingCount();
