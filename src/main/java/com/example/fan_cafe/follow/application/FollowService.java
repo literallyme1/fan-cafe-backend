@@ -6,6 +6,7 @@ import com.example.fan_cafe.follow.domain.FollowPolicy;
 import com.example.fan_cafe.follow.exception.FollowErrorCode;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import com.example.fan_cafe.follow.interfaces.dto.FollowResponse;
+import com.example.fan_cafe.follow.interfaces.dto.FollowingListResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
@@ -73,14 +74,14 @@ public class FollowService {
         // TODO: 이벤트 발행
     }
 
-//    public FollowingListResponse getFollowingList(Long userId, Cursor cursor, int size) {
-//
-//        Cursor resolvedCursor = getResolvedCursor(cursor);
-//        List<FollowResponse> follows = followRepository.findNextPage(resolvedCursor, size, userId);
-//        PageSlice paging = computePageSlice(follows, size);
-//        return FollowingListResponse.from(paging.follows(), paging.nextCursor());
-//
-//    }
+    public FollowingListResponse getFollowingList(Long userId, Cursor cursor, int size) {
+
+        Cursor resolvedCursor = getResolvedCursor(cursor);
+        List<FollowResponse> follows = followRepository.findNextFollowingPage(resolvedCursor, size, userId);
+        PageSlice paging = computePageSlice(follows, size);
+        return FollowingListResponse.from(paging.follows(), paging.nextCursor());
+
+    }
 
     private Cursor getResolvedCursor(Cursor cursor) {
         return (cursor != null) ?
