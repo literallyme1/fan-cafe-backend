@@ -9,7 +9,11 @@ import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
 import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.util.CursorUtils;
+import com.example.fan_cafe.post.application.PostService;
+import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
@@ -79,5 +83,33 @@ public class FollowService {
         boolean hasNext = items.size() > size;
         if (hasNext) items = items.subList(0, size);
         return new FollowerListResponse(items, hasNext);
+    }
+
+    public FollowListResponse getFollowingList(Long userId, Cursor cursor, int size) {
+
+        Cursor resolvedCursor = getResolvedCursor(cursor);
+        List<FollowResponse> follows = followRepository.findNextPage(resolvedCursor, size, userId);
+        PageSlice paging = computePageSlice(follows, size);
+
+        return FollowListResponse.fromCursor(paging.follows(), paging.nextCursor());
+
+    }
+
+    private Cursor getResolvedCursor(Cursor cursor) {
+        return (cursor != null) ?
+                CursorResolver.resolve(cursor.id(), cursor.at(), followRepository::findLatest)
+                : CursorResolver.resolve(null, null, followRepository::findLatest);
+    }
+
+    //반환 할 beforeCursor 생성
+    private PageSlice computePageSlice(List<FollowResponse> follows, int size) {
+
+        Cursor nextCursor = (follows.size() > size) ? CursorUtils.fromLast(follows) : null;
+        //hasNext 확인 후 size 대로 cut
+        if (nextCursor != null) follows = follows.subList(0, size);
+        return new PageSlice(follows, nextCursor);
+    }
+
+    private record PageSlice(List<FollowResponse> follows, Cursor nextCursor) {
     }
 }

@@ -42,6 +42,6 @@ public class FollowController {
     public FollowerListResponse getFollowing(@PathVariable("userId") Long userId,
                              @RequestParam(required = false)Cursor cursor,
                              @RequestParam(defaultValue = "20") int size){
-        return followService.getFollowing(userId, cursor, size);
+        return followService.getFollowingList(userId, cursor, size);
     }
 }
