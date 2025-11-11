@@ -2,18 +2,15 @@ package com.example.fan_cafe.follow.application;
 
 
 import com.example.fan_cafe.follow.domain.Follow;
-import com.example.fan_cafe.follow.domain.FollowId;
 import com.example.fan_cafe.follow.domain.FollowPolicy;
 import com.example.fan_cafe.follow.exception.FollowErrorCode;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
-import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
-import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
+import com.example.fan_cafe.follow.interfaces.dto.FollowResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.util.CursorUtils;
-import com.example.fan_cafe.post.application.PostService;
-import com.example.fan_cafe.post.interfaces.dto.PostResponse;
+
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
@@ -21,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -29,7 +25,7 @@ import java.util.List;
 public class FollowService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
-    private final FollowPolicy followPolicy;
+//    private final FollowPolicy followPolicy;
 
     @Transactional
     public void follow(Long followerId, Long followingId){
@@ -38,7 +34,7 @@ public class FollowService {
         validateUser(followerId, followingId);
 
         //Follow 타당성 여부 확인
-        followPolicy.validate(followerId, followingId);
+//        followPolicy.validate(followerId, followingId);
 
         User follower = userRepository.getReferenceById(followerId);
         User following = userRepository.getReferenceById(followingId);
@@ -76,29 +72,19 @@ public class FollowService {
         // TODO: 이벤트 발행
     }
 
-    public FollowerListResponse getFollowers(Long targetId, Long viewerId,
-                                             LocalDateTime cursorAt, Long cursorId, int size) {
-        List<FollowerItemResponse> items =
-                followRepository.findFollowers(targetId, viewerId, new Cursor(cursorId, cursorAt), size);
-        boolean hasNext = items.size() > size;
-        if (hasNext) items = items.subList(0, size);
-        return new FollowerListResponse(items, hasNext);
-    }
-
-    public FollowListResponse getFollowingList(Long userId, Cursor cursor, int size) {
-
-        Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<FollowResponse> follows = followRepository.findNextPage(resolvedCursor, size, userId);
-        PageSlice paging = computePageSlice(follows, size);
-
-        return FollowListResponse.fromCursor(paging.follows(), paging.nextCursor());
-
-    }
+//    public FollowingListResponse getFollowingList(Long userId, Cursor cursor, int size) {
+//
+//        Cursor resolvedCursor = getResolvedCursor(cursor);
+//        List<FollowResponse> follows = followRepository.findNextPage(resolvedCursor, size, userId);
+//        PageSlice paging = computePageSlice(follows, size);
+//        return FollowingListResponse.from(paging.follows(), paging.nextCursor());
+//
+//    }
 
     private Cursor getResolvedCursor(Cursor cursor) {
         return (cursor != null) ?
-                CursorResolver.resolve(cursor.id(), cursor.at(), followRepository::findLatest)
-                : CursorResolver.resolve(null, null, followRepository::findLatest);
+                CursorResolver.resolve(cursor.id(), cursor.at(), followRepository::findTopByOrderByCreatedAtDesc)
+                : CursorResolver.resolve(null, null, followRepository::findTopByOrderByCreatedAtDesc);
     }
 
     //반환 할 beforeCursor 생성

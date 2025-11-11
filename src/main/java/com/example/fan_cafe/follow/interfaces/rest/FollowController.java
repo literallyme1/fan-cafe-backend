@@ -38,10 +38,10 @@ public class FollowController {
 //        return followService.getFollowers(targetId, user.getId(), cursorAt, cursorId, size);
 //    }
 
-    @GetMapping("/{userId}/following")
-    public FollowerListResponse getFollowing(@PathVariable("userId") Long userId,
-                             @RequestParam(required = false)Cursor cursor,
-                             @RequestParam(defaultValue = "20") int size){
-        return followService.getFollowingList(userId, cursor, size);
-    }
+//    @GetMapping("/{userId}/following")
+//    public FollowerListResponse getFollowing(@PathVariable("userId") Long userId,
+//                             @RequestParam(required = false)Cursor cursor,
+//                             @RequestParam(defaultValue = "20") int size){
+//        return followService.getFollowingList(userId, cursor, size);
+//    }
 }

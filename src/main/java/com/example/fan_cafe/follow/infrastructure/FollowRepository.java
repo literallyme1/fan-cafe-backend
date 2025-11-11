@@ -7,16 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-public interface FollowRepository extends JpaRepository<Follow, FollowId>, FollowQueryRepository  {
+public interface FollowRepository extends JpaRepository<Follow, FollowId>, FollowRepositoryCustom  {
 
     boolean existsByFollowerIdAndFollowingId(Long followerId, Long followingId);
     Optional<Follow> findByFollowerIdAndFollowingId(Long followerId, Long followingId);
-    boolean existsById(FollowId id);
-    void deleteById(FollowId id);
-
+    Optional<Follow> findTopByOrderByCreatedAtDesc();
     @Query("""
             select (count(f) > 0) from Follow f
-            where f.id.followerId = :followerId and f.id.followingId = :followingId
+            where f.follower.id = :followerId and f.following.id = :followingId
             """)
     boolean exists(Long followerId, Long followingId);
 
