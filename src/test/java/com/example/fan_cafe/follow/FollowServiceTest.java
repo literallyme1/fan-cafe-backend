@@ -2,16 +2,11 @@ package com.example.fan_cafe.follow;
 
 import com.example.fan_cafe.follow.application.FollowService;
 import com.example.fan_cafe.follow.domain.Follow;
-import com.example.fan_cafe.follow.domain.FollowId;
 import com.example.fan_cafe.follow.domain.FollowPolicy;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
-import com.example.fan_cafe.follow.interfaces.dto.FollowerItemResponse;
-import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
-import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,9 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import javax.swing.text.html.Option;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
