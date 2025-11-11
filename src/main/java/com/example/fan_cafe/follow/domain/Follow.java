@@ -21,8 +21,12 @@ import java.time.LocalDateTime;
 @Table(name = "follow")
 public class Follow {
 
-    @EmbeddedId
-    private FollowId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Embedded
+    private FollowId followId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("followerId")
@@ -43,7 +47,7 @@ public class Follow {
     private Follow(User follower, User following) {
         this.follower = follower;
         this.following = following;
-        this.id = new FollowId(follower.getId(), following.getId());
+        this.followId = new FollowId(follower.getId(), following.getId());
     }
 
 
