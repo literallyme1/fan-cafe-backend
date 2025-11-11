@@ -3,6 +3,7 @@ package com.example.fan_cafe.follow.interfaces.rest;
 
 import com.example.fan_cafe.follow.application.FollowService;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
+import com.example.fan_cafe.follow.interfaces.dto.FollowingListResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -38,10 +39,10 @@ public class FollowController {
 //        return followService.getFollowers(targetId, user.getId(), cursorAt, cursorId, size);
 //    }
 
-//    @GetMapping("/{userId}/following")
-//    public FollowerListResponse getFollowing(@PathVariable("userId") Long userId,
-//                             @RequestParam(required = false)Cursor cursor,
-//                             @RequestParam(defaultValue = "20") int size){
-//        return followService.getFollowingList(userId, cursor, size);
-//    }
+    @GetMapping("/{userId}/following")
+    public FollowingListResponse getFollowing(@PathVariable("userId") Long userId,
+                                              @RequestParam(required = false)Cursor cursor,
+                                              @RequestParam(defaultValue = "20") int size){
+        return followService.getFollowingList(userId, cursor, size);
+    }
 }
