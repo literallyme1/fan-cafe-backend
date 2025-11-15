@@ -30,14 +30,6 @@ public class FollowController {
         followService.unfollow(user.getId(), targetId);
     }
 
-//    @GetMapping("/{id}/followers")
-//    public FollowerListResponse followers(@PathVariable("id") Long targetId,
-//                                          @AuthenticationPrincipal(expression = "user") User user,
-//                                          @RequestParam(required = false) LocalDateTime cursorAt,
-//                                          @RequestParam(required = false) Long cursorId,
-//                                          @RequestParam(defaultValue = "20") int size) {
-//        return followService.getFollowers(targetId, user.getId(), cursorAt, cursorId, size);
-//    }
 
     @GetMapping("/{userId}/following")
     public FollowingListResponse getFollowing(@PathVariable("userId") Long userId,
