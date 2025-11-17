@@ -11,4 +11,5 @@ public interface FollowRepositoryCustom {
 //                                             Cursor cursor, int size);
 
     List<FollowResponse> findNextFollowingPage(Cursor cursor, int size, Long userId);
+    List<FollowResponse> findNextFollowerPage(Cursor cursor, int size, Long userId);
 }

@@ -19,37 +19,6 @@ public class FollowRepositoryImpl implements FollowRepositoryCustom {
     QFollow follow = QFollow.follow;
     QUser user = QUser.user;
 
-//    @Override
-//    public List<FollowerItemResponse> findFollowers(
-//            Long targetId, Long viewerId, Cursor cursor, int size) {
-//
-//        /**
-//         viewerId : 팔로워를 보는 사람
-//         targetId : 보여지는 사람
-//         existsExpr : 조건식 1. viewer(follower) 가 팔로우 한 게 있는 지 체크 2. viewer 가 팔로잉 한 사람과 같은 사람이 있는 지 체크 (팔로워 중)
-//         */
-//        var existsExpr = JPAExpressions.selectOne().from(follow)
-//                .where(follow.id.followerId.eq(viewerId)
-//                        .and(follow.id.followingId.eq(user.id)))
-//                .exists();
-//
-//        return queryFactory
-//                .select(Projections.constructor(FollowerItemResponse.class,
-//                        user.id,
-//                        user.nickname,
-//                        new CaseBuilder().when(existsExpr).then(true).otherwise(false),
-//                        follow.createdAt))
-//                .from(follow)
-//                .join(user).on(user.id.eq(follow.id.followerId))
-//                .where(
-//                        follow.id.followingId.eq(targetId), //팔로잉 하는 사람이 target
-//                        CursorUtils.beforeDesc(follow.createdAt, follow.id.followerId, cursor)
-//                )
-//                .orderBy(follow.createdAt.desc(), follow.id.followerId.desc())
-//                .limit(size + 1)
-//                .fetch();
-//    }
-
 
     //user(follower) 가 팔로잉한 목록
     @Override
@@ -80,5 +49,38 @@ public class FollowRepositoryImpl implements FollowRepositoryCustom {
                 .limit(size + 1)
                 .fetch();
 
+    }
+
+    //user(follower) 가 팔로잉한 목록
+    @Override
+    public List<FollowResponse> findNextFollowerPage(Cursor cursor, int size, Long userId) {
+
+        QFollow followSub = new QFollow("followSub");
+
+        return queryFactory.select(
+                        Projections.constructor(FollowResponse.class,
+                                follow.id,
+                                follow.follower.id,
+                                follow.follower.nickname,
+                                follow.follower.avatarUrl,
+                                follow.createdAt,
+                                JPAExpressions
+                                        .selectOne()
+                                        .from(followSub)
+                                        .where(
+                                                followSub.follower.id.eq(userId),
+                                                followSub.following.id.eq(follow.follower.id)
+                                        )
+                                        .exists()
+                        ))
+                .from(follow)
+                .join(follow.follower, user)
+                .where(
+                        CursorUtils.beforeDesc(follow.createdAt, follow.id, cursor),
+                        follow.following.id.eq(userId)
+                )
+                .orderBy(follow.createdAt.desc(), follow.id.desc())
+                .limit(size + 1)
+                .fetch();
     }
 }
