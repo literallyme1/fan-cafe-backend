@@ -5,6 +5,7 @@ import com.example.fan_cafe.global.s3.S3Uploader;
 import com.example.fan_cafe.user.application.UserService;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
+import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
 import com.example.fan_cafe.user.interfaces.dto.ProfileRequest;
 import com.example.fan_cafe.user.interfaces.dto.ProfileResponse;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -136,6 +138,36 @@ public class UserServiceTest {
         // DB 관련 함수들이 실행되지 않았는지 검증
         verify(mockUser, never()).updateProfile(any(), any(), any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("userId 가 올바르다면 프로필을 반환한다.")
+    void givenValidateUserId_whenGetProfile_thenReturnsProfile(){
+
+        //given
+        Long userId = 1L;
+        when(userRepository.findByIdAndDeletedAtIsNull(userId)).thenReturn(Optional.of(mockUser));
+
+        //when
+        ProfileResponse result = userService.getProfile(userId);
+
+        //then
+        assertThat(result.getId()).isEqualTo(mockUser.getId());
+    }
+
+    @Test
+    @DisplayName("userId 가 올바르지 않다면 에럴를 반환한다.")
+    void givenValidateUserId_whenGetProfile_thenThrowsError(){
+
+        //given
+        Long userId = 1L;
+
+        //when & then
+        CustomException exception = assertThrows(CustomException.class, () ->
+                userService.getProfile(userId)
+        );
+
+        assertThat(exception.getStatus()).isEqualTo(UserErrorCode.USER_NOT_FOUND.getStatus());
     }
 
 }
