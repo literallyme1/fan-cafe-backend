@@ -38,6 +38,11 @@ public class UserController {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
+    @GetMapping("/{userId}")
+    public ApiResponse<ProfileResponse> get(@PathVariable Long userId){
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, userService.getProfile(userId));
+    }
+
 
 
 
