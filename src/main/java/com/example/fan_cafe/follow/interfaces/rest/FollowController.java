@@ -39,7 +39,7 @@ public class FollowController {
     }
 
     @GetMapping("/{userId}/followers")
-    public FollowingListResponse getFollowers(@PathVariable("userId") Long userId,
+    public FollowerListResponse getFollowers(@PathVariable("userId") Long userId,
                                               @RequestParam(required = false)Cursor cursor,
                                               @RequestParam(defaultValue = "20") int size){
         return followService.getFollowerList(userId, cursor, size);
