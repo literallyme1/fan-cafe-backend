@@ -87,7 +87,7 @@ public class FollowService {
     public FollowerListResponse getFollowerList(Long userId, Cursor cursor, int size) {
 
         Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<FollowResponse> follows = followRepository.findNextFollowingPage(resolvedCursor, size, userId);
+        List<FollowResponse> follows = followRepository.findNextFollowerPage(resolvedCursor, size, userId);
         PageSlice paging = computePageSlice(follows, size);
         return FollowerListResponse.from(paging.follows(), paging.nextCursor());
 
