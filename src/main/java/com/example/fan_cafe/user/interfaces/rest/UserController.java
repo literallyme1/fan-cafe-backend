@@ -13,23 +13,23 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/users/me")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @GetMapping
+    @GetMapping("/me")
     public ApiResponse<ProfileResponse> get(@AuthenticationPrincipal(expression = "user") User user) {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, userService.get(user));
     }
-    @DeleteMapping
+    @DeleteMapping("/me")
     public ApiResponse<Void> delete(@AuthenticationPrincipal(expression = "user") User user){
         userService.delete(user.getId());
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
-    @PutMapping
+    @PutMapping("/me")
     public ApiResponse<ProfileResponse> update(@AuthenticationPrincipal(expression = "user") User user,
                                                @RequestPart("profile") @Valid ProfileRequest request,
                                                @RequestPart(value = "image", required = false)MultipartFile image) {
