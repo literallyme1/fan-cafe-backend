@@ -14,6 +14,8 @@ public class ProfileResponse {
     private final String role;
     private final String introduction;
     private final String avatarUrl;
+    private final int followerCount;
+    private final int followingCount;
 
     public static ProfileResponse from(User user) {
         return ProfileResponse.builder()
@@ -23,6 +25,8 @@ public class ProfileResponse {
                 .role(user.getRole().toString())
                 .introduction(user.getIntroduction())
                 .avatarUrl(user.getAvatarUrl())
+                .followerCount(user.getFollowerCount())
+                .followingCount(user.getFollowingCount())
                 .build();
     }
 }
