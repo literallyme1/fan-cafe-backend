@@ -5,6 +5,7 @@ import com.example.fan_cafe.follow.domain.Follow;
 import com.example.fan_cafe.follow.domain.FollowPolicy;
 import com.example.fan_cafe.follow.infrastructure.FollowRepository;
 import com.example.fan_cafe.follow.interfaces.dto.FollowResponse;
+import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
 import com.example.fan_cafe.follow.interfaces.dto.FollowingListResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.exception.CustomException;
@@ -47,7 +48,7 @@ class FollowServiceTest {
 
     @Test
     @DisplayName("User 가 존재하고, follow 를 하지 않았을 때 follow 가 저장된다.")
-    void givenValidateUserAndNotFollow_whenFollow_thenSave() {
+    void givenValidateUsersAndNotFollow_whenFollow_thenSave() {
 
         Long followerId = 1L;
         Long followingId = 2L;
@@ -77,7 +78,7 @@ class FollowServiceTest {
 
     @Test
     @DisplayName("User 가 존재하지 않을때  오류가 반환된다")
-    void givenInvalidateUserAndNotFollow_whenFollow_thenThrowsError() {
+    void givenInvalidateUsersAndNotFollow_whenFollow_thenThrowsError() {
 
         Long followerId = 1L;
         Long followingId = 2L;
@@ -151,6 +152,7 @@ class FollowServiceTest {
         for (long i = 6; i > 0; i--) {
             follows.add(new FollowResponse(i, 1L, "user1", "avatar_url", LocalDateTime.of(2025, 10, 24, 8, 8, 8), false));
         }
+        when(userRepository.existsByIdAndDeletedAtIsNull(anyLong())).thenReturn(true);
         when(followRepository.findNextFollowingPage(any(Cursor.class), anyInt(), anyLong())).thenReturn(follows);
 
         //when
@@ -159,6 +161,29 @@ class FollowServiceTest {
         //then
         assertThat(result.nextCursor()).isNotNull();
         assertThat(result.following()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("커서가 존재할 경우 nextCursor가 생성된다.")
+    void givenValidCursor_whenGetFollowerList_thenNextCursorIsCreated() {
+        //given
+        Long userId = 1L;
+        int size = 5;
+        Cursor cursor = new Cursor(7L, LocalDateTime.of(2025, 10, 23, 8, 8, 8));
+
+        List<FollowResponse> follows = new ArrayList<>();
+        for (long i = 6; i > 0; i--) {
+            follows.add(new FollowResponse(i, 1L, "user1", "avatar_url", LocalDateTime.of(2025, 10, 24, 8, 8, 8), false));
+        }
+        when(userRepository.existsByIdAndDeletedAtIsNull(anyLong())).thenReturn(true);
+        when(followRepository.findNextFollowerPage(any(Cursor.class), anyInt(), anyLong())).thenReturn(follows);
+
+        //when
+        FollowerListResponse result = followService.getFollowerList(userId, cursor, size);
+
+        //then
+        assertThat(result.nextCursor()).isNotNull();
+        assertThat(result.follower()).hasSize(5);
     }
 
 
