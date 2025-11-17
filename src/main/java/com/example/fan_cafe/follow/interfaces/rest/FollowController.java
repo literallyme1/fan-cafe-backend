@@ -5,6 +5,8 @@ import com.example.fan_cafe.follow.application.FollowService;
 import com.example.fan_cafe.follow.interfaces.dto.FollowerListResponse;
 import com.example.fan_cafe.follow.interfaces.dto.FollowingListResponse;
 import com.example.fan_cafe.global.common.Cursor;
+import com.example.fan_cafe.global.response.ApiResponse;
+import com.example.fan_cafe.global.response.ApiResponseStatus;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,16 +34,16 @@ public class FollowController {
 
 
     @GetMapping("/{userId}/following")
-    public FollowingListResponse getFollowing(@PathVariable("userId") Long userId,
-                                              @RequestParam(required = false)Cursor cursor,
-                                              @RequestParam(defaultValue = "20") int size){
-        return followService.getFollowingList(userId, cursor, size);
+    public ApiResponse<FollowingListResponse> getFollowing(@PathVariable("userId") Long userId,
+                                    @RequestParam(required = false)Cursor cursor,
+                                    @RequestParam(defaultValue = "20") int size){
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, followService.getFollowingList(userId, cursor, size));
     }
 
     @GetMapping("/{userId}/followers")
-    public FollowerListResponse getFollowers(@PathVariable("userId") Long userId,
+    public ApiResponse<FollowerListResponse> getFollowers(@PathVariable("userId") Long userId,
                                               @RequestParam(required = false)Cursor cursor,
                                               @RequestParam(defaultValue = "20") int size){
-        return followService.getFollowerList(userId, cursor, size);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, followService.getFollowerList(userId, cursor, size));
     }
 }
