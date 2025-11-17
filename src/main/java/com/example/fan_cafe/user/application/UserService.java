@@ -65,6 +65,12 @@ public class UserService {
         return ProfileResponse.from(user);
     }
 
+    public ProfileResponse getProfile(Long userId){
+        User user = findById(userId);
+        return ProfileResponse.from(user);
+
+    }
+
 
     //password 변경(patch)
     //nickname 변경(patch)
