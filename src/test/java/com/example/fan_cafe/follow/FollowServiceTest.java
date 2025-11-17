@@ -47,7 +47,7 @@ class FollowServiceTest {
 
     @Test
     @DisplayName("User 가 존재하고, follow 를 하지 않았을 때 follow 가 저장된다.")
-    void givenValidateUserAndNotFollow_whenFollow_thenSave() {
+    void givenValidateUsersAndNotFollow_whenFollow_thenSave() {
 
         Long followerId = 1L;
         Long followingId = 2L;
@@ -77,7 +77,7 @@ class FollowServiceTest {
 
     @Test
     @DisplayName("User 가 존재하지 않을때  오류가 반환된다")
-    void givenInvalidateUserAndNotFollow_whenFollow_thenThrowsError() {
+    void givenInvalidateUsersAndNotFollow_whenFollow_thenThrowsError() {
 
         Long followerId = 1L;
         Long followingId = 2L;

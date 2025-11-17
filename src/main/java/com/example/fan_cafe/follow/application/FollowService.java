@@ -34,7 +34,7 @@ public class FollowService {
     public void follow(Long followerId, Long followingId){
 
         //user 가 실제 존재하는 지 확인 후 User 를 가져옴.
-        validateUser(followerId, followingId);
+        validateUsers(followerId, followingId);
 
         //Follow 타당성 여부 확인
         followPolicy.validate(followerId, followingId);
@@ -54,7 +54,7 @@ public class FollowService {
         // TODO: 이벤트 발행 (알림/피드)
     }
 
-    private void validateUser(Long followerId, Long followingId){
+    private void validateUsers(Long followerId, Long followingId){
         long userCount = userRepository.countByIdIn(List.of(followerId, followingId));
         if(userCount < 2) { throw new CustomException(UserErrorCode.USER_NOT_FOUND);}
     }
@@ -77,6 +77,7 @@ public class FollowService {
 
     public FollowingListResponse getFollowingList(Long userId, Cursor cursor, int size) {
 
+        validateUser(userId);
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<FollowResponse> follows = followRepository.findNextFollowingPage(resolvedCursor, size, userId);
         PageSlice paging = computePageSlice(follows, size);
@@ -86,11 +87,18 @@ public class FollowService {
 
     public FollowerListResponse getFollowerList(Long userId, Cursor cursor, int size) {
 
+        validateUser(userId);
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<FollowResponse> follows = followRepository.findNextFollowerPage(resolvedCursor, size, userId);
         PageSlice paging = computePageSlice(follows, size);
         return FollowerListResponse.from(paging.follows(), paging.nextCursor());
 
+    }
+
+    private void validateUser(Long id){
+        if (!userRepository.existsByIdAndDeletedAtIsNull(id)) {
+            throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+        }
     }
 
     private Cursor getResolvedCursor(Cursor cursor) {
