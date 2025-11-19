@@ -3,7 +3,6 @@
 > 수정은 하지 않고, 먼저 **현황을 전수조사**하는 단계입니다.
 
 ---
-# !!
 # 🧭 Domain Layer Gaps (도메인별 Gap)
 
 
@@ -13,18 +12,18 @@
 |------|------|------|------|-------------------------------------------------------------------|
 | ☑ | 응답 필드 | `authorId`, `authorAvatarUrl` | 프론트에서 게시글 작성자 프로필 표시 시 필요. `PostResponse`에 필드 추가 | #[59](https://github.com/literallyme1/fan-cafe-backend/issues/59) |
 | ☑ | 목록 구조 | `nextCursor` | 현재 `PostListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Post[], nextCursor: { id, at } }` 형태로 반환 | #[12](https://github.com/literallyme1/fan-cafe-backend/issues/12) |
-| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) | 
+| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) | #[30](https://github.com/literallyme1/fan-cafe-backend/issues/30)|
 
 ---
 
 ---
 
 ## 💬 Comments (댓글)
-| 상태 | 구분 | 항목 | 설명 | 이슈번호    |
-|------|------|------|------|---------|
+| 상태 | 구분 | 항목 | 설명 | 이슈번호                                                              |
+|------|------|------|------|-------------------------------------------------------------------|
 | ☑ | 응답 필드 | `authorId`, `authorAvatarUrl`, `likeCount`, `liked` | 프론트에서 댓글 작성자 정보 및 좋아요 상태 표시 시 필요. `CommentResponse`에 필드 추가 필요 | #[60](https://github.com/literallyme1/fan-cafe-backend/issues/60) |
 | ☑ | 목록 구조 | `nextCursor` | 현재 `CommentListResponse`는 page 기반. 커서 기반 응답으로 변경 필요 → `{ content: Comment[], nextCursor: { id, at } }` 형태로 반환 | #[13](https://github.com/literallyme1/fan-cafe-backend/issues/13) |
-| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) |
+| ☑ | 요청 파라미터 | `cursorId`, `cursorAt` | 현재 `page` 기반으로 댓글 목록 요청을 처리 중. 커서 기반으로 변경 필요 (`@RequestParam(required = false) Long cursorId, String cursorAt`) | #[40](https://github.com/literallyme1/fan-cafe-backend/issues/40) |
 
 ---
 
@@ -45,16 +44,15 @@
 ---
 
 ## 👤 Profiles (프로필 / 팔로우) //TODO - 팔로우와 분리 예정
-| 상태 | 구문                                     | Method | Endpoint & 구분               | 설명                                             | 이슈번호                                                             |
-|------|----------------------------------------|------|-----------------------------|------------------------------------------------|------------------------------------------------------------------|
+| 상태 | 구문                                     | Method | Endpoint & 구분               | 설명                                             | 이슈번호                                                              |
+|------|----------------------------------------|------|-----------------------------|------------------------------------------------|-------------------------------------------------------------------|
 | ☑| 내 프로필 업데이트                             | PUT  | `/users/me`                 | 기존 `avatarUrl`이 존재 X, 추가 후 put 시 업데이트 가능하도록 설정 | [#53](https://github.com/literallyme1/fan-cafe-backend/issues/53) |
-| ☑ | 내 프로필 조회                               | GET  | `/users/me`                 | JWT 기반 인증 연동 필요                                |                                               |
-| ☐ | 사용자 프로필 조회                             | GET  | `/users/{userId}`           | 프론트에서 필요                                       |                                                |
-| ☐ | 팔로우 등록                                 | POST | `/users/{userId}/follow`    |                                                |                                              
-| ☐ | 팔로우 취소                                 | DELETE | `/users/{userId}/follow`    | toggle API 필요                                  |                                              
-| ☐ | 팔로워 목록 조회                              | GET  | `/users/{userId}/followers` |                                                |                                             
-| ☐ | 팔로잉 목록 조회                              | GET  | `/users/{userId}/following` |                                                |                                              |
-| ☐ | 팔로잉 여부 파악                              |   |                             | 팔로우 상태 확인 로직도 추가해야 함.                          |
+| ☑ | 내 프로필 조회                               | GET  | `/users/me`                 | JWT 기반 인증 연동 필요                                | [#64](https://github.com/literallyme1/fan-cafe-backend/issues/64) |
+| ☑ | 사용자 프로필 조회                             | GET  | `/users/{userId}`           | 프론트에서 필요                                       | [#64](https://github.com/literallyme1/fan-cafe-backend/issues/64) |
+| ☑ | 팔로우 등록                                 | POST | `/users/{userId}/follow`    |                                                |      [#65](https://github.com/literallyme1/fan-cafe-backend/issues/65)                   |                      
+| ☑ | 팔로우 취소                                 | DELETE | `/users/{userId}/follow`    | toggle API 필요                                  |          [#65](https://github.com/literallyme1/fan-cafe-backend/issues/65)   |                                   
+| ☑ | 팔로워 목록 조회                              | GET  | `/users/{userId}/followers` |                                                |                                           [#65](https://github.com/literallyme1/fan-cafe-backend/issues/65)   | 
+| ☑ | 팔로잉 목록 조회                              | GET  | `/users/{userId}/following` |                                                |                                                           [#65](https://github.com/literallyme1/fan-cafe-backend/issues/65)  |
 | ☐ | [개선]`followCount`를 redis 로 cashing|   |                             | redis로 caching 하여 실시간 반영                       |
 ---
 
