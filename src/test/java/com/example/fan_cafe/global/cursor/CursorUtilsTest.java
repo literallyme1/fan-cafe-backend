@@ -1,4 +1,4 @@
-package com.example.fan_cafe.global;
+package com.example.fan_cafe.global.cursor;
 
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.HasCreatedAt;
