@@ -1,4 +1,4 @@
-package com.example.fan_cafe.global.util;
+package com.example.fan_cafe.global.redis;
 
 public class RedisKeyUtil {
 

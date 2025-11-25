@@ -7,7 +7,6 @@ import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.util.CursorUtils;
-import com.example.fan_cafe.global.util.RedisKeyUtil;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.domain.Post;
