@@ -6,6 +6,9 @@ import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
+import com.example.fan_cafe.global.redis.CacheTTL;
+import com.example.fan_cafe.global.redis.RedisKeyUtil;
+import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
@@ -16,14 +19,17 @@ import com.example.fan_cafe.post.interfaces.dto.PostListResponse;
 import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.example.fan_cafe.post.interfaces.dto.PostUpdateRequest;
 import com.example.fan_cafe.user.domain.User;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Cache;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -37,6 +43,7 @@ public class PostService {
     private final PostHelper postHelper;
     private final LikeService likeService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final RedisService redisService;
     private final ObjectMapper objectMapper;
 
 
@@ -59,16 +66,46 @@ public class PostService {
 
     public PostListResponse get(Cursor cursor, int size, Long userId) {
 
+        String redisKey = null;
         // 1) Redis 조회 (Cache Aside)
-        //key
-//        String redisKey
-        //가져오기
-        //실패시 db
-        //저장
-//        String redisKey = RedisKeyUtil.postData()
+        if(cursor == null) {
+            redisKey = RedisKeyUtil.getLatestPostListKey(size);
+            String cached = redisService.get(redisKey);
+
+            if (cached != null) {
+                log.info("[CACHE HIT] Latest posts size={}", size);
+                try {
+                    List<PostResponse> posts = objectMapper.readValue(
+                            cached,
+                            new TypeReference<List<PostResponse>>() {}
+                    );
+                    PageSlice paging = computePageSlice(posts, size, null);
+                    return PostListResponse.fromCursors(paging.posts(), paging.nextCursor(), paging.afterCursor);
+                } catch (Exception e) {
+                    //값이 깨진 경우
+                    log.warn("[CACHE PARSE ERROR] latest post list cache deleted");
+                    redisTemplate.delete(redisKey);
+                }
+            }
+
+            log.info("[CACHE MISS] Latest posts → DB query");
+
+        }
+        // 2) DB 조회
         Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<PostResponse> postDtos = postRepository.findNextPage(resolvedCursor, size, userId);
-        PageSlice paging = computePageSlice(postDtos, size, cursor);
+        List<PostResponse> posts = postRepository.findNextPage(resolvedCursor, size, userId);
+        PageSlice paging = computePageSlice(posts, size, cursor);
+
+        // 3) 최신 값인 경우 Redis 저장
+        if(cursor == null){
+            try {
+                String json = objectMapper.writeValueAsString(posts);
+                redisService.set(redisKey, json, CacheTTL.POST_LIST_LATEST);
+            } catch (Exception e) {
+                log.error("[REDIS SAVE ERROR] latest post list", e);
+            }
+        }
+
 
         return PostListResponse.fromCursors(
                 paging.posts(), paging.nextCursor(), paging.afterCursor
