@@ -7,6 +7,7 @@ import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.util.CursorUtils;
+import com.example.fan_cafe.global.util.RedisKeyUtil;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.post.domain.Post;
@@ -16,7 +17,10 @@ import com.example.fan_cafe.post.interfaces.dto.PostListResponse;
 import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.example.fan_cafe.post.interfaces.dto.PostUpdateRequest;
 import com.example.fan_cafe.user.domain.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,12 +30,15 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PostService {
 
     private final PostRepository postRepository;
     private final BookmarkRepository bookmarkRepository;
     private final PostHelper postHelper;
     private final LikeService likeService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
 
     public PostResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
@@ -53,6 +60,13 @@ public class PostService {
 
     public PostListResponse get(Cursor cursor, int size, Long userId) {
 
+        // 1) Redis 조회 (Cache Aside)
+        //key
+//        String redisKey
+        //가져오기
+        //실패시 db
+        //저장
+//        String redisKey = RedisKeyUtil.postData()
         Cursor resolvedCursor = getResolvedCursor(cursor);
         List<PostResponse> postDtos = postRepository.findNextPage(resolvedCursor, size, userId);
         PageSlice paging = computePageSlice(postDtos, size, cursor);
