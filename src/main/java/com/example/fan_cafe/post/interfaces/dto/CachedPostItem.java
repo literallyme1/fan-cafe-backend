@@ -3,6 +3,7 @@ package com.example.fan_cafe.post.interfaces.dto;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,7 +23,7 @@ public class CachedPostItem {
     private final int likeCount;
     private final int commentCount;
     private final LocalDateTime createdAt;
-    private final List<String> imageUrls;
+    private List<String> imageUrls;
 
     @QueryProjection
     public CachedPostItem(Long id,
@@ -33,8 +34,7 @@ public class CachedPostItem {
                         String avatarUrl,
                         int likeCount,
                         int commentCount,
-                        LocalDateTime createdAt,
-                        List<String> imageUrls) {
+                        LocalDateTime createdAt) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -44,6 +44,9 @@ public class CachedPostItem {
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.createdAt = createdAt;
-        this.imageUrls = imageUrls;
+    }
+
+    public void setImageUrls(List<String> urls) {
+        this.imageUrls = urls;
     }
 }
