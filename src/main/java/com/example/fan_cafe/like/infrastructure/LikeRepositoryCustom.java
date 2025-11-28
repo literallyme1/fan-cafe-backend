@@ -4,8 +4,9 @@ import com.example.fan_cafe.like.interfaces.dto.LikeResponse;
 import com.example.fan_cafe.user.domain.User;
 
 import java.util.List;
+import java.util.Set;
 
 public interface LikeRepositoryCustom {
 
-    //List<LikeResponse> findLikeResponsesByUser(User user);
+    Set<Long> findLikedPostIds(Long userId, List<Long> postIds);
 }

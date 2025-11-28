@@ -72,4 +72,21 @@ public class PostResponse implements HasCreatedAt {
                 .isBookmarked(isBookmarked)
                 .build();
     }
+
+    public static PostResponse from(CachedPostItem item, boolean isLiked, boolean isBookmarked) {
+        return PostResponse.builder()
+                .id(item.getId())
+                .title(item.getTitle())
+                .content(item.getContent())
+                .authorId(item.getAuthorId())
+                .nickname(item.getNickname())
+                .avatarUrl(item.getAvatarUrl())
+                .likeCount(item.getLikeCount())
+                .commentCount(item.getCommentCount())
+                .createdAt(item.getCreatedAt())
+                .imageUrls(item.getImageUrls())
+                .isLiked(isLiked)
+                .isBookmarked(isBookmarked)
+                .build();
+    }
 }
