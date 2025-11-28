@@ -19,8 +19,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -80,5 +82,14 @@ public class BookmarkRepositoryImpl implements BookmarkRepositoryCustom{
                 )
                 .fetchFirst(); // 있으면 true, 없으면 null
         return  exists != null && exists;
+    }
+
+    @Override
+    public Set<Long> findBookmarkedPostIds(Long userId, List<Long> postIds) {
+        return new HashSet<>(queryFactory.select(post.id)
+                .from(bookmark)
+                .where(bookmark.user.id.eq(userId),
+                        bookmark.post.id.in(postIds))
+                .fetch());
     }
 }

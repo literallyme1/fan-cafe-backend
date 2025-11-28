@@ -20,7 +20,7 @@ public class LikeRepositoryImpl implements LikeRepositoryCustom{
     QLike like = QLike.like;
 
     @Override
-    public Set<Long> findLikedInPostIds(Long userId, List<Long> postIds) {
+    public Set<Long> findLikedPostIds(Long userId, List<Long> postIds) {
         return new HashSet<>(queryFactory.select(like.post.id)
                 .from(like)
                 .where(like.user.id.eq(userId),

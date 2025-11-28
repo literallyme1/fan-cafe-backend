@@ -7,9 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
 import java.util.List;
+import java.util.Set;
 
 public interface BookmarkRepositoryCustom {
 
     Slice<BookmarkListItemResponse> findBookmarkResponsesByUser(User user, Pageable pageable);
     boolean existsByUserAndPost(User user, Post post);
+    Set<Long> findBookmarkedPostIds(Long userId, List<Long> postIds);
 }

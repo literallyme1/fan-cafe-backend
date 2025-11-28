@@ -8,5 +8,5 @@ import java.util.Set;
 
 public interface LikeRepositoryCustom {
 
-    Set<Long> findLikedInPostIds(Long userId, List<Long> postIds);
+    Set<Long> findLikedPostIds(Long userId, List<Long> postIds);
 }
