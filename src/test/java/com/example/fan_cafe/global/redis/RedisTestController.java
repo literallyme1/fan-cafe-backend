@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequiredArgsConstructor
 public class RedisTestController {
@@ -12,7 +14,7 @@ public class RedisTestController {
 
     @GetMapping("/redis-test")
     public String test() {
-        redisService.set("test", "success", 60);
+        redisService.set("test", "success", Duration.ofMinutes(3));
         return redisService.get("test");
     }
 }

@@ -157,7 +157,7 @@ public class PostServiceTest {
         Cursor cursor = null;
         int size = 2;
         Long userId = 1L;
-        String fakeRedisKey = "post:latest:" + size;
+        String fakeRedisKey = "post:list:latest:size:" + size;
 
         // 1. Redis: 캐시 미스 상황 가정
         when(redisService.get(anyString())).thenReturn(null);
@@ -174,21 +174,21 @@ public class PostServiceTest {
         when(likeRepository.findLikedPostIds(anyLong(), anyList())).thenReturn(Set.of(10L)); // 10번 글 좋아요 함
         when(bookmarkRepository.findBookmarkedPostIds(anyLong(), anyList())).thenReturn(Set.of());
 
-        // (선택) Redis 저장 로직 모킹 (에러 방지용)
+        // Redis 저장 로직 모킹 (에러 방지용)
         when(objectMapper.writeValueAsString(any())).thenReturn("json_string");
 
         // when
-        PostListResponse result = postService.get(cursor, size, userId);
+        PostListResponse result = postService.get(null, size, userId);
 
         // then
         // 1. 데이터 검증
         assertThat(result.getData()).hasSize(2); // 3개 가져와서 2개로 자름
-        assertThat(result.getData().get(0).getId()).isEqualTo(10L);
-        assertThat(result.getData().get(0).isLiked()).isTrue(); // 좋아요 반영 확인
+        assertThat(result.getData().getFirst().getId()).isEqualTo(10L);
+        assertThat(result.getData().getFirst().isLiked()).isTrue(); // 좋아요 반영 확인
 
         // 2. 커서 검증
-        assertThat(result.getNextCursor()).isNotNull(); // 다음 커서 존재
-        assertThat(result.getAfterCursor()).isNotNull(); // 이전(After) 커서 존재 (첫 페이지라 null일 수도 있으나 로직에 따라 다름)
+        assertThat(result.getNextCursor()).isNotNull();
+        assertThat(result.getAfterCursor()).isNotNull();
         assertThat(result.isHasNext()).isTrue();
 
         // 3. 호출 확인 (Verify)
