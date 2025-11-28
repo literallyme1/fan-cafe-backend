@@ -12,38 +12,38 @@ import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
+import com.example.fan_cafe.like.infrastructure.LikeRepository;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
-import com.example.fan_cafe.post.interfaces.dto.PostCreateRequest;
-import com.example.fan_cafe.post.interfaces.dto.PostListResponse;
-import com.example.fan_cafe.post.interfaces.dto.PostResponse;
-import com.example.fan_cafe.post.interfaces.dto.PostUpdateRequest;
+import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Cache;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PostService {
 
+    private final PostHelper postHelper;
+
     private final PostRepository postRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final PostHelper postHelper;
+    private final LikeRepository likeRepository;
+
+
     private final LikeService likeService;
-    private final RedisTemplate<String, String> redisTemplate;
     private final RedisService redisService;
+    private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
 
@@ -66,50 +66,97 @@ public class PostService {
 
     public PostListResponse get(Cursor cursor, int size, Long userId) {
 
-        String redisKey = null;
-        // 1) Redis 조회 (Cache Aside)
-        if(cursor == null) {
-            redisKey = RedisKeyUtil.getLatestPostListKey(size);
-            String cached = redisService.get(redisKey);
+        // 1) 데이터 로딩
+        List<PostResponse> posts = cursor == null
+        ? getFirstPagePosts(size, userId)
+                : postRepository.findNextPage(getResolvedCursor(cursor), size, userId);
 
-            if (cached != null) {
-                log.info("[CACHE HIT] Latest posts size={}", size);
-                try {
-                    List<PostResponse> posts = objectMapper.readValue(
-                            cached,
-                            new TypeReference<List<PostResponse>>() {}
-                    );
-                    PageSlice paging = computePageSlice(posts, size, null);
-                    return PostListResponse.fromCursors(paging.posts(), paging.nextCursor(), paging.afterCursor);
-                } catch (Exception e) {
-                    //값이 깨진 경우
-                    log.warn("[CACHE PARSE ERROR] latest post list cache deleted");
-                    redisTemplate.delete(redisKey);
-                }
-            }
 
-            log.info("[CACHE MISS] Latest posts → DB query");
-
-        }
-        // 2) DB 조회
-        Cursor resolvedCursor = getResolvedCursor(cursor);
-        List<PostResponse> posts = postRepository.findNextPage(resolvedCursor, size, userId);
+        //2) 페이징 처리 & 반환
         PageSlice paging = computePageSlice(posts, size, cursor);
-
-        // 3) 최신 값인 경우 Redis 저장
-        if(cursor == null){
-            try {
-                String json = objectMapper.writeValueAsString(posts);
-                redisService.set(redisKey, json, CacheTTL.POST_LIST_LATEST);
-            } catch (Exception e) {
-                log.error("[REDIS SAVE ERROR] latest post list", e);
-            }
-        }
-
-
         return PostListResponse.fromCursors(
                 paging.posts(), paging.nextCursor(), paging.afterCursor
         );
+    }
+
+    private List<PostResponse> getFirstPagePosts(int size, Long userId) {
+        // 1. Raw Data 로딩 (Redis + DB Fallback)
+        List<CachedPostItem> cachedPosts = loadCachedPosts(size);
+
+        if (cachedPosts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. UserInfo 조회 (Parameter Object 생성)
+        UserInfo userInfo = getUserInfo(userId, cachedPosts);
+
+        // 3. 데이터 조립
+        return enrichPostWithUserInfo(cachedPosts, userInfo);
+    }
+
+    private List<CachedPostItem> loadCachedPosts(int size) {
+        String redisKey = RedisKeyUtil.getLatestPostListKey(size);
+
+        // Redis 시도 -> 없으면 DB
+        return getCachedPostItemsInRedis(redisKey)
+                .orElseGet(() -> loadFromDbAndCache(size, redisKey));
+    }
+
+    private List<CachedPostItem> loadFromDbAndCache(int size, String redisKey) {
+        log.info("[CACHE MISS] Latest posts → DB query");
+        List<CachedPostItem> posts = postRepository.findLatestCachedPosts(size);
+
+        // 비동기 처리나 별도 메소드로 분리하면 더 좋지만, 지금도 충분함
+        try {
+            String json = objectMapper.writeValueAsString(posts);
+            redisService.set(redisKey, json, CacheTTL.POST_LIST_LATEST);
+        } catch (Exception e) {
+            log.error("[REDIS SAVE ERROR] key={}", redisKey, e);
+        }
+        return posts;
+    }
+
+    private UserInfo getUserInfo(Long userId, List<CachedPostItem> posts) {
+        // posts가 empty일 때 처리는 호출부에서 했으므로 바로 stream 시작
+        List<Long> postIds = posts.stream()
+                .map(CachedPostItem::getId)
+                .toList();
+
+        Set<Long> likes = likeRepository.findLikedPostIds(userId, postIds);
+        Set<Long> bookmarks = bookmarkRepository.findBookmarkedPostIds(userId, postIds);
+
+        return new UserInfo(likes, bookmarks); // 변수 선언 없이 바로 리턴
+    }
+
+    private record UserInfo(Set<Long> likes, Set<Long> bookmarks) {
+    }
+
+    private static List<PostResponse> enrichPostWithUserInfo(List<CachedPostItem> posts, UserInfo userInfo) {
+        return posts.stream()
+                .map(p -> {
+                    boolean liked = userInfo.likes.contains(p.getId());
+                    boolean bookmarked = userInfo.bookmarks.contains(p.getId());
+                    return PostResponse.from(p, liked, bookmarked);
+                })
+                .toList();
+    }
+
+    // 반환 타입을 Optional로 변경하여 호출자에게 "없을 수도 있음"을 알림
+    private Optional<List<CachedPostItem>> getCachedPostItemsInRedis(String redisKey) {
+        String cached = redisService.get(redisKey);
+        if (cached == null) {
+            return Optional.empty();
+        }
+
+        try {
+            log.info("[CACHE HIT] key={}", redisKey);
+            List<CachedPostItem> posts = objectMapper.readValue(cached, new TypeReference<>() {});
+            return Optional.ofNullable(posts);
+        } catch (Exception e) {
+            log.warn("[CACHE PARSE ERROR] cache deleted. key={}", redisKey);
+            redisTemplate.delete(redisKey);
+            return Optional.empty();
+        }
     }
 
 

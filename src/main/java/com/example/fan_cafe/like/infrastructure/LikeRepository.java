@@ -16,4 +16,6 @@ public interface LikeRepository extends JpaRepository<Like, Long>, LikeRepositor
             LikeTargetType targetType,
             User user
     );
+
+    List<Long> findBy
 }
