@@ -46,7 +46,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                         CursorUtils.beforeDesc(post.createdAt, post.id, cursor)
                 )
                 .orderBy(post.createdAt.desc(), post.id.desc())
-                .limit(size + 1)
+                .limit(size)
                 .fetch();
 
         return results.stream()
@@ -94,7 +94,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
     public List<CachedPostItem> findLatestCachedPosts(int size) {
 
         // 1. 최신 PostId 리스트
-        List<Long> postIds = findLatestPostIds(size);
+        List<Long> postIds = findLatestPostIds(size + 1);
         if (postIds.isEmpty()) return List.of();
 
         // 2. 이미지 DTO 가져오기
