@@ -1,5 +1,7 @@
 package com.example.fan_cafe.global.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -24,7 +26,8 @@ public class RedisConfig {
     }
 
     // 문자열 직렬화가 명확한 RedisTemplate (Set/Hash도 문자열 기반으로 저장)
-    @Bean
+    @Autowired
+    @Qualifier("redisStringTemplate")
     public RedisTemplate<String, String> redisStringTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, String> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);

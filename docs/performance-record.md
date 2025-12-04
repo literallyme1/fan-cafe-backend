@@ -1,4 +1,4 @@
-# 🚀 API 성능 측정 기록 (Performance Record)
+ # 🚀 API 성능 측정 기록 (Performance Record)
 
 > 목적: Redis 적용 전/후 API 성능을 정량적으로 비교하고, 개선 효과를 문서화한다.
 
@@ -24,18 +24,18 @@
 ## 📌 3. 성능 측정 결과 (Before → After)
 
 ### 3-1. 🔵 전체 응답 속도 (Postman 기준)
-| API | Before(ms) | After(ms) | 개선율 |
-|------|------------|------------|---------|
-| GET /posts?page=0 | 564ms      |  |  |
-| GET /posts/{id} |            |  |  |
+| API | Before(ms) | After(ms)                                      | 개선율           |
+|------|------------|------------------------------------------------|---------------|
+| GET /posts?page=0 | 589ms      | Redis 저장 + Get : 248ms / Redis 에서 가져올 때 : 31ms | **94.7% 개선**  |
+| GET /posts/{id} |            |                                                |               |
 
 ---
 
 ### 3-2. 🔵 서버 내부 처리 시간 (Logging Filter 기준)
-| API | Before(ms) | After(ms) | 개선율 |
-|------|------------|------------|---------|
-| GET /posts?page=0 | 589ms      |  |  |
-| GET /posts/{id} |            |  |  |
+| API | Before(ms) | After(ms)                                      | 개선율 |
+|------|------------|------------------------------------------------|---------|
+| GET /posts?page=0 | 564ms      | Redis 저장 + Get : 193ms / Redis 에서 가져올 때 : 24ms | **95.7% 개선** |
+| GET /posts/{id} |            |                                                |  |
 
 ---
 
