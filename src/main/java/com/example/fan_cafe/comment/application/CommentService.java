@@ -18,6 +18,7 @@ import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CommentService {
 
     private final PostRepository postRepository;
@@ -35,17 +37,23 @@ public class CommentService {
     private final RedisService redisService;
 
 
-    @Transactional
     public CommentResponse create(User user, CommentRequest request) {
         Post post = getPostOrThrow(request.getPostId());
-
-        Comment comment = (request.getParentId() == null)
-                ? Comment.of(post, user, request.getContent())
-                : createReply(post, user, request.getParentId(), request.getContent());
+        CommentResponse response = createComment(post, user, request);
 
         //redis INCR
         String key = RedisKeyUtil.getCommentCountKey(post.getId());
         redisService.increaseCount(key);
+
+        return response;
+    }
+
+    @Transactional
+    public CommentResponse createComment(Post post, User user, CommentRequest request) {
+
+        Comment comment = (request.getParentId() == null)
+                ? Comment.of(post, user, request.getContent())
+                : createReply(post, user, request.getParentId(), request.getContent());
 
         commentRepository.save(comment);
 
