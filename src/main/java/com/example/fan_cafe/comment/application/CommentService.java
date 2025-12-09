@@ -9,6 +9,8 @@ import com.example.fan_cafe.comment.interfaces.dto.CommentResponse;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.CursorResolver;
 import com.example.fan_cafe.global.exception.CustomException;
+import com.example.fan_cafe.global.redis.RedisKeyUtil;
+import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
@@ -30,6 +32,7 @@ public class CommentService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final LikeService likeService;
+    private final RedisService redisService;
 
 
     @Transactional
@@ -39,6 +42,10 @@ public class CommentService {
         Comment comment = (request.getParentId() == null)
                 ? Comment.of(post, user, request.getContent())
                 : createReply(post, user, request.getParentId(), request.getContent());
+
+        //redis INCR
+        String key = RedisKeyUtil.getCommentCountKey(post.getId());
+        redisService.increaseCount(key);
 
         commentRepository.save(comment);
 

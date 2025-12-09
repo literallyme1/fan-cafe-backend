@@ -24,4 +24,6 @@ public class RedisService {
     public void delete(String key) {
         stringRedisTemplate.delete(key);
     }
+
+    public void increaseCount(String key) { stringRedisTemplate.opsForValue().increment(key); }
 }
