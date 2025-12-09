@@ -23,6 +23,15 @@ public class RedisService {
         return stringRedisTemplate.opsForValue().get(key);
     }
 
+    public int getInt(String key) {
+        try {
+            String v = stringRedisTemplate.opsForValue().get(key);
+            return v == null ? 0 : Integer.parseInt(v);
+        } catch (Exception e) {
+            log.warn("[CACHE GET ERROR] key={}", key);
+            return 0;
+        }
+    }
     public void delete(String key) {
         stringRedisTemplate.delete(key);
     }
