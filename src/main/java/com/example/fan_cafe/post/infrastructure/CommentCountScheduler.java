@@ -1,6 +1,7 @@
 package com.example.fan_cafe.post.infrastructure;
 
 import com.example.fan_cafe.global.redis.RedisKeyUtil;
+import com.example.fan_cafe.global.redis.RedisLockManager;
 import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.post.application.CommentCountSyncService;
 import lombok.RequiredArgsConstructor;
@@ -16,33 +17,44 @@ import java.util.Set;
 @Slf4j
 public class CommentCountScheduler {
 
-    private final StringRedisTemplate stringRedisTemplate;
-    private final PostRepository postRepository;
     private final RedisService redisService;
     private final CommentCountSyncService syncService;
+    private final RedisLockManager redisLockManager;
 
     @Scheduled(fixedDelay = 5000)
     public void syncCommentCount() {
 
-        //post 목록 조회
-        Set<String> postIds = redisService.getCommentCountChangedPosts();
-        if (postIds == null || postIds.isEmpty()) {
+        String lockKey = "comment_count:scheduler:lock";
+        //락 획득해야 실행 가능
+        if (!redisLockManager.tryLock(lockKey, 10)) {
             return;
         }
 
-        for (String postIdStr : postIds) {
-            Long postId = Long.valueOf(postIdStr);
-            String countKey = RedisKeyUtil.getCommentCountKey(postId);
-            try{
-                //db
-                syncService.syncToDatabase(postId, countKey);
-                //redis
-                redisService.delete(countKey); //post의 댓글 증가분 삭제
-                redisService.removeFromCommentCountSyncTarget(postIdStr);//postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
-            } catch (Exception e) {
-                log.error("[COMMENT COUNT SYNC FAIL] postId={}", postId, e);
+        try {
+
+
+            //post 목록 조회
+            Set<String> postIds = redisService.getCommentCountChangedPosts();
+            if (postIds == null || postIds.isEmpty()) {
+                return;
             }
 
+            for (String postIdStr : postIds) {
+                Long postId = Long.valueOf(postIdStr);
+                String countKey = RedisKeyUtil.getCommentCountKey(postId);
+                try {
+                    //db
+                    syncService.syncToDatabase(postId, countKey);
+                    //redis
+                    redisService.delete(countKey); //post의 댓글 증가분 삭제
+                    redisService.removeFromCommentCountSyncTarget(postIdStr);//postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
+                } catch (Exception e) {
+                    log.error("[COMMENT COUNT SYNC FAIL] postId={}", postId, e);
+                }
+
+            }
+        } finally {
+            redisLockManager.unlock(lockKey);
         }
     }
 }
