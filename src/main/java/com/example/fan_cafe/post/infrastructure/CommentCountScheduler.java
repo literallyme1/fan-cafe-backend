@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post.infrastructure;
 
+import com.example.fan_cafe.global.config.SchedulerProperties;
 import com.example.fan_cafe.global.redis.RedisKeyUtil;
 import com.example.fan_cafe.global.redis.RedisLockManager;
 import com.example.fan_cafe.global.redis.RedisService;
@@ -21,9 +22,9 @@ public class CommentCountScheduler {
     private final CommentCountSyncService syncService;
     private final RedisLockManager redisLockManager;
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = SchedulerProperties.COMMENT_COUNT_DELAY_MS)
     public void syncCommentCount() {
-
+        log.info("[SCHEDULER] syncCommentCount tick");
         String lockKey = "comment_count:scheduler:lock";
         //락 획득해야 실행 가능
         if (!redisLockManager.tryLock(lockKey, 10)) {
