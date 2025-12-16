@@ -31,8 +31,6 @@ public class CommentCountScheduler {
         }
 
         try {
-
-
             //post 목록 조회
             Set<String> postIds = redisService.getCommentCountChangedPosts();
             if (postIds == null || postIds.isEmpty()) {
@@ -40,21 +38,26 @@ public class CommentCountScheduler {
             }
 
             for (String postIdStr : postIds) {
-                Long postId = Long.valueOf(postIdStr);
-                String countKey = RedisKeyUtil.getCommentCountKey(postId);
-                try {
-                    //db
-                    syncService.syncToDatabase(postId, countKey);
-                    //redis
-                    redisService.delete(countKey); //post의 댓글 증가분 삭제
-                    redisService.removeFromCommentCountSyncTarget(postIdStr);//postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
-                } catch (Exception e) {
-                    log.error("[COMMENT COUNT SYNC FAIL] postId={}", postId, e);
-                }
-
+                syncOnePost(postIdStr);
             }
         } finally {
             redisLockManager.unlock(lockKey);
         }
     }
+
+    private void syncOnePost(String postIdStr) {
+        Long postId = Long.valueOf(postIdStr);
+        String countKey = RedisKeyUtil.getCommentCountKey(postId);
+        try {
+            //db
+            syncService.syncToDatabase(postId, countKey);
+            //redis
+            redisService.delete(countKey); //post의 댓글 증가분 삭제
+            redisService.removeFromCommentCountSyncTarget(postIdStr);//postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
+        } catch (Exception e) {
+            log.error("[COMMENT COUNT SYNC FAIL] postId={}", postId, e);
+        }
+    }
+
 }
+
