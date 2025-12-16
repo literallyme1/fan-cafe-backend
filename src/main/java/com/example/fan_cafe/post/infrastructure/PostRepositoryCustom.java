@@ -19,4 +19,6 @@ public interface PostRepositoryCustom {
     Optional<Post> findLatest();
 
     List<CachedPostItem> findLatestCachedPosts(int size);
+
+    void increaseCommentCount(Long postId, int extraCount);
 }

@@ -71,9 +71,17 @@ public class PostService {
         ? getFirstPagePosts(size, userId)
                 : postRepository.findNextPage(getResolvedCursor(cursor), size, userId);
 
-
-        //2) 페이징 처리 & 반환
+        //2) Redis Extra 처리
+        posts = posts.stream()
+                .map(n -> {
+                    String key = RedisKeyUtil.getCommentCountKey(n.getId());
+                    n.setCommentCount(n.getCommentCount() + redisService.getInt(key));
+                    return n;
+                })
+                .toList();
+        //3) 페이징 처리 & 반환
         PageSlice paging = computePageSlice(posts, size, cursor);
+
         return PostListResponse.fromCursors(
                 paging.posts(), paging.nextCursor(), paging.afterCursor
         );

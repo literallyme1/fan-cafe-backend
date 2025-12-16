@@ -22,7 +22,7 @@ public class PostResponse implements HasCreatedAt {
     private final String nickname;
     private final String avatarUrl;
     private final int likeCount;
-    private final int commentCount;
+    private int commentCount;
     private final LocalDateTime createdAt;
     private final List<String> imageUrls;
     boolean isLiked;
@@ -88,5 +88,9 @@ public class PostResponse implements HasCreatedAt {
                 .isLiked(isLiked)
                 .isBookmarked(isBookmarked)
                 .build();
+    }
+
+    public void setCommentCount(int commentCount){
+        this.commentCount = commentCount;
     }
 }

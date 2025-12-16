@@ -47,7 +47,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     : uri + "?" + queryString;
 
             //로그 출력
-            log.info("[{}] {} -> {} ({} ms)", method, fullUri, status, duration);
+            log.info("AOP [{}] {} -> {} ({} ms)", method, fullUri, status, duration);
         }
 
     }

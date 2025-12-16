@@ -4,7 +4,6 @@ import com.example.fan_cafe.bookmark.domain.QBookmark;
 import com.example.fan_cafe.global.common.Cursor;
 import com.example.fan_cafe.global.common.SoftDeleteCondition;
 import com.example.fan_cafe.global.util.CursorUtils;
-import com.example.fan_cafe.like.domain.LikeTargetType;
 import com.example.fan_cafe.like.domain.QLike;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.domain.QPost;
@@ -14,7 +13,6 @@ import com.example.fan_cafe.post.interfaces.dto.PostImageDto;
 import com.example.fan_cafe.post.interfaces.dto.PostResponse;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 
@@ -90,6 +88,7 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
                         Collectors.mapping(PostImageDto::url, Collectors.toList())
                 ));
     }
+
     @Override
     public List<CachedPostItem> findLatestCachedPosts(int size) {
 
@@ -180,5 +179,16 @@ public class PostRepositoryImpl implements PostRepositoryCustom {
         return Optional.ofNullable(result);
     }
 
-
+    @Override
+    public void increaseCommentCount(Long postId, int extraCount) {
+        queryFactory
+                .update(post)
+                .set(
+                        post.commentCount,
+                        post.commentCount.add(extraCount)
+                )
+                .where(SoftDeleteCondition.isNotDeleted(post.deletedAt),
+                        post.id.eq(postId))
+                .execute();
+    }
 }

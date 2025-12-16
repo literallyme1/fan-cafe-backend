@@ -1,9 +1,6 @@
 package com.example.fan_cafe.notification.infrastructure;
 
-import com.example.fan_cafe.comment.events.CommentCreatedEvent;
-import com.example.fan_cafe.follow.events.FollowedEvent;
 import com.example.fan_cafe.notification.application.CreateNotificationHandler;
-import com.example.fan_cafe.post.events.PostLikedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

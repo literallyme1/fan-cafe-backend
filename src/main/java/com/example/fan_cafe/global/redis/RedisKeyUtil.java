@@ -9,5 +9,9 @@ public class RedisKeyUtil {
     public static String getLatestPostListKey(int size) {
         return "post:list:latest:size:" + size;
     }
+    public static String getCommentCountKey(Long postId) {
+        return "post:" + postId + ":comment_count";
+    }
+    public static String getCommentCountPostSetKey() { return "comment_count:posts"; }
 
 }
