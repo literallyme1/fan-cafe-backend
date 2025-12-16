@@ -1,4 +1,4 @@
-package com.example.fan_cafe.post.events;
+package com.example.fan_cafe.post.infrastructure.events;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

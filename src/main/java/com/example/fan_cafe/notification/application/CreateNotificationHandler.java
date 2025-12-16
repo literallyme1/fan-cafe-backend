@@ -6,7 +6,7 @@ import com.example.fan_cafe.follow.events.FollowedEvent;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.NotificationPolicy;
 import com.example.fan_cafe.notification.infrastructure.JpaNotificationRepository;
-import com.example.fan_cafe.post.events.PostLikedEvent;
+import com.example.fan_cafe.post.infrastructure.events.PostLikedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

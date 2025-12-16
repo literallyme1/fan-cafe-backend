@@ -44,6 +44,8 @@ public class CommentService {
         //redis INCR
         String key = RedisKeyUtil.getCommentCountKey(post.getId());
         redisService.increaseCount(key);
+        //변경된 postId 기록
+        redisService.recordCommentCountChangedPost(post.getId());
 
         return response;
     }
