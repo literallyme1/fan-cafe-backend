@@ -2,6 +2,7 @@ package com.example.fan_cafe.post.infrastructure;
 
 import com.example.fan_cafe.global.redis.RedisKeyUtil;
 import com.example.fan_cafe.global.redis.RedisService;
+import com.example.fan_cafe.post.application.CommentCountSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,6 +19,7 @@ public class CommentCountScheduler {
     private final StringRedisTemplate stringRedisTemplate;
     private final PostRepository postRepository;
     private final RedisService redisService;
+    private final CommentCountSyncService syncService;
 
     @Scheduled(fixedDelay = 5000)
     public void syncCommentCount() {
@@ -31,22 +33,16 @@ public class CommentCountScheduler {
         for (String postIdStr : postIds) {
             Long postId = Long.valueOf(postIdStr);
             String countKey = RedisKeyUtil.getCommentCountKey(postId);
-
-            //Redis 증가분 조회
-            int extraCount = redisService.getInt(countKey);
-
-            if (extraCount <= 0) {
-                //DB에 옮길 데이터 X -> 목록에서만 뺌.
-                redisService.removeFromCommentCountSyncTarget(postIdStr);
-                continue;
+            try{
+                //db
+                syncService.syncToDatabase(postId, countKey);
+                //redis
+                redisService.delete(countKey); //post의 댓글 증가분 삭제
+                redisService.removeFromCommentCountSyncTarget(postIdStr);//postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
+            } catch (Exception e) {
+                log.error("[COMMENT COUNT SYNC FAIL] postId={}", postId, e);
             }
 
-            //DB 반영
-            postRepository.increaseCommentCount(postId, extraCount);
-
-            //redis 정리
-            redisService.delete(countKey); //post의 댓글 증가분 삭제
-            redisService.removeFromCommentCountSyncTarget(postIdStr); //postSetKey라는 Set에서 postIdStr라는 값을 하나 제거
         }
     }
 }
