@@ -1,4 +1,18 @@
 package com.example.fan_cafe.comment.events;
 
-public record CommentCreatedEvent(Long commentId, Long postId, Long authorId,
-                                  Long postAuthorId, String preview) {}
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@AllArgsConstructor
+public class CommentCreatedEvent {
+
+    private final String eventId;
+    private final Long postId;
+    private final Long postAuthorId;
+    private final Long commentId;
+    private final Long commentAuthorId;
+    private final LocalDateTime createdAt;
+}
