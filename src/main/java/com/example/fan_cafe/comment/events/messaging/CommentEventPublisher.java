@@ -1,6 +1,5 @@
-package com.example.fan_cafe.comment.events;
+package com.example.fan_cafe.comment.events.messaging;
 
-import com.example.fan_cafe.notification.infrastructure.messaging.CommentRabbitConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;

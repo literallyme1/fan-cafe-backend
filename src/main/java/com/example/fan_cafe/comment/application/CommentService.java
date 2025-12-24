@@ -1,9 +1,9 @@
 package com.example.fan_cafe.comment.application;
 
 import com.example.fan_cafe.comment.domain.Comment;
-import com.example.fan_cafe.comment.events.CommentCreatedEvent;
-import com.example.fan_cafe.comment.events.CommentEventIdGenerator;
-import com.example.fan_cafe.comment.events.CommentEventPublisher;
+import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
+import com.example.fan_cafe.comment.events.messaging.CommentEventIdGenerator;
+import com.example.fan_cafe.comment.events.messaging.CommentEventPublisher;
 import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
 import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 
 @Service

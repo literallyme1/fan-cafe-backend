@@ -1,4 +1,4 @@
-package com.example.fan_cafe.comment.events;
+package com.example.fan_cafe.comment.events.messaging;
 
 import com.example.fan_cafe.notification.domain.NotificationType;
 import lombok.AllArgsConstructor;

@@ -1,4 +1,4 @@
-package com.example.fan_cafe.comment.events;
+package com.example.fan_cafe.comment.events.messaging;
 
 import java.util.UUID;
 

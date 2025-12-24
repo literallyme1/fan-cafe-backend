@@ -1,4 +1,4 @@
-package com.example.fan_cafe.notification.infrastructure.messaging;
+package com.example.fan_cafe.comment.events.messaging;
 
 //class final : 상속 금지
 public final class CommentRabbitConstants {

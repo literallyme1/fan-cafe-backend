@@ -1,4 +1,4 @@
-package com.example.fan_cafe.notification.infrastructure.messaging;
+package com.example.fan_cafe.comment.events.messaging;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
