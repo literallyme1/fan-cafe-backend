@@ -41,6 +41,7 @@ public class CommentNotificationConsumer {
                 channel.basicAck(deliveryTag, false);
                 return;
             }
+
             //Step 2. 알림 저장
             notificationService.saveNotification(
                     event.getPostAuthorId(),
@@ -58,7 +59,7 @@ public class CommentNotificationConsumer {
         } catch (Exception e){
             // Step 5. 처리 실패 → 재시도
             log.error("Notification consume failed", e);
-            channel.basicNack(deliveryTag, false, true); //다시 큐에 넣어서 재시도
+            channel.basicNack(deliveryTag, false, false); //다시 큐에 넣어서 재시도
         }
     }
 }

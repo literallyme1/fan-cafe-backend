@@ -17,6 +17,7 @@ import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -86,47 +87,49 @@ public class CommentServiceTest {
 
         ReflectionTestUtils.setField(mockReply, "createdAt", LocalDateTime.of(2025,10,23,3,3,3));
     }
+    @Disabled("댓글 알림 시스템 리팩토링으로 계약 변경됨 - 2025-12-24")
+    // TODO: 알림 비동기화 구조 변경으로 테스트 리팩토링 필요
+    @Test
+    void create_shouldCreate_whenRequestIsValid() {
+        //given
+        CommentRequest request = new CommentRequest(1L, "첫번째 댓글입니다.", null);
+        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
 
-//    @Test
-//    void create_shouldCreate_whenRequestIsValid() {
-//        //given
-//        CommentRequest request = new CommentRequest(1L, "첫번째 댓글입니다.", null);
-//        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
-//
-//        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
-//        //when
-//        CommentResponse  response = commentService.create(mockUser, request);
-//
-//        //then
-//
-//        verify(commentRepository).save(captor.capture());
-//        assertThat(captor.getValue().getContent()).isEqualTo(request.getContent());
-//
-//    }
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        //when
+        CommentResponse  response = commentService.create(mockUser, request);
 
-//    @Test
-//    void create_shouldCreateReply_whenRequestIsValid() {
-//        //given
-//        CommentRequest request = new CommentRequest(2L, "대댓글입니다.", 1L);
-//        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
-//        when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockRootComment));
-//
-//        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
-//        //when
-//        var response = commentService.create(mockUser, request);
-//
-//        //then
-//        verify(commentRepository, times(1)).save(captor.capture());
-//        Comment saved = captor.getValue();
-//
-//        assertThat(saved.getContent()).isEqualTo(request.getContent());
-//        assertThat(saved.getPost()).isEqualTo(mockPost);
-//        assertThat(saved.getUser()).isEqualTo(mockUser);
-//        assertThat(saved.getParent()).isEqualTo(mockRootComment);
-//
-//        assertThat(response.getContent()).isEqualTo(request.getContent());
-//
-//    }
+        //then
+
+        verify(commentRepository).save(captor.capture());
+        assertThat(captor.getValue().getContent()).isEqualTo(request.getContent());
+
+    }
+    @Disabled("댓글 알림 시스템 리팩토링으로 계약 변경됨 - 2025-12-24")
+    // TODO: 알림 비동기화 구조 변경으로 테스트 리팩토링 필요
+    @Test
+    void create_shouldCreateReply_whenRequestIsValid() {
+        //given
+        CommentRequest request = new CommentRequest(2L, "대댓글입니다.", 1L);
+        when(postRepository.findByIdAndDeletedAtIsNull(request.getPostId())).thenReturn(Optional.of(mockPost));
+        when(commentRepository.findById(request.getParentId())).thenReturn(Optional.of(mockRootComment));
+
+        ArgumentCaptor<Comment> captor = ArgumentCaptor.forClass(Comment.class);
+        //when
+        var response = commentService.create(mockUser, request);
+
+        //then
+        verify(commentRepository, times(1)).save(captor.capture());
+        Comment saved = captor.getValue();
+
+        assertThat(saved.getContent()).isEqualTo(request.getContent());
+        assertThat(saved.getPost()).isEqualTo(mockPost);
+        assertThat(saved.getUser()).isEqualTo(mockUser);
+        assertThat(saved.getParent()).isEqualTo(mockRootComment);
+
+        assertThat(response.getContent()).isEqualTo(request.getContent());
+
+    }
 
     @Test
     void create_shouldThrowException_whenDepthIsMoreThan2() {
