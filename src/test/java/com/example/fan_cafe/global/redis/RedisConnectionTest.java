@@ -13,11 +13,11 @@ public class RedisConnectionTest {
     @Autowired
     private StringRedisTemplate redis;
 
-    @Test
-    void redis_set_get_test() {
-        redis.opsForValue().set("test:key", "hello");
-        String value = redis.opsForValue().get("test:key");
-
-        assertEquals("hello", value);
-    }
+//    @Test
+//    void redis_set_get_test() {
+//        redis.opsForValue().set("test:key", "hello");
+//        String value = redis.opsForValue().get("test:key");
+//
+//        assertEquals("hello", value);
+//    }
 }

@@ -1,6 +1,9 @@
 package com.example.fan_cafe.comment.application;
 
 import com.example.fan_cafe.comment.domain.Comment;
+import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
+import com.example.fan_cafe.comment.events.messaging.CommentEventIdGenerator;
+import com.example.fan_cafe.comment.events.messaging.CommentEventPublisher;
 import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
 import com.example.fan_cafe.comment.interfaces.dto.CommentRequest;
@@ -14,6 +17,7 @@ import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.global.util.CursorUtils;
 import com.example.fan_cafe.like.application.LikeService;
 import com.example.fan_cafe.like.domain.LikeTargetType;
+import com.example.fan_cafe.notification.domain.NotificationType;
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.user.domain.User;
@@ -23,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 
 @Service
@@ -35,19 +38,42 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final LikeService likeService;
     private final RedisService redisService;
+    private final CommentEventPublisher eventPublisher;
 
 
     public CommentResponse create(User user, CommentRequest request) {
         Post post = getPostOrThrow(request.getPostId());
         CommentResponse response = createComment(post, user, request);
 
+        //cache update
+        updateCommentCountCache(post.getId());
+
+        publishCommentCreatedEvent(post, response);
+        return response;
+    }
+
+    private void publishCommentCreatedEvent(Post post, CommentResponse response) {
+        //producer event Id  > DTO 생성 > Queue
+        String eventId = CommentEventIdGenerator.generate();
+        CommentCreatedEvent event = CommentCreatedEvent.builder()
+                .eventId(eventId)
+                .notificationType(NotificationType.COMMENT)
+                .postId(post.getId())
+                .postAuthorId(post.getUser().getId())
+                .commentId(response.getId())
+                .commentAuthorId(response.getAuthorId())
+                .createdAt(response.getCreatedAt())
+                .build();
+
+        eventPublisher.publish(event);
+    }
+
+    private void updateCommentCountCache(Long postId) {
         //redis INCR
-        String key = RedisKeyUtil.getCommentCountKey(post.getId());
+        String key = RedisKeyUtil.getCommentCountKey(postId);
         redisService.increaseCount(key);
         //변경된 postId 기록
-        redisService.recordCommentCountChangedPost(post.getId());
-
-        return response;
+        redisService.recordCommentCountChangedPost(postId);
     }
 
     @Transactional
