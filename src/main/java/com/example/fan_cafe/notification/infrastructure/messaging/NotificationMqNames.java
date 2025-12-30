@@ -23,5 +23,7 @@ public final class NotificationMqNames {
     public static final int RETRY_5S_TTL_MS = 5_000;
     public static final int RETRY_30S_TTL_MS = 30_000;
 
+    public static final int MAX_RETRY_BEFORE_DLQ = 2;
+
     private NotificationMqNames(){ }
 }

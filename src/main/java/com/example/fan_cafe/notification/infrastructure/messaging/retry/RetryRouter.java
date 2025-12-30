@@ -3,6 +3,7 @@ package com.example.fan_cafe.notification.infrastructure.messaging.retry;
 import com.example.fan_cafe.notification.application.retry.RetryTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,12 @@ public class RetryRouter {
     private final RabbitTemplate rabbitTemplate;
 
     //결정 대상을 큐로 보낸다.
-    public void routeRetry(Message message, RetryTarget target) {
+    public void routeRetry(Message message, RetryTarget target, Exception e) {
+
+        //메세지에 헤더 정보 추가 ( target, 에러 정류 )
+        MessageProperties props = message.getMessageProperties();
+        props.setHeader("retry-target", target.name());
+        props.setHeader("error-type", e.getClass().getSimpleName());
         switch (target) {
             case RETRY_5S ->
                 rabbitTemplate.send(RETRY_EXCHANGE, RETRY_5S_ROUTING_KEY, message); //5초 큐
