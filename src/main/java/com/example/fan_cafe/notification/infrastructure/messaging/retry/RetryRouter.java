@@ -30,7 +30,7 @@ public class RetryRouter {
                 rabbitTemplate.send(RETRY_EXCHANGE, RETRY_30S_ROUTING_KEY, message); //30초 큐
 
             case DLQ ->
-                rabbitTemplate.send(DLQ_EXCHANGE,  DLQ_ROUTING_KEY, message);
+                rabbitTemplate.send(DLX,  DLQ_ROUTING_KEY, message);
         }
     }
 }

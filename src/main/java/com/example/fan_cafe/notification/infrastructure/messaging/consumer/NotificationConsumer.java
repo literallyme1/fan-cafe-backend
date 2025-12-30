@@ -13,6 +13,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 import static com.example.fan_cafe.notification.infrastructure.messaging.NotificationMqNames.MAIN_QUEUE;
 
@@ -25,10 +26,12 @@ public class NotificationConsumer {
     private final XDeathHeaderReader xDeathHeaderReader;
     private final RetryRouter retryRouter;
 
-    @RabbitListener(queues = MAIN_QUEUE)
+    @RabbitListener(
+            queues = MAIN_QUEUE,
+            ackMode = "MANUAL"
+    )
     public void consume(Message message, Channel channel) throws IOException {
         long tag = message.getMessageProperties().getDeliveryTag();
-        String eventId = message.getMessageProperties().getMessageId();
 
         try {
 //            process(message);
@@ -43,8 +46,8 @@ public class NotificationConsumer {
             //로직 오류일 시 바로 DLQ
             if (!retryPolicy.isRetryable(e)) {
                 log.error(
-                        "notification sent to DLQ: eventId={}, retryCount={}",
-                        eventId, retryCount
+                        "notification sent to DLQ: retryCount={}",
+                        retryCount
                 );
                 channel.basicNack(tag, false, false); //마지막 bool , 큐에 넣지 말고 버려라
                 return;
@@ -54,8 +57,8 @@ public class NotificationConsumer {
             RetryTarget target = retryPolicy.decideRetryTarget(retryCount);
 
             log.warn(
-                    "notification retry: eventId={}, retryCount={}, target={}",
-                    eventId, retryCount, target
+                    "notification retry: retryCount={}, target={}",
+                     retryCount, target
             );
 
             //직접 재전송

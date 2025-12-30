@@ -1,6 +1,7 @@
 package com.example.fan_cafe.notification.infrastructure.messaging.consumer.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -27,7 +28,7 @@ public class NotificationRetryMqConfig {
 
     //30초 쉬었다가 다시 메인 큐로 돌려보내는 대기소
     @Bean
-    public Queue notification30sQueue() {
+    public Queue notificationRetry30sQueue() {
         return QueueBuilder.durable(RETRY_30S_QUEUE)
                 .ttl(RETRY_30S_TTL_MS)
                 .deadLetterExchange(MAIN_EXCHANGE)
@@ -38,7 +39,7 @@ public class NotificationRetryMqConfig {
     //retry exchange 에 온 메세지 5초 대기 큐에 연결
     @Bean
     public Binding bindRetry5s(DirectExchange notificationRetryExchange,
-                               Queue notificationRetry5sQueue) {
+                               @Qualifier("notificationRetry5sQueue") Queue notificationRetry5sQueue) {
         return BindingBuilder.bind(notificationRetry5sQueue)
                 .to(notificationRetryExchange)
                 .with(RETRY_5S_ROUTING_KEY);
@@ -46,7 +47,7 @@ public class NotificationRetryMqConfig {
 
     @Bean
     public Binding bindRetry30s(DirectExchange notificationRetryExchange,
-                               Queue notificationRetry30sQueue) {
+                                @Qualifier("notificationRetry30sQueue") Queue notificationRetry30sQueue) {
         return BindingBuilder.bind(notificationRetry30sQueue)
                 .to(notificationRetryExchange)
                 .with(RETRY_30S_ROUTING_KEY);
