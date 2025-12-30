@@ -1,6 +1,7 @@
 package com.example.fan_cafe.comment.events.messaging;
 
 import org.springframework.amqp.core.*;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -42,8 +43,8 @@ public class CommentRabbitConfig {
     //Queue, Exchange, 라우팅 규칙 를 연결
     @Bean
     public Binding commentNoficationBinding(
-            Queue commentNotificationQueue,
-            TopicExchange commentExchange
+            @Qualifier("commentNotificationQueue") Queue commentNotificationQueue,
+            @Qualifier("commentExchange") TopicExchange commentExchange
     ) {
         return BindingBuilder
                 .bind(commentNotificationQueue)
@@ -54,8 +55,8 @@ public class CommentRabbitConfig {
     //DLX → DLQ 연결
     @Bean
     public Binding commentDlqBinding(
-            Queue commentNotificationDlq,
-            TopicExchange commentDeadLetterExchange
+            @Qualifier("commentNotificationDlq") Queue commentNotificationDlq,
+            @Qualifier("commentDeadLetterExchange") TopicExchange commentDeadLetterExchange
     ) {
         return BindingBuilder
                 .bind(commentNotificationDlq)

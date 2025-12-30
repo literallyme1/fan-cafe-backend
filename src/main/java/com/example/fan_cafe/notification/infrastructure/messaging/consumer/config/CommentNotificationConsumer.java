@@ -1,4 +1,4 @@
-package com.example.fan_cafe.notification.infrastructure.messaging;
+package com.example.fan_cafe.notification.infrastructure.messaging.consumer.config;
 
 import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
 import com.example.fan_cafe.comment.events.messaging.CommentRabbitConstants;
