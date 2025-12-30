@@ -1,4 +1,4 @@
-package com.example.fan_cafe.notification.infrastructure.messaging;
+package com.example.fan_cafe.notification.infrastructure.messaging.consumer.config;
 
 import org.springframework.amqp.core.*;
 import org.springframework.context.annotation.Bean;
