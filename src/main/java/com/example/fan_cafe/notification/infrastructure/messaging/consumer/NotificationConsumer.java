@@ -24,16 +24,16 @@ public abstract class NotificationConsumer<T> {
     private final XDeathHeaderReader xDeathHeaderReader;
     private final RetryRouter retryRouter;
 
-    public void consume(Message message, Channel channel) throws IOException {
+    public void consume(T event, Message message, Channel channel) throws IOException {
         long tag = message.getMessageProperties().getDeliveryTag();
 
         try {
             //message -> event
-            T event = deserialize(message);
             process(event);
             channel.basicAck(tag, false);
             //이미 처리된 경우 -> ack
         } catch (DataIntegrityViolationException e) {
+            log.warn("Duplicate event detected or Data Integrity violation. Acking... eventId: {}", message.getMessageProperties().getMessageId());
             channel.basicAck(tag, false);
         } catch (Exception e) {
             handleFailure(message, channel, e);
