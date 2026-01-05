@@ -16,7 +16,6 @@ import java.io.IOException;
 
 import static com.example.fan_cafe.notification.infrastructure.messaging.NotificationMqNames.MAIN_QUEUE;
 
-@Component
 @RequiredArgsConstructor
 @Slf4j
 public abstract class NotificationConsumer<T> {
@@ -25,10 +24,6 @@ public abstract class NotificationConsumer<T> {
     private final XDeathHeaderReader xDeathHeaderReader;
     private final RetryRouter retryRouter;
 
-    @RabbitListener(
-            queues = MAIN_QUEUE,
-            ackMode = "MANUAL"
-    )
     public void consume(Message message, Channel channel) throws IOException {
         long tag = message.getMessageProperties().getDeliveryTag();
 
