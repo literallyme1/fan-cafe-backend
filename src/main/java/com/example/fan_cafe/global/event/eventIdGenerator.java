@@ -1,8 +1,8 @@
-package com.example.fan_cafe.comment.events.messaging;
+package com.example.fan_cafe.global.event;
 
 import java.util.UUID;
 
-public class CommentEventIdGenerator {
+public class eventIdGenerator {
 
     //eventID 생성
     public static String generate() {

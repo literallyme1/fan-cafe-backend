@@ -2,7 +2,7 @@ package com.example.fan_cafe.comment.application;
 
 import com.example.fan_cafe.comment.domain.Comment;
 import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
-import com.example.fan_cafe.comment.events.messaging.CommentEventIdGenerator;
+import com.example.fan_cafe.global.event.eventIdGenerator;
 import com.example.fan_cafe.comment.events.messaging.CommentEventPublisher;
 import com.example.fan_cafe.comment.exception.CommentErrorCode;
 import com.example.fan_cafe.comment.infrastructure.CommentRepository;
@@ -54,7 +54,7 @@ public class CommentService {
 
     private void publishCommentCreatedEvent(Post post, CommentResponse response) {
         //producer event Id  > DTO 생성 > Queue
-        String eventId = CommentEventIdGenerator.generate();
+        String eventId = eventIdGenerator.generate();
         CommentCreatedEvent event = CommentCreatedEvent.builder()
                 .eventId(eventId)
                 .notificationType(NotificationType.COMMENT)
