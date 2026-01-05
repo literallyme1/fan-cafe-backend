@@ -29,18 +29,15 @@ import static com.example.fan_cafe.notification.infrastructure.messaging.Notific
 @Slf4j
 public class CommentNotificationConsumer extends NotificationConsumer<CommentCreatedEvent>{
 
-    private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
 
     public CommentNotificationConsumer(
             RetryPolicy retryPolicy,
             XDeathHeaderReader xDeathHeaderReader,
             RetryRouter retryRouter,
-            ObjectMapper objectMapper,
             NotificationService notificationService
     ) {
         super(retryPolicy, xDeathHeaderReader, retryRouter);
-        this.objectMapper = objectMapper;
         this.notificationService = notificationService;
     }
 
@@ -49,17 +46,9 @@ public class CommentNotificationConsumer extends NotificationConsumer<CommentCre
             queues = MAIN_QUEUE,
             ackMode = "MANUAL"
     )
-    public void consume(Message message, Channel channel) throws IOException {
-        super.consume(message, channel);
-    }
-
-    @Override
-    protected CommentCreatedEvent deserialize(Message message) {
-        try {
-            return objectMapper.readValue(message.getBody(), CommentCreatedEvent.class);
-        } catch (Exception e) {
-            throw new RuntimeException("deserialize failed", e);
-        }
+    //spring 이 인자 채워줌.
+    public void consume(CommentCreatedEvent event, Message message, Channel channel) throws IOException {
+        super.consume(event, message, channel);
     }
 
     @Override

@@ -70,8 +70,6 @@ public abstract class NotificationConsumer<T> {
         channel.basicAck(tag, false); //deliveryTag : 메세지 식별자, 하나만 (false)
     }
 
-    protected abstract T deserialize(Message message);
-
     protected abstract void process(T event);
 
 
