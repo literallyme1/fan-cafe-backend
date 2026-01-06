@@ -1,5 +1,6 @@
 package com.example.fan_cafe.notification.infrastructure.websocket;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -8,7 +9,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
 
     //메세지 브로커 설정 (메세지를 중간에서 받는 중계소)
     @Override
@@ -22,7 +26,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     //"/ws/notifications" -> 클라이언트가 webSocket 연결 시 사용 URL
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("ws/notifications")
+        registry.addEndpoint("/ws/notifications")
+                .addInterceptors(webSocketAuthInterceptor)
                 .setAllowedOriginPatterns("*"); //모든 출처 허용 (TODO : 특정도메인만 가능하게 하는 게 좋음)
     }
 
