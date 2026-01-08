@@ -21,7 +21,7 @@ public class NotificationService {
     private final WebSocketNotificationSender websocketSender;
 
     @Transactional
-    public void saveNotification(Long receiverId,
+    public Notification saveNotification(Long receiverId,
                                  String eventId,
                                  String message) {
         try {
@@ -34,7 +34,7 @@ public class NotificationService {
 
                     .build();
 
-            notificationRepository.save(notification);
+            return notificationRepository.save(notification);
 
         } catch (Exception e) {
             log.error("🔥 SAVE FAILED", e);
@@ -45,7 +45,7 @@ public class NotificationService {
     @Transactional
     public void createAndDispatchNotification(CommentCreatedEvent event){
         //1. 알림 저장
-        saveNotification(
+        Notification notification = saveNotification(
                 event.getPostAuthorId(),
                 event.getEventId(),
                 "내 게시글에 댓글이 달렸습니다."
@@ -54,7 +54,7 @@ public class NotificationService {
         //2. 온라인 일 시 실시간 전송
         websocketSender.sendIfOnline(
                 event.getPostAuthorId(),
-                event);
+                notification.toSimplePayload());
 
     }
 }
