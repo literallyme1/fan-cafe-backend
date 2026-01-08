@@ -1,5 +1,6 @@
 package com.example.fan_cafe.notification.application;
 
+import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.NotificationType;
 import com.example.fan_cafe.notification.infrastructure.NotificationRepository;
@@ -42,18 +43,18 @@ public class NotificationService {
 }
 
     @Transactional
-    public void createAndDispatchNotification(Long receiverId,
-                                              String eventId,
-                                              String message){
+    public void createAndDispatchNotification(CommentCreatedEvent event){
         //1. 알림 저장
         saveNotification(
-                receiverId,
-                eventId,
+                event.getPostAuthorId(),
+                event.getEventId(),
                 "내 게시글에 댓글이 달렸습니다."
         );
 
         //2. 온라인 일 시 실시간 전송
-        webSocketSender.sendToUser();
+        websocketSender.sendIfOnline(
+                event.getPostAuthorId(),
+                event);
 
     }
 }
