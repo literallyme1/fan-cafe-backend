@@ -50,6 +50,7 @@ public class NotificationService {
                 event.getEventId(),
                 "내 게시글에 댓글이 달렸습니다."
         );
+        log.info("[NOTI SAVED] targetUserId={}", event.getPostAuthorId());
 
         //2. 온라인 일 시 실시간 전송
         websocketSender.sendIfOnline(
