@@ -1,6 +1,7 @@
 package com.example.fan_cafe.notification.domain;
 
 
+import com.example.fan_cafe.notification.interfaces.dto.NotificationPayload;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -62,5 +63,13 @@ public class Notification {
         this.receiverId = receiverId;
         this.message = message;
         this.createdAt = LocalDateTime.now();
+    }
+
+    public NotificationPayload toSimplePayload() {
+        return new NotificationPayload(
+                this.id,
+                this.message,
+                this.createdAt
+        );
     }
 }

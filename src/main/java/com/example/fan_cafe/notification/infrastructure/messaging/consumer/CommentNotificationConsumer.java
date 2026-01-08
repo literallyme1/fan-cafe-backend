@@ -55,12 +55,6 @@ public class CommentNotificationConsumer extends NotificationConsumer<CommentCre
     protected void process(CommentCreatedEvent event) {
         //Step 1. 글 주인이 쓴 댓글인 지 확인
         if (event.getPostAuthorId().equals(event.getCommentAuthorId())) return;
-
-        //Step 2. 알림 저장
-        notificationService.saveNotification(
-                event.getPostAuthorId(),
-                event.getEventId(),
-                "내 게시글에 댓글이 달렸습니다."
-        );
+        notificationService.createAndDispatchNotification(event);
     }
 }
