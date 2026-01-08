@@ -3,6 +3,7 @@ package com.example.fan_cafe.notification.application;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.NotificationType;
 import com.example.fan_cafe.notification.infrastructure.NotificationRepository;
+import com.example.fan_cafe.notification.infrastructure.websocket.realtime.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final WebSocketNotificationSender websocketSender;
 
     @Transactional
     public void saveNotification(Long receiverId,
@@ -37,4 +39,23 @@ public class NotificationService {
             log.error("🔥 SAVE FAILED", e);
             throw e;
         }
-}}
+}
+
+    @Transactional
+    public void createAndDispatchNotification(Long receiverId,
+                                              String eventId,
+                                              String message){
+        //1. 알림 저장
+        saveNotification(
+                receiverId,
+                eventId,
+                "내 게시글에 댓글이 달렸습니다."
+        );
+
+        //2. 온라인 일 시 실시간 전송
+        webSocketSender.sendToUser();
+
+    }
+}
+
+
