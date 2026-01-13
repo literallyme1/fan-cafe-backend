@@ -4,6 +4,7 @@ import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.NotificationType;
 import com.example.fan_cafe.notification.infrastructure.NotificationRepository;
+import com.example.fan_cafe.notification.infrastructure.push.PushSender;
 import com.example.fan_cafe.notification.infrastructure.websocket.realtime.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,9 +62,11 @@ public class NotificationService {
             websocketSender.send(
                     receiverId,
                     notification.toSimplePayload());
+        } else {
+            //아닐 시 Push
+            pushSender.send(notification);
         }
-        //아닐 시 Push
-        pushSender.send(notification);
+
 
 
     }
