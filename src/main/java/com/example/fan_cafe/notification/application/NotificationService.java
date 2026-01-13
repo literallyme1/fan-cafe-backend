@@ -20,6 +20,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final WebSocketNotificationSender websocketSender;
     private final PushDecisionService pushDecisionService;
+    private final PushSender pushSender;
 
     @Transactional
     public Notification saveNotification(Long receiverId,
@@ -60,9 +61,9 @@ public class NotificationService {
             websocketSender.send(
                     receiverId,
                     notification.toSimplePayload());
-        } else {
-            pushSender.send()
         }
+        //아닐 시 Push
+        pushSender.send(notification);
 
 
     }
