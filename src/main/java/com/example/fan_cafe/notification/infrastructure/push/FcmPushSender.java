@@ -3,6 +3,7 @@ package com.example.fan_cafe.notification.infrastructure.push;
 import com.example.fan_cafe.notification.application.PushTokenQueryService;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.push.PushToken;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,11 +42,23 @@ public class FcmPushSender implements PushSender{
                 token.markUsed();
 
             } catch (Exception e) {
+                // 전송할 시 fcm 이 주는 정보 update
+                if (isInvalidToken(e)) {
+                    // 토큰 무효 → 비활성화
+                    token.deactivate();
+                }
                 // 실패하면 로그만
                 log.warn("[PUSH FAIL] userId={}, token={}",
                         receiverId, token.getToken(), e);
             }
         }
+    }
+
+    private boolean isInvalidToken(Exception e) {
+
+        //e 가 FireException 이면 fme 의 true, false
+        return e instanceof FirebaseMessagingException fme
+                && fme.getMessagingErrorCode() != null;
     }
 
 }
