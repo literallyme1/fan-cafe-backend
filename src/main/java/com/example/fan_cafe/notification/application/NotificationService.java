@@ -53,7 +53,7 @@ public class NotificationService {
         log.info("[NOTI SAVED] targetUserId={}", event.getPostAuthorId());
 
         //2. 온라인 일 시 실시간 전송
-        websocketSender.sendIfOnline(
+        websocketSender.send(
                 event.getPostAuthorId(),
                 notification.toSimplePayload());
 

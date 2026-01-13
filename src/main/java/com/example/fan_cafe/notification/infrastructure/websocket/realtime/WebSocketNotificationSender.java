@@ -15,11 +15,7 @@ public class WebSocketNotificationSender {
     private final WebSocketSessionRegistry sessionRegistry;
 
     //온라인 사용자에게 알림 전송
-    public void sendIfOnline(Long userId, Object payload) {
-        //온라인 여부 파악
-        if(!sessionRegistry.isOnline(userId)) {
-            return;
-        }
+    public void send(Long userId, Object payload) {
 
         WebSocketSession session = sessionRegistry.getSession(userId);
 
