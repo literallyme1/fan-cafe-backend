@@ -19,6 +19,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final WebSocketNotificationSender websocketSender;
+    private final PushDecisionService pushDecisionService;
 
     @Transactional
     public Notification saveNotification(Long receiverId,
@@ -53,9 +54,16 @@ public class NotificationService {
         log.info("[NOTI SAVED] targetUserId={}", event.getPostAuthorId());
 
         //2. 온라인 일 시 실시간 전송
-        websocketSender.send(
-                event.getPostAuthorId(),
-                notification.toSimplePayload());
+        Long receiverId = event.getPostAuthorId();
+
+        if (pushDecisionService.isOnline(receiverId)){
+            websocketSender.send(
+                    receiverId,
+                    notification.toSimplePayload());
+        } else {
+            pushSender.send()
+        }
+
 
     }
 }
