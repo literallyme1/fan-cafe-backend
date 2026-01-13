@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
 @Table(
         name = "push_token",
         uniqueConstraints = {
@@ -41,6 +40,12 @@ public class PushToken {
     // 마지막 사용 시점
     private LocalDateTime lastUsedAt;
 
+    public PushToken(Long userId, String token, PushPlatform platform) {
+        this.userId = userId;
+        this.token = token;
+        this.platform = platform;
+        this.lastUsedAt = LocalDateTime.now();
+    }
 
     public void markUsed() {
         this.lastUsedAt = LocalDateTime.now();
