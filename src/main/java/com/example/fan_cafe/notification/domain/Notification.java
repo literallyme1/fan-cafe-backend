@@ -72,4 +72,8 @@ public class Notification {
                 this.createdAt
         );
     }
+
+    public NotificationPayload toWebSocketPayload() {
+        return new NotificationPayload(this.id, this.message, this.createdAt);
+    }
 }
