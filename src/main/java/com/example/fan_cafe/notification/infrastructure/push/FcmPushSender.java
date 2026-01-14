@@ -26,6 +26,8 @@ public class FcmPushSender implements PushSender{
 
         List<PushToken> tokens = tokenQueryService.findActiveTokens(receiverId);
 
+        log.info("[PUSH TOKEN COUNT] userId={}, count={}",
+                receiverId, tokens.size());
         if(tokens.isEmpty()) { return; }
 
         for (PushToken token : tokens) {
@@ -44,6 +46,7 @@ public class FcmPushSender implements PushSender{
             } catch (Exception e) {
                 // 전송할 시 fcm 이 주는 정보 update
                 if (isInvalidToken(e)) {
+                    log.info("[PUSH SKIP] no push token userId={}", receiverId);
                     // 토큰 무효 → 비활성화
                     token.deactivate();
                 }
