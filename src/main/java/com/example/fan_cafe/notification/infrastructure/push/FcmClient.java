@@ -8,11 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class FcmClient {
     //실제로 FCM 에 Push 하는 Sender
-    public void send(Message message) {
-        try {
-            FirebaseMessaging.getInstance().send(message);
-        }catch (FirebaseMessagingException e) {
-            throw new RuntimeException("FCM send failed", e);
-        }
+    public void send(Message message) throws FirebaseMessagingException{
+        FirebaseMessaging.getInstance().send(message);
     }
 }
