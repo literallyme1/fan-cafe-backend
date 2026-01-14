@@ -2,6 +2,7 @@ package com.example.fan_cafe.notification.domain;
 
 
 import com.example.fan_cafe.notification.interfaces.dto.NotificationPayload;
+import com.example.fan_cafe.notification.interfaces.dto.NotificationPushPayload;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -71,5 +72,9 @@ public class Notification {
                 this.message,
                 this.createdAt
         );
+    }
+
+    public NotificationPushPayload toPushPayload() {
+        return new NotificationPushPayload(this.id, this.message);
     }
 }
