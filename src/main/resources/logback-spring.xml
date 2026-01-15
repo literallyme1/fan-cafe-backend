@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<configuration>
+    <!-- 어떤 형식, 어디에 로그 출력할 지 정함-->
+
+    <!-- springProperty : 값을 읽어서 변수명으로 쓸 수 있게 해줌
+     spring.application.name을 springAppName 변수로 받아옴.
+     -->
+    <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+    <!-- Appender = 로그를 어디로 보낼지
+    로그를 콘솔(stdout) 에서 출력-->
+    <appender name="JSON_CONSOLE"  class="ch.qos.logback.core.ConsoleAppender">
+
+        <!--
+         encoder = 로그의 형태 변환 LoggingEventCompositeJsonEncoder : json 변경
+         -->
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <!--
+                providers : json 포함 항목 구성
+                timestamp : 로그 찍히는 시간 ->json 필드 (fieldName : json 키 이름 지정)
+                loglevel : Info/warn/error 를 json 필드로 넣음.
+                pattern
+            -->
+            <providers>
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <timeZone>Asia/Seoul</timeZone>
+                </timestamp>
+
+                <logLevel>
+                    <fieldName>level</fieldName>
+                </logLevel>
+
+                <pattern>
+                    <pattern>
+                        {
+                        "app":"${springAppName}",
+                        "logger":"%logger",
+                        "thread":"%thread",
+                        "message":"%message"
+                        }
+                    </pattern>
+                </pattern>
+                <!--
+                mdc 에 넣어둔 값 -> json 에 포함.
+                ex) traceId, userId 를 저장 -> 패턴에 같이 찍힘
+                -->
+                <mdc />
+
+                <!--
+                stackTrace : 예외 발생 -> json 필드 포함 (exception)
+                -->
+                <stackTrace>
+                    <fieldName>exception</fieldName>
+                </stackTrace>
+
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <!--
+          root logger가 사용할 appender를 연결
+          -> JSON_CONSOLE로 출력하겠다
+        -->
+        <appender-ref ref="JSON_CONSOLE"/>
+    </root>
+</configuration>
