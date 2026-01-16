@@ -35,7 +35,7 @@ public class TraceIdFilter extends OncePerRequestFilter { //요청당 한번만
             log.debug("Request started: {} {}", request.getMethod(), request.getRequestURI());
             //다음 체인
             filterChain.doFilter(request, response);
-        } finally {
+        } finally { //요청 처리가 완전히 끝났을 때
             //mdc 는 무슨 일이 있어도 정리 완료
             MDC.clear();
         }
