@@ -25,6 +25,7 @@ public class GlobalExceptionHandler {
 
     private final ErrorLogHelper errorLogHelper;
 
+    //@Valid 검증 실패 (사용자 오류)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -37,7 +38,7 @@ public class GlobalExceptionHandler {
                 ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, errors)
         );
     }
-
+    //비즈니스 예외 (직접 Throw 한 CustomException)
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleCustomException(
             CustomException ex,
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ex.getErrorCode()));
     }
 
-    //parameter 오류
+    //parameter 타입 오류
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<String>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format("잘못된 파라미터 값입니다.: '%s'", ex.getValue());
@@ -57,13 +58,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, message));
     }
 
-    //request body json 형식, enum 값 오류
+    //json 파싱 실패(request body json 형식, enum 값 오류)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<String>> handleJsonParseError(HttpMessageNotReadableException ex){
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "요청 형식이 올바르지 않습니다."));
     }
-
+    // multipart 요청에서 필수 part 누락
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<ApiResponse<String>> handleMissingPart(MissingServletRequestPartException ex) {
         return ResponseEntity.badRequest().body(
@@ -71,6 +72,7 @@ public class GlobalExceptionHandler {
         );
     }
 
+    // 6지원하지 않는 HTTP 메서드 (POST만 가능한데 GET 요청)
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<String>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
         return ResponseEntity
