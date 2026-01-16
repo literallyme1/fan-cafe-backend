@@ -1,5 +1,6 @@
 package com.example.fan_cafe.global.security;
 
+import com.example.fan_cafe.global.logging.MdcUtil;
 import com.example.fan_cafe.global.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,11 +27,14 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
         if (token != null && jwtProvider.isValid(token)) {
-            String userId = String.valueOf(jwtProvider.getUserIdFromToken(token));
-            CustomUserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
+            long userId = jwtProvider.getUserIdFromToken(token);
+            CustomUserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            //mdc 에 추가
+            MdcUtil.putUserId(userId);
         }
         chain.doFilter(request, response);
     }
