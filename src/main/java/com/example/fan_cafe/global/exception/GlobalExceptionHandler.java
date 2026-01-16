@@ -1,6 +1,8 @@
 package com.example.fan_cafe.global.exception;
 
 import com.example.fan_cafe.global.response.ApiResponseStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,7 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final ErrorLogHelper errorLogHelper;
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -34,7 +39,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<ApiResponse<Map<String, String>>> handleCustomException(CustomException ex) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleCustomException(
+            CustomException ex,
+            HttpServletRequest request
+    ) {
+        //응답 외 log 에러
+        errorLogHelper.logError(ex, request, ex.getCode());
         return ResponseEntity.status(ex.getStatus())
                 .body(ApiResponse.fail(ex.getErrorCode()));
     }
@@ -76,7 +86,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<String>> handleException(Exception ex) {
+    public ResponseEntity<ApiResponse<String>> handleException(Exception ex,
+                                                               HttpServletRequest request
+    ) {
+        errorLogHelper.logError(
+                ex,
+                request,
+                ApiResponseStatus.INTERNAL_ERROR.name()
+        );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiResponse.fail(ApiResponseStatus.INTERNAL_ERROR, null)
         );
