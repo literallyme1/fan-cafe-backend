@@ -28,25 +28,25 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/reset-password/*").permitAll()
-                                .anyRequest().authenticated()
-                )
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler)
-                )
-                .addFilterBefore(new TraceIdFilter(), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new JwtFilter(jwtProvider, userDetailsService), UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//        return http
+//                .httpBasic(AbstractHttpConfigurer::disable)
+//                .csrf(AbstractHttpConfigurer::disable)
+//                .sessionManagement(session ->
+//                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//                .authorizeHttpRequests(auth ->
+//                        auth.requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/reset-password/*").permitAll()
+//                                .anyRequest().authenticated()
+//                )
+//                .exceptionHandling(ex -> ex
+//                        .authenticationEntryPoint(authenticationEntryPoint)
+//                        .accessDeniedHandler(accessDeniedHandler)
+//                )
+//                .addFilterBefore(new TraceIdFilter(), UsernamePasswordAuthenticationFilter.class)
+//                .addFilterBefore(new JwtFilter(jwtProvider, userDetailsService), UsernamePasswordAuthenticationFilter.class)
+//                .build();
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
