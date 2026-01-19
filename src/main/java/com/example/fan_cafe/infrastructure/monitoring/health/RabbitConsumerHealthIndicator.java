@@ -11,11 +11,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RabbitConsumerHealthIndicator implements HealthIndicator {
 
+    //final 붙여야 registry 받을 수 0
     private final RabbitListenerEndpointRegistry registry; //모든 Consumer 목록 가져오기
 
     @Override
     public Health health() {
-        try {
+        try { //catch 로 받아야 500에러 x
             //하나라도 running 하나?
             boolean anyRunning = registry.getListenerContainers()
                     .stream()
