@@ -1,4 +1,9 @@
 package com.example.fan_cafe.notification.domain;
 
-public class NotificationOpsType {
+public enum NotificationOpsType {
+    HEALTH,
+    REDIS,
+    MQ,
+    BATCH,
+    SYSTEM
 }
