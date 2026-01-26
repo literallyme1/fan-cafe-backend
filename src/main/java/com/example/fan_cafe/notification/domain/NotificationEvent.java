@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Getter
 @Builder
-class NotificationEvent {
+public class NotificationEvent {
 
     private NotificationOpsType type; //종류
     private NotificationLevel level;
