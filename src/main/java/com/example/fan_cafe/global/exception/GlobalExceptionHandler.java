@@ -1,8 +1,10 @@
 package com.example.fan_cafe.global.exception;
 
 import com.example.fan_cafe.global.response.ApiResponseStatus;
+import com.example.fan_cafe.notification.trigger.RedisErrorNotifier;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private final ErrorLogHelper errorLogHelper;
+    private final RedisErrorNotifier redisErrorNotifier;
 
     //@Valid 검증 실패 (사용자 오류)
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -85,6 +88,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleMultipartException(MultipartException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.fail(ApiResponseStatus.VALIDATION_ERROR, "파일 업로드 형식이 잘못되었습니다."));
+    }
+
+    //Redis 운영 에러
+    @ExceptionHandler(RedisConnectionFailureException.class)
+    public ResponseEntity<ApiResponse<String>> handleRedisException(Exception e) {
+        redisErrorNotifier.notify(e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponse.fail(ApiResponseStatus.REDIS_ERROR, ApiResponseStatus.REDIS_ERROR.getMessage())
+        );
     }
 
     @ExceptionHandler(Exception.class)
