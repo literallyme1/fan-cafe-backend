@@ -13,6 +13,7 @@ public enum ApiResponseStatus {
     FORBIDDEN("A002", HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     NOT_FOUND("C004", HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED("C005",HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),
+    REDIS_ERROR("R001", HttpStatus.INTERNAL_SERVER_ERROR, "Redis 오류가 발생했습니다"),
     INTERNAL_ERROR("S999", HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부에 오류가 발생했습니다.");
 
     private final String code;
