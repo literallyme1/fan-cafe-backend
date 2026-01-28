@@ -14,6 +14,9 @@ public class RedisHealthProbe {
     public ComponentHealthStatus check() {
         try {
             Boolean exists = redisTemplate.hasKey(HealthKeys.REDIS_CORE);
+            return Boolean.TRUE.equals(exists)
+                    ? ComponentHealthStatus.UP
+                    : ComponentHealthStatus.DOWN;
 
         } catch (Exception e) {
             return ComponentHealthStatus.DOWN;
