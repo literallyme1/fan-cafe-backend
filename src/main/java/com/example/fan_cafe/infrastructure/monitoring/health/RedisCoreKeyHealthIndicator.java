@@ -1,5 +1,6 @@
 package com.example.fan_cafe.infrastructure.monitoring.health;
 
+import com.example.fan_cafe.infrastructure.monitoring.HealthKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
@@ -12,14 +13,13 @@ public class RedisCoreKeyHealthIndicator implements HealthIndicator {
 
     private final StringRedisTemplate redisTemplate;
 
-    private static final String CORE_KEY = "health:core";
 
     @Override
     public Health health() {
         try {
 
             //핵심 키 조회
-            Boolean exists = redisTemplate.hasKey(CORE_KEY);
+            Boolean exists = redisTemplate.hasKey(HealthKeys.REDIS_CORE);
 
             //연결 0, key 0
             if (Boolean.TRUE.equals(exists)) {
