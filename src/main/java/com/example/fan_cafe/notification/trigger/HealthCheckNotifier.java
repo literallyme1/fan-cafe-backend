@@ -1,5 +1,6 @@
 package com.example.fan_cafe.notification.trigger;
 
+import com.example.fan_cafe.infrastructure.monitoring.detect.ComponentHealthStatus;
 import com.example.fan_cafe.notification.domain.NotificationEvent;
 import com.example.fan_cafe.notification.domain.NotificationLevel;
 import com.example.fan_cafe.notification.domain.NotificationOpsType;
@@ -31,6 +32,24 @@ public class HealthCheckNotifier {
                         NotificationLevel.ERROR,
                         componentName + "health check failed",
                         detail,
+                        null
+                )
+        );
+    }
+
+    public void notifyStatusChange(
+            String component,
+            ComponentHealthStatus prev,
+            ComponentHealthStatus current
+    ){
+        publisher.publishEvent(
+                NotificationEvent.of(
+                        NotificationOpsType.HEALTH,
+                        current == ComponentHealthStatus.DOWN
+                        ? NotificationLevel.ERROR
+                                :NotificationLevel.INFO,
+                        component + "health changed", //알림 제목
+                        prev + " → " + current, //알림 설명
                         null
                 )
         );

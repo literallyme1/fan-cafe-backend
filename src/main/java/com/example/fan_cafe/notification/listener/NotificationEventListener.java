@@ -17,7 +17,7 @@ public class NotificationEventListener {
     private final SlackWebhookClient slackWebhookClient;
 
     //이벤트 수신 함수
-    @Async("notificationExceutor")
+    @Async("notificationExecutor")
     @EventListener
     public void handle(NotificationEvent event) {
 
