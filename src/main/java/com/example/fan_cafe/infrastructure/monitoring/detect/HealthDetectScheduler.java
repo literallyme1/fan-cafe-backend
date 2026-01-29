@@ -15,7 +15,7 @@ public class HealthDetectScheduler {
     //상태변화 감지
     private final HealthStatusChangeDetector detector;
 
-    @Scheduled(fixedDelayString = "${monitoring.detect.interval}") //30초
+    @Scheduled(fixedDelayString = "${monitoring.detect.interval}") //현재 1분으로 해놓음.
     public void detect() {
         detector.detect("REDIS", redisProbe.check());
         detector.detect("RABBIT_CONSUMER", rabbitProbe.check());

@@ -19,7 +19,7 @@ public class HealthStatusChangeDetector {
         if (previous == null) {
             registry.update(component, current);
         }
-
+        //이전과, 현재 상태가 다를 시
         if (previous != current) {
             notifier.notifyStatusChange(component, previous, current);
             registry.update(component, current);
