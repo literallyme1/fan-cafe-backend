@@ -31,7 +31,7 @@ public class RedisCoreKeyHealthIndicator implements HealthIndicator {
             //연결 0, key x (메모리 부족 등)
             return Health.down()
                     .withDetail("reason", "CORE_KEY_NOT_FOUND") //json 필드 추가
-                    .withDetail("coreKey", CORE_KEY)
+                    .withDetail("coreKey", HealthKeys.REDIS_CORE)
                     .build();
 
         } catch (Exception e) {
