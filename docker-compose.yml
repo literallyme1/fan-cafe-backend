@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   app:
+    build: .
     image: fan-cafe-app
     container_name: fan-cafe-app
 
