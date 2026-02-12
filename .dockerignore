@@ -1,0 +1,17 @@
+# Gradle build output
+build/
+.gradle/
+
+# Git
+.git/
+.gitignore
+
+# OS / logs
+*.log
+*.tmp
+*.swp
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
