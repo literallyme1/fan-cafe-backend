@@ -66,14 +66,9 @@ dependencies {
 def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
 
 sourceSets {
-	main.java.srcDirs += querydslDir
-}
-
-
-sourceSets {
 	main {
 		java {
-			srcDirs += ['src/main/generated'] // 생성된 Q-타입 파일을 소스 경로에 추가
+			srcDirs += querydslDir
 		}
 	}
 }
