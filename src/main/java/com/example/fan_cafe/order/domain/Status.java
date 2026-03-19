@@ -2,13 +2,11 @@ package com.example.fan_cafe.order.domain;
 
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
-import com.example.fan_cafe.user.exception.UserErrorCode;
 
 public enum Status {
-    CREATED,
+    PENDING,
     PAID,
-    CANCELLED,
-    FAILED;
+    CANCELLED;
 
     public static Status of(String value) {
         try{

@@ -7,7 +7,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Builder.Default;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.math.BigDecimal;
 
 @Builder
@@ -33,11 +37,28 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private Status status;
 
-    public static Order of(User user, BigDecimal totalPrice, Status status){
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Default
+    private List<OrderItem> orderItems = new ArrayList<>();
+
+    public static Order pending(User user, BigDecimal totalPrice) {
         return Order.builder()
                 .user(user)
                 .totalPrice(totalPrice)
-                .status(status)
+                .status(Status.PENDING)
                 .build();
+    }
+
+    public void updateTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public void addItem(OrderItem item) {
+        this.orderItems.add(item);
+        item.attachTo(this);
+    }
+
+    public List<OrderItem> getOrderItems() {
+        return Collections.unmodifiableList(orderItems);
     }
 }

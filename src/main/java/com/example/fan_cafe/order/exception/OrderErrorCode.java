@@ -8,8 +8,8 @@ import org.springframework.http.HttpStatus;
 public enum OrderErrorCode implements BaseErrorCode {
 
     INVALID_STATUS("O001", HttpStatus.BAD_REQUEST, "주문 상태가 올바르지 않습니다."),
-    MERCHANDISE_NOT_FOUND("M002", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
-    INVALID_MERCHANDISE_PROPERTY("M003", HttpStatus.INTERNAL_SERVER_ERROR, "상품의 속성을 찾을 수 없습니다.");
+    ORDER_ITEMS_REQUIRED("O002", HttpStatus.BAD_REQUEST, "주문 상품은 최소 1개 이상이어야 합니다."),
+    INVALID_QUANTITY("O003", HttpStatus.BAD_REQUEST, "주문 수량은 1 이상이어야 합니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;
