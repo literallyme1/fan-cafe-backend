@@ -36,6 +36,7 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount;
 
+    // 이벤트 최초 저장 상태(INIT, retryCount=0)로 outbox 레코드를 생성한다.
     public static OutboxEvent init(String aggregateType, Long aggregateId, String payload) {
         return OutboxEvent.builder()
                 .aggregateType(aggregateType)

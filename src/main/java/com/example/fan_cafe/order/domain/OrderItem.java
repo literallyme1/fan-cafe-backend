@@ -37,6 +37,7 @@ public class OrderItem extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer quantity;
 
+    // 주문 시점의 상품 정보 스냅샷을 만들어 주문 이력을 보존한다.
     public static OrderItem snapshot(Long productId, String productName, BigDecimal price, int quantity) {
         return OrderItem.builder()
                 .productId(productId)
@@ -46,6 +47,7 @@ public class OrderItem extends BaseTimeEntity {
                 .build();
     }
 
+    // Order.addItem() 내부에서만 호출되어 연관관계를 일관되게 유지한다.
     void attachTo(Order order) {
         this.order = order;
     }

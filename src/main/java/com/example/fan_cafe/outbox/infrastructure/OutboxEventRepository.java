@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
+    // outbox 이벤트 저장/조회는 기본 JPA 메서드로 처리한다.
 }
 

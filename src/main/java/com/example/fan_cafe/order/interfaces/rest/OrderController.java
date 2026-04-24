@@ -18,6 +18,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // 로그인 사용자 기준으로 주문 생성 요청을 서비스에 위임한다.
     @PostMapping
     public ApiResponse<OrderCreateResponse> create(
             @AuthenticationPrincipal(expression = "user") User user,

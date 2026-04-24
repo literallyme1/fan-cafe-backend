@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
+    // 기본 CRUD는 JpaRepository의 표준 메서드를 사용한다.
 }
 

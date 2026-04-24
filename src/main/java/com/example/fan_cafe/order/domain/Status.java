@@ -8,6 +8,7 @@ public enum Status {
     PAID,
     CANCELLED;
 
+    // 문자열 입력을 enum으로 안전하게 변환하고, 유효하지 않으면 도메인 예외로 통일한다.
     public static Status of(String value) {
         try{
             return Status.valueOf(value);
