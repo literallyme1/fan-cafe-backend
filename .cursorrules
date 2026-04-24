@@ -1,0 +1,137 @@
+# Fan-Cafe Backend Cursor Rules
+
+## Architecture
+
+Follow a layered architecture similar to DDD.
+
+Structure:
+
+controller
+service
+domain
+repository
+dto
+
+Rules:
+- Controllers handle only request/response.
+- Business logic belongs in the service layer.
+- Domain entities must not depend on controllers or DTOs.
+
+
+## Entity Design
+
+Use JPA entities with clear relationships.
+
+Rules:
+- Prefer FetchType.LAZY for all relations.
+- Avoid unnecessary bidirectional relationships.
+- Prefer static factory methods instead of public constructors.
+
+Example:
+Order.of(user, totalPrice)
+
+
+## Base Entity
+
+Most entities should extend BaseTimeEntity
+to manage createdAt and updatedAt automatically.
+
+However, lightweight entities such as
+join tables or event tables may omit this.
+
+
+## DTO Rules
+
+Never expose JPA entities directly in API responses.
+
+Rules:
+- Use Request DTO for input
+- Use Response DTO for output
+- DTO mapping should occur in the service layer
+
+
+## Query Strategy
+
+Use QueryDSL for complex queries.
+
+Use QueryDSL when:
+- dynamic conditions are required
+- multiple joins are involved
+- DTO projection is needed
+
+Avoid complex JPQL strings when possible.
+
+
+## Query Performance
+
+Always consider N+1 query problems.
+
+Preferred solutions:
+- QueryDSL fetch join
+- @EntityGraph
+- @BatchSize
+
+
+## Transaction Rules
+
+Service methods that modify data must use:
+
+@Transactional
+
+Read-only queries should use:
+
+@Transactional(readOnly = true)
+
+
+## Exception Handling
+
+Use CustomException with ErrorCode enums.
+
+Example:
+
+throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+
+Do not throw generic RuntimeException.
+
+
+## Domain Behavior
+
+Prefer domain behavior methods over direct state mutation.
+
+Good:
+
+order.cancel()
+
+Avoid:
+
+order.setStatus(CANCELLED)
+
+
+## Service Layer Rules
+
+Services should coordinate domain logic.
+
+Rules:
+- Avoid calling repositories multiple times unnecessarily.
+- Keep service methods focused and readable.
+- Prefer early return over deep nesting.
+
+
+## Messaging / Event Rules
+
+Use event-driven design where appropriate.
+
+Rules:
+- Use RabbitMQ for asynchronous processing.
+- Consumers must be idempotent.
+- Critical events should follow the Outbox pattern.
+
+
+## Code Style
+
+Prefer simple and readable code.
+
+Rules:
+- Avoid deep nesting
+- Use meaningful method names
+- Keep methods small and focused
