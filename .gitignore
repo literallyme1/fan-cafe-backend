@@ -41,4 +41,4 @@ src/main/resources/key
 .env
 src/main/resources/config/application-local.properties
 src/main/resources/firebase/*
-
+.cursorrules/
