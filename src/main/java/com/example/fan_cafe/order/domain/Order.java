@@ -61,6 +61,16 @@ public class Order extends BaseTimeEntity {
         item.attachTo(this);
     }
 
+    // 현재 주문 상태가 취소 가능한지 도메인 규칙으로 판단한다.
+    public boolean cancellable() {
+        return this.status == Status.PAID || this.status == Status.PENDING;
+    }
+
+    // 취소 가능 상태일 때만 취소 상태로 변경한다.
+    public void cancel() {
+        this.status = Status.CANCELLED;
+    }
+
     // 외부에서 리스트를 직접 수정하지 못하도록 읽기 전용 뷰만 반환한다.
     public List<OrderItem> getOrderItems() {
         return Collections.unmodifiableList(orderItems);

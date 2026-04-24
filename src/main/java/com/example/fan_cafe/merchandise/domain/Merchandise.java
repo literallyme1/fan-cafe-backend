@@ -90,4 +90,12 @@ public class Merchandise extends BaseTimeEntity {
         this.stock -= quantity;
         markSoldOutIfNecessary();
     }
+
+    public void increaseStock(int quantity) {
+        this.stock += quantity;
+        // 품절 상태였다면 재고 복구 시 다시 판매 상태로 전환한다.
+        if (this.status == Status.SOLD_OUT) {
+            this.status = Status.SALE;
+        }
+    }
 }
