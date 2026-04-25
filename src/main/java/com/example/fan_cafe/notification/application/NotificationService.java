@@ -65,7 +65,7 @@ public class NotificationService {
         } else {
             //아닐 시 Push
             log.info("[PUSH DECISION] offline userId={}", receiverId);
-            pushSender.send(notification);
+            pushSender.send(receiverId, notification.toSimplePayload());
         }
 
 

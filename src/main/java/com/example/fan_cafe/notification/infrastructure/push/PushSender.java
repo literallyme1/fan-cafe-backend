@@ -4,5 +4,5 @@ import com.example.fan_cafe.notification.domain.Notification;
 
 public interface PushSender {
 
-    void send(Notification notification);
+    void send(Long userId, Object payload);
 }

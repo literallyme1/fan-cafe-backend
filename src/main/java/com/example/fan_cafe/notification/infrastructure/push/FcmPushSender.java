@@ -20,24 +20,20 @@ public class FcmPushSender implements PushSender{
     private final PushTokenQueryService tokenQueryService;
     //등록된 디바이스 모두에게 알림을 보냄.
     @Override
-    public void send(Notification notification) {
+    public void send(Long userId, Object payload) {
 
-        Long receiverId = notification.getReceiverId();
-
-        List<PushToken> tokens = tokenQueryService.findActiveTokens(receiverId);
+        List<PushToken> tokens = tokenQueryService.findActiveTokens(userId);
 
         log.info("[PUSH TOKEN COUNT] userId={}, count={}",
-                receiverId, tokens.size());
+                userId, tokens.size());
         if(tokens.isEmpty()) { return; }
 
         for (PushToken token : tokens) {
             try {
                 Message message = Message.builder()
                         .setToken(token.getToken())
-                        .putData("notificationId",
-                                notification.getId().toString())
                         .putData("message",
-                                notification.getMessage())
+                                payload.toString())
                         .build();
 
                 fcmClient.send(message);
@@ -46,13 +42,13 @@ public class FcmPushSender implements PushSender{
             } catch (Exception e) {
                 // 전송할 시 fcm 이 주는 정보 update
                 if (isInvalidToken(e)) {
-                    log.info("[PUSH SKIP] no push token userId={}", receiverId);
+                    log.info("[PUSH SKIP] no push token userId={}", userId);
                     // 토큰 무효 → 비활성화
                     token.deactivate();
                 }
                 // 실패하면 로그만
                 log.warn("[PUSH FAIL] userId={}, token={}",
-                        receiverId, token.getToken(), e);
+                        userId, token.getToken(), e);
             }
         }
     }
