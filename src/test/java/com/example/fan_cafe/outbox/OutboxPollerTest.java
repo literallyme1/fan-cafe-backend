@@ -2,7 +2,7 @@ package com.example.fan_cafe.outbox;
 
 import com.example.fan_cafe.outbox.application.OutboxPoller;
 import com.example.fan_cafe.outbox.application.OutboxPublisher;
-import com.example.fan_cafe.outbox.application.retry.RetryPolicy;
+import com.example.fan_cafe.outbox.application.retry.OutboxRetryPolicy;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.domain.OutboxEventStatus;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
@@ -33,7 +33,7 @@ class OutboxPollerTest {
     private OutboxPublisher outboxPublisher;
 
     @Mock
-    private RetryPolicy retryPolicy;
+    private OutboxRetryPolicy outboxRetryPolicy;
 
     @InjectMocks
     private OutboxPoller outboxPoller;
@@ -57,8 +57,8 @@ class OutboxPollerTest {
         LocalDateTime nextRetryAt = LocalDateTime.now().plusSeconds(10);
 
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(event);
-        when(retryPolicy.nextRetry(1)).thenReturn(nextRetryAt);
+        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(event.getPayload());
+        when(outboxRetryPolicy.nextRetry(1)).thenReturn(nextRetryAt);
 
         outboxPoller.poll();
 
@@ -76,8 +76,8 @@ class OutboxPollerTest {
         ReflectionTestUtils.setField(event, "status", OutboxEventStatus.FAILED);
 
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(event);
-        when(retryPolicy.nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1)).thenReturn(LocalDateTime.now().plusMinutes(1));
+        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(event.getPayload());
+        when(outboxRetryPolicy.nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1)).thenReturn(LocalDateTime.now().plusMinutes(1));
 
         outboxPoller.poll();
 
@@ -85,6 +85,6 @@ class OutboxPollerTest {
         assertThat(event.getRetryCount()).isEqualTo(OutboxEvent.MAX_RETRY_COUNT + 1);
         assertThat(event.getNextRetryAt()).isNull();
         assertThat(event.getLastError()).startsWith("[MQ_UNKNOWN_ERROR]");
-        verify(retryPolicy).nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1);
+        verify(outboxRetryPolicy).nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1);
     }
 }

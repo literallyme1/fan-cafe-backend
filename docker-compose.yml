@@ -10,7 +10,7 @@ services:
       - "${SERVER_PORT}:${SERVER_PORT}"
 
     env_file:
-      - .env
+      - .env.dev
 
     environment:
       SPRING_PROFILES_ACTIVE: dev

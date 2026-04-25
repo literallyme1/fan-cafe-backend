@@ -4,8 +4,6 @@ import com.example.fan_cafe.comment.events.messaging.CommentCreatedEvent;
 import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.NotificationType;
 import com.example.fan_cafe.notification.infrastructure.NotificationRepository;
-import com.example.fan_cafe.notification.infrastructure.push.PushSender;
-import com.example.fan_cafe.notification.infrastructure.websocket.realtime.WebSocketNotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,9 +17,7 @@ import java.time.LocalDateTime;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final WebSocketNotificationSender websocketSender;
-    private final PushDecisionService pushDecisionService;
-    private final PushSender pushSender;
+    private final NotificationDispatcher notificationDispatcher;
 
     @Transactional
     public Notification saveNotification(Long receiverId,
@@ -58,15 +54,7 @@ public class NotificationService {
         //2. 온라인 일 시 실시간 전송
         Long receiverId = event.getPostAuthorId();
 
-        if (pushDecisionService.isOnline(receiverId)){
-            websocketSender.send(
-                    receiverId,
-                    notification.toSimplePayload());
-        } else {
-            //아닐 시 Push
-            log.info("[PUSH DECISION] offline userId={}", receiverId);
-            pushSender.send(notification);
-        }
+        notificationDispatcher.dispatch(receiverId, notification.toSimplePayload());
 
 
 

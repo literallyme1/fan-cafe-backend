@@ -13,7 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@Profile("local")
+@Profile({"local", "dev"})
 @RequiredArgsConstructor
 public class LocalSecurityConfig {
 

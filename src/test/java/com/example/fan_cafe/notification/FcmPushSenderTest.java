@@ -32,20 +32,18 @@ public class FcmPushSenderTest {
     private FcmPushSender fcmPushSender;
 
     @Test
-    void givenNotification_whenSend_thenPush() throws FirebaseMessagingException{
-        //given
+    void givenNotification_whenSend_thenPush() throws FirebaseMessagingException {
+        // given
         PushToken token = new PushToken(1L, "token", PushPlatform.ANDROID);
 
         when(tokenQueryService.findActiveTokens(1L))
                 .thenReturn(List.of(token));
 
+        Long userId = 1L;
+        String payload = "댓글 알림"; // 👉 payload로 변경
 
-        Notification notification = mock(Notification.class);
-        when(notification.getReceiverId()).thenReturn(1L);
-        when(notification.getId()).thenReturn(10L);
-        when(notification.getMessage()).thenReturn("댓글 알림");
         // when
-        fcmPushSender.send(notification);
+        fcmPushSender.send(userId, payload);
 
         // then
         verify(fcmClient, times(1)).send(any());
@@ -53,9 +51,8 @@ public class FcmPushSenderTest {
 
     //throws : 이 함수는 실행하다가 FirebaseMessagingException 이 발생 가능
     @Test
-    void givenInvalidToken_whenSend_thenDeactivateToken() throws FirebaseMessagingException{
+    void givenInvalidToken_whenSend_thenDeactivateToken() throws FirebaseMessagingException {
         // given
-        //deactivate 확인을 위해 spy 사용
         PushToken token =
                 spy(new PushToken(1L, "invalid-token", PushPlatform.ANDROID));
 
@@ -68,13 +65,11 @@ public class FcmPushSenderTest {
         doThrow(fme)
                 .when(fcmClient).send(any());
 
-        Notification notification = mock(Notification.class);
-        when(notification.getReceiverId()).thenReturn(1L);
-        when(notification.getId()).thenReturn(10L);
-        when(notification.getMessage()).thenReturn("댓글 알림");
+        Long userId = 1L;
+        String payload = "댓글 알림";
 
         // when
-        fcmPushSender.send(notification);
+        fcmPushSender.send(userId, payload);
 
         // then
         verify(token).deactivate();
