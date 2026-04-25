@@ -27,15 +27,17 @@ public class OutboxPoller {
     private static final String TAG_SERIALIZATION = "MQ_SERIALIZATION_ERROR";
     private static final String TAG_UNKNOWN = "MQ_UNKNOWN_ERROR";
 
-
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxPublisher outboxPublisher;
     private final OutboxRetryPolicy outboxRetryPolicy;
+    private volatile LocalDateTime lastExecutedAt;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void poll() {
-        List<OutboxEvent> events = outboxEventRepository.findProcessableEventsForUpdate(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        lastExecutedAt = now;
+        List<OutboxEvent> events = outboxEventRepository.findProcessableEventsForUpdate(now);
 
         for (OutboxEvent event : events) {
             try {
@@ -89,5 +91,9 @@ public class OutboxPoller {
 
     private String formatLastError(String errorTag, String errorMessage) {
         return "[" + errorTag + "] " + errorMessage;
+    }
+
+    public LocalDateTime getLastExecutedAt() {
+        return lastExecutedAt;
     }
 }
