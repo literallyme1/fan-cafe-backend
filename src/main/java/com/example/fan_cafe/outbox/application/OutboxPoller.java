@@ -3,6 +3,10 @@ package com.example.fan_cafe.outbox.application;
 import com.example.fan_cafe.outbox.application.retry.OutboxRetryPolicy;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
+import com.example.fan_cafe.notification.adapter.SlackWebhookClient;
+import com.example.fan_cafe.notification.domain.NotificationEvent;
+import com.example.fan_cafe.notification.domain.NotificationLevel;
+import com.example.fan_cafe.notification.domain.NotificationOpsType;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -30,6 +35,7 @@ public class OutboxPoller {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxPublisher outboxPublisher;
     private final OutboxRetryPolicy outboxRetryPolicy;
+    private final SlackWebhookClient slackWebhookClient;
     private volatile LocalDateTime lastExecutedAt;
 
     @Scheduled(fixedDelay = 5000)
@@ -49,6 +55,19 @@ public class OutboxPoller {
                         formatLastError(errorTag, safeMessage(e)),
                         outboxRetryPolicy.nextRetry(event.getRetryCount() + 1)
                 );
+                if (event.isManualRequired()) {
+                    NotificationEvent notificationEvent = NotificationEvent.of(
+                            NotificationOpsType.OUTBOX,
+                            NotificationLevel.ERROR,
+                            "Outbox retry 초과",
+                            "Outbox eventId=" + event.getId() + " 가 수동 조치 상태로 전이되었습니다.",
+                            Map.of(
+                                    "retryCount", event.getRetryCount(),
+                                    "error", event.getLastError()
+                            )
+                    );
+                    slackWebhookClient.send(notificationEvent);
+                }
                 log.warn("[OUTBOX PUBLISH FAIL] id={}, code={}, retryCount={}",
                         event.getId(), errorTag, event.getRetryCount(), e);
             }
