@@ -1,7 +1,6 @@
 package com.example.fan_cafe.notification.infrastructure.push;
 
 import com.example.fan_cafe.notification.application.PushTokenQueryService;
-import com.example.fan_cafe.notification.domain.Notification;
 import com.example.fan_cafe.notification.domain.push.PushToken;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -14,7 +13,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class FcmPushSender implements PushSender{
+public class FcmPushSender implements MessageSender {
 
     private final FcmClient fcmClient;
     private final PushTokenQueryService tokenQueryService;
