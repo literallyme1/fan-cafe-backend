@@ -5,5 +5,6 @@ public enum NotificationOpsType {
     REDIS,
     MQ,
     BATCH,
-    SYSTEM
+    SYSTEM,
+    OUTBOX
 }

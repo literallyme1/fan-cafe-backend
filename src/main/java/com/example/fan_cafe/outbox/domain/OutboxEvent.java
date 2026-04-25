@@ -83,5 +83,9 @@ public class OutboxEvent extends BaseTimeEntity {
         this.status = OutboxEventStatus.FAILED;
         this.nextRetryAt = nextRetryAt;
     }
+
+    public boolean isManualRequired() {
+        return this.status == OutboxEventStatus.MANUAL_REQUIRED;
+    }
 }
 
