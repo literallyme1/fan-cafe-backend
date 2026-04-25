@@ -1,6 +1,6 @@
 package com.example.fan_cafe.outbox.application;
 
-import com.example.fan_cafe.outbox.application.retry.RetryPolicy;
+import com.example.fan_cafe.outbox.application.retry.OutboxRetryPolicy;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,7 +30,7 @@ public class OutboxPoller {
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxPublisher outboxPublisher;
-    private final RetryPolicy retryPolicy;
+    private final OutboxRetryPolicy outboxRetryPolicy;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
@@ -45,7 +45,7 @@ public class OutboxPoller {
                 String errorTag = classifyErrorTag(e);
                 event.fail(
                         formatLastError(errorTag, safeMessage(e)),
-                        retryPolicy.nextRetry(event.getRetryCount() + 1)
+                        outboxRetryPolicy.nextRetry(event.getRetryCount() + 1)
                 );
                 log.warn("[OUTBOX PUBLISH FAIL] id={}, code={}, retryCount={}",
                         event.getId(), errorTag, event.getRetryCount(), e);

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Component
-public class RetryPolicy {
+public class OutboxRetryPolicy {
 
     private static final long BASE_DELAY_SECONDS = 5L;
     private static final long MAX_DELAY_SECONDS = 300L; // 5 minutes

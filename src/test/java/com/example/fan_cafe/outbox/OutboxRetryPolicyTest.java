@@ -1,6 +1,6 @@
 package com.example.fan_cafe.outbox;
 
-import com.example.fan_cafe.outbox.application.retry.RetryPolicy;
+import com.example.fan_cafe.outbox.application.retry.OutboxRetryPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class RetryPolicyTest {
+class OutboxRetryPolicyTest {
 
-    private final RetryPolicy retryPolicy = new RetryPolicy();
+    private final OutboxRetryPolicy retryPolicy = new OutboxRetryPolicy();
 
     @Test
     @DisplayName("retryCount=0이면 4~6초 범위의 nextRetry가 계산된다.")
