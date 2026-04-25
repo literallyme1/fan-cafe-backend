@@ -66,7 +66,7 @@ public class FcmPushSenderTest {
                 .when(fcmClient).send(any());
 
         Long userId = 1L;
-        String payload = "댓글 알림"; // 👉 payload로 변경
+        String payload = "댓글 알림";
 
         // when
         fcmPushSender.send(userId, payload);

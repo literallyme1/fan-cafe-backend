@@ -57,7 +57,7 @@ class OutboxPollerTest {
         LocalDateTime nextRetryAt = LocalDateTime.now().plusSeconds(10);
 
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(event);
+        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(event.getPayload());
         when(retryPolicy.nextRetry(1)).thenReturn(nextRetryAt);
 
         outboxPoller.poll();
@@ -76,7 +76,7 @@ class OutboxPollerTest {
         ReflectionTestUtils.setField(event, "status", OutboxEventStatus.FAILED);
 
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(event);
+        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(event.getPayload());
         when(retryPolicy.nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1)).thenReturn(LocalDateTime.now().plusMinutes(1));
 
         outboxPoller.poll();

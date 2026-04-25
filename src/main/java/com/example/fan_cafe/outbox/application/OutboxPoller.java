@@ -39,7 +39,7 @@ public class OutboxPoller {
 
         for (OutboxEvent event : events) {
             try {
-                outboxPublisher.publish(event);
+                outboxPublisher.publish(event.getPayload());
                 event.markSent();
             } catch (Exception e) {
                 String errorTag = classifyErrorTag(e);
