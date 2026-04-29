@@ -7,12 +7,18 @@ import com.example.fan_cafe.global.redis.RedisService;
 import com.example.fan_cafe.post.application.CommentCountSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
+@ConditionalOnProperty(
+        name = "scheduler.comment-count.enabled",
+        havingValue = "true",
+        matchIfMissing = true //기본값
+)
 @Component
 @RequiredArgsConstructor
 @Slf4j

@@ -76,8 +76,8 @@ public class PostController {
     //like
     @PostMapping("/{postId}/like")
     public ApiResponse<Void> toggleLike(@AuthenticationPrincipal(expression = "user") User user,
-                                        @PathVariable Long id){
-        postService.toggleLike(user, id);
+                                        @PathVariable("postId") Long postId){
+        postService.toggleLike(user, postId);
         return ApiResponse.success(ApiResponseStatus.SUCCESS);
     }
 
