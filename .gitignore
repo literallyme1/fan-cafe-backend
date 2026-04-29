@@ -41,6 +41,8 @@ src/main/resources/key
 .env
 .env.dev
 src/main/resources/config/application-local.properties
+src/main/resources/config/application-test.properties
 src/main/resources/firebase/*
 .cursorrules
+
 
