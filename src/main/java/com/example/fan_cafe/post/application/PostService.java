@@ -17,10 +17,11 @@ import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.infrastructure.PostRepository;
 import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.User;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PostService {
 
@@ -44,7 +44,30 @@ public class PostService {
     private final LikeService likeService;
     private final RedisService redisService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final Cache<String, Integer> commentCountLocalCache;
     private final ObjectMapper objectMapper;
+
+    public PostService(
+            PostHelper postHelper,
+            PostRepository postRepository,
+            BookmarkRepository bookmarkRepository,
+            LikeRepository likeRepository,
+            LikeService likeService,
+            RedisService redisService,
+            RedisTemplate<String, String> redisTemplate,
+            @Qualifier("commentCountLocalCache") Cache<String, Integer> commentCountLocalCache,
+            ObjectMapper objectMapper
+    ) {
+        this.postHelper = postHelper;
+        this.postRepository = postRepository;
+        this.bookmarkRepository = bookmarkRepository;
+        this.likeRepository = likeRepository;
+        this.likeService = likeService;
+        this.redisService = redisService;
+        this.redisTemplate = redisTemplate;
+        this.commentCountLocalCache = commentCountLocalCache;
+        this.objectMapper = objectMapper;
+    }
 
 
     public PostResponse create(User user, PostCreateRequest request, List<MultipartFile> images) {
@@ -75,7 +98,7 @@ public class PostService {
         posts = posts.stream()
                 .map(n -> {
                     String key = RedisKeyUtil.getCommentCountKey(n.getId());
-                    n.setCommentCount(n.getCommentCount() + redisService.getInt(key));
+                    n.setCommentCount(n.getCommentCount() + getCommentCountWithLocalCache(key));
                     return n;
                 })
                 .toList();
@@ -165,6 +188,23 @@ public class PostService {
             redisTemplate.delete(redisKey);
             return Optional.empty();
         }
+    }
+
+    private int getCommentCountWithLocalCache(String key) {
+        // 1) Local Cache hit 시 Redis 호출 없이 즉시 반환
+        Integer localCachedValue = commentCountLocalCache.getIfPresent(key);
+        if (localCachedValue != null) {
+//            System.out.println("[COMMENT_COUNT LOCAL CACHE HIT] key=" + key);
+            return localCachedValue;
+        }
+
+        // 2) miss 시 Redis에서 조회
+//        System.out.println("[COMMENT_COUNT LOCAL CACHE MISS] key=" + key);
+        int redisValue = redisService.getInt(key);
+
+        // 3) Redis 결과를 Local Cache에 저장 (Cache-Aside)
+        commentCountLocalCache.put(key, redisValue);
+        return redisValue;
     }
 
 
