@@ -34,6 +34,12 @@ public class MerchandiseController {
         return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<MerchandiseResponse> get(@PathVariable Long id) {
+        MerchandiseResponse response = merchandiseService.getDetail(id);
+        return ApiResponse.success(ApiResponseStatus.SUCCESS, response);
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<MerchandiseResponse> update(@PathVariable Long id,
                                                    @RequestPart("merchandise") MerchandiseRequest request,

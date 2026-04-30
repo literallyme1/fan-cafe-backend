@@ -9,10 +9,7 @@ import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseGroupedResponse;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseListResponse;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseRequest;
-import com.example.fan_cafe.merchandise.interfaces.dto.MerchandiseResponse;
+import com.example.fan_cafe.merchandise.interfaces.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -59,6 +56,11 @@ public class MerchandiseService {
                 .toList();
 
         return MerchandiseGroupedResponse.of(groupedResponses);
+    }
+
+    public MerchandiseResponse getDetail(Long id) {
+        Merchandise m = findByIdOrThrow(id);
+        return MerchandiseResponse.from(m);
     }
 
     public MerchandiseResponse update(Long id, MerchandiseRequest request, MultipartFile image){
