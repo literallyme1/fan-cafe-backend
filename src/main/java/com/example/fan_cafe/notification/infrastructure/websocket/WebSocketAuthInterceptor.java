@@ -3,6 +3,7 @@ package com.example.fan_cafe.notification.infrastructure.websocket;
 import com.example.fan_cafe.global.security.JwtProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.util.Arrays;
 import java.util.Map;
 
 @Component
@@ -17,6 +19,7 @@ import java.util.Map;
 public class WebSocketAuthInterceptor implements HandshakeInterceptor {
 
     private final JwtProvider jwtTokenProvider;
+    private final Environment env;
 
     @Override
     public boolean beforeHandshake(
@@ -25,6 +28,13 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Map<String, Object> attributes
     ) {
+
+        // 🔥 1. test 환경이면 그냥 통과
+        if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
+            attributes.put("userId", 1L); // 👈 더미 유저
+            return true;
+        }
+
         //첫요청은 HTTP 이므로 ServletRequest 지 확인
         if(!(request instanceof ServletServerHttpRequest servletServerHttpRequest)) {
             return false;

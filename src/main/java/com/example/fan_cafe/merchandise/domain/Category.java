@@ -5,9 +5,8 @@ import com.example.fan_cafe.user.exception.UserErrorCode;
 
 public enum Category {
 
-    POSTER,
-    T_SHIRT,
-    LIGHT_STICK;
+    CLOTHES,
+    HAT;
 
     public static Category of(String value) {
         try {

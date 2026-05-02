@@ -45,7 +45,7 @@ public class MerchandiseService {
     }
 
     public MerchandiseGroupedResponse get(int page, int size, Category category) {
-        Pageable pageable = PageUtils.createPageRequest(page, size, "at", "DESC");
+        Pageable pageable = PageUtils.createPageRequest(page, size, "id", "DESC");
 
         List<Category> categories = (category != null)
                 ? List.of(category)

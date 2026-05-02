@@ -43,8 +43,8 @@ public class SecurityConfigTest {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
-                .addFilterBefore(dummyAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new TraceIdFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(dummyAuthFilter, TraceIdFilter.class)
                 .build();
     }
 }

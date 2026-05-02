@@ -10,17 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/test")
 @Slf4j
 public class LogTestController {
-
-//    @GetMapping("/log")
-//    public String logTest() {
-//        log.info("log test");
-//        return "ok";
-//    }
-//
-//    @GetMapping("/error-test")
-//    public String errorTest() {
-//        throw new RuntimeException("boom");
-//    }
-
+    @GetMapping("/test")
+    public String test() {
+        log.info("TEST LOG");
+        return "ok";
+    }
 
 }
