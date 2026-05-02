@@ -2,6 +2,7 @@ package com.example.fan_cafe.outbox.application;
 
 import com.example.fan_cafe.outbox.application.retry.OutboxRetryPolicy;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
+import com.example.fan_cafe.outbox.domain.OutboxEventStatus;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.notification.adapter.SlackWebhookClient;
 import com.example.fan_cafe.notification.domain.NotificationEvent;
@@ -46,11 +47,32 @@ public class OutboxPoller {
         List<OutboxEvent> events = outboxEventRepository.findProcessableEventsForUpdate(now);
 
         for (OutboxEvent event : events) {
+            log.info("[RELAY] - PENDING 레코드 감지 (ID: {}) -> 발송 시도", event.getId());
+            if (event.getRetryCount() > 0) {
+                log.info("[RELAY] - 재시도 시작 (Attempt: {}/{})",
+                        event.getRetryCount(), OutboxEvent.MAX_RETRY_COUNT);
+            }
+
+            OutboxEventStatus statusBefore = event.getStatus();
             try {
                 outboxPublisher.publish(event.getPayload());
                 event.markSent();
+                log.info("[SOCKET] - Expo 클라이언트로 알림 전송 성공!");
+                log.info("[OUTBOX] - 상태 변경 완료: {} -> {}", statusBefore, event.getStatus());
             } catch (Exception e) {
+                int previousRetryCount = event.getRetryCount();
                 String errorTag = classifyErrorTag(e);
+                if (previousRetryCount == 0) {
+                    if (TAG_TIMEOUT.equals(errorTag)) {
+                        log.error("[RELAY] - 발송 실패: NOTIFICATION_RELAY_TIMEOUT (Fault Injection Active)", e);
+                    } else {
+                        log.error("[RELAY] - 발송 실패: {} ({})", errorTag, safeMessage(e), e);
+                    }
+                    log.warn("[SLACK] - [긴급] 알림 발송 실패 보고 (Retry 예정: {}회차)", previousRetryCount + 1);
+                } else {
+                    log.error("[RELAY] - 발송 실패: 통신 장애 지속 중", e);
+                }
+
                 event.fail(
                         formatLastError(errorTag, safeMessage(e)),
                         outboxRetryPolicy.nextRetry(event.getRetryCount() + 1)
