@@ -102,7 +102,7 @@ public class OrderService {
         log.info("[ORDER] - 주문 생성 완료 (OrderNo: {})", saved.getId());
 
         // 주문 생성 이벤트를 outbox에 저장해 비동기 발행을 보장한다.
-        OutboxEvent orderCreatedOutbox = outboxEventRepository.save(
+        OutboxEvent orderCreatedOutbox = persistOutboxWithEventId(
                 OutboxEvent.init("ORDER", saved.getId(), buildOrderCreatedPayload(saved)));
         log.info("[OUTBOX] - 이벤트 레코드 저장 (status: {}, aggregateType: {})",
                 orderCreatedOutbox.getStatus(), orderCreatedOutbox.getAggregateType());
@@ -135,9 +135,16 @@ public class OrderService {
         order.cancel();
 
         // 5) outbox 이벤트 생성
-        outboxEventRepository.save(OutboxEvent.init("ORDER", order.getId(), buildOrderCancelledPayload(order)));
+        persistOutboxWithEventId(OutboxEvent.init("ORDER", order.getId(), buildOrderCancelledPayload(order)));
 
         return OrderQueryResponse.from(order);
+    }
+
+    private OutboxEvent persistOutboxWithEventId(OutboxEvent event) {
+        OutboxEvent saved = outboxEventRepository.save(event);
+        outboxEventRepository.flush();
+        saved.assignEventIdFromPrimaryKey();
+        return outboxEventRepository.save(saved);
     }
 
     private User getOrderer(User user) {

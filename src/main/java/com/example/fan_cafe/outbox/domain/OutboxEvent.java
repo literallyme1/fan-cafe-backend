@@ -45,6 +45,13 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
 
+    /**
+     * 브로커/컨슈머 idempotency용 식별자. DB PK(id)와 동일한 값을 문자열로 둔다.
+     * 최초 insert 직후 {@link #assignEventIdFromPrimaryKey()}로 채운다.
+     */
+    @Column(name = "event_id", length = 64)
+    private String eventId;
+
     @Lob
     @Column(name = "last_error")
     private String lastError;
@@ -60,6 +67,14 @@ public class OutboxEvent extends BaseTimeEntity {
                 .nextRetryAt(LocalDateTime.now())
                 .lastError(null)
                 .build();
+    }
+
+    /** 영속화 후 {@link #id}가 배정된 뒤 한 번 호출해 event_id를 채운다. */
+    public void assignEventIdFromPrimaryKey() {
+        if (this.id == null) {
+            throw new IllegalStateException("Outbox id must be assigned before eventId");
+        }
+        this.eventId = String.valueOf(this.id);
     }
 
     // 발행 성공 시 SENT로 전이하고 에러 정보를 초기화한다.

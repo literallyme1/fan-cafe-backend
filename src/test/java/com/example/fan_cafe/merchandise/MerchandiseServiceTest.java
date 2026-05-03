@@ -47,7 +47,7 @@ public class MerchandiseServiceTest {
                 .salePrice(900L)
                 .stock(100)
                 .status(Status.SALE)
-                .category(Category.LIGHT_STICK)
+                .category(Category.CLOTHES)
                 .build();
 
         id = 1L;
@@ -67,7 +67,7 @@ public class MerchandiseServiceTest {
                 .salePrice(900L)
                 .stock(0)
                 .status(Status.SALE)
-                .category(Category.LIGHT_STICK)
+                .category(Category.CLOTHES)
                 .build();
 
         //when
