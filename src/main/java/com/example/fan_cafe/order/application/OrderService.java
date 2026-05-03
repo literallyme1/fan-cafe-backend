@@ -20,6 +20,7 @@ import com.example.fan_cafe.user.infrastructure.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -97,9 +99,15 @@ public class OrderService {
 
         order.updateTotalPrice(total);
         Order saved = orderRepository.save(order);
+        log.info("[ORDER] - 주문 생성 완료 (OrderNo: {})", saved.getId());
 
         // 주문 생성 이벤트를 outbox에 저장해 비동기 발행을 보장한다.
-        outboxEventRepository.save(OutboxEvent.init("ORDER", saved.getId(), buildOrderCreatedPayload(saved)));
+        OutboxEvent orderCreatedOutbox = outboxEventRepository.save(
+                OutboxEvent.init("ORDER", saved.getId(), buildOrderCreatedPayload(saved)));
+        log.info("[OUTBOX] - 이벤트 레코드 저장 (status: {}, aggregateType: {})",
+                orderCreatedOutbox.getStatus(), orderCreatedOutbox.getAggregateType());
+
+        log.info("[DB] - 주문 및 아웃박스 트랜잭션 커밋 완료 (Atomic Commit)");
         return OrderCreateResponse.from(saved);
     }
 
