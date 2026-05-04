@@ -1,7 +1,7 @@
-package com.example.fan_cafe.outbox.mq;
+package com.example.fan_cafe.outbox.domain;
 
 /**
- * DLQ로 보낼 때 Slack 알림에 실패 원인을 구분하기 위한 값이다.
+ * DLQ로 보낼 때 실패 원인을 구분한다(Slack·DB 공통).
  */
 public enum DlqRoutingType {
 

@@ -5,6 +5,7 @@ import com.example.fan_cafe.notification.domain.NotificationEvent;
 import com.example.fan_cafe.notification.domain.NotificationLevel;
 import com.example.fan_cafe.notification.domain.NotificationOpsType;
 import com.example.fan_cafe.outbox.application.OutboxPayloadJson;
+import com.example.fan_cafe.outbox.domain.DlqRoutingType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

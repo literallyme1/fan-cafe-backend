@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>DLQ 상세</title>
+    <style>
+        body  { font-family: sans-serif; padding: 24px; }
+        h1    { margin-bottom: 16px; }
+        table { border-collapse: collapse; width: 100%; max-width: 800px; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; }
+        th { background: #f4f4f4; width: 160px; text-align: left; }
+        pre  { background: #f9f9f9; padding: 12px; border: 1px solid #ddd;
+               overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+        .badge-retry    { color: #b45309; font-weight: bold; }
+        .badge-nonretry { color: #dc2626; font-weight: bold; }
+        .btn-retry { background: #2563eb; color: white; border: none;
+                     padding: 6px 14px; border-radius: 4px; cursor: pointer; margin-top: 16px; }
+        .btn-retry:hover { background: #1d4ed8; }
+        a { color: #2563eb; }
+        .back { margin-bottom: 16px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<a class="back" href="/admin/dlq">← 목록으로</a>
+<h1>DLQ 이벤트 상세</h1>
+
+<table>
+    <tr>
+        <th>eventId</th>
+        <td th:text="${event.eventId}"></td>
+    </tr>
+    <tr>
+        <th>routingType</th>
+        <td>
+            <span th:classappend="${event.routingType.name() == 'RETRY_EXCEEDED'} ? 'badge-retry' : 'badge-nonretry'"
+                  th:text="${event.routingType.name()}"></span>
+        </td>
+    </tr>
+    <tr>
+        <th>retryCount</th>
+        <td th:text="${event.retryCount}"></td>
+    </tr>
+    <tr>
+        <th>errorMessage</th>
+        <td th:text="${event.errorMessage ?: '-'}"></td>
+    </tr>
+    <tr>
+        <th>createdAt</th>
+        <td th:text="${event.createdAt}"></td>
+    </tr>
+    <tr>
+        <th>payload (일부)</th>
+        <td><pre th:text="${payloadPreview ?: '-'}"></pre></td>
+    </tr>
+</table>
+
+<!--
+    RETRY_EXCEEDED 건만 수동 재처리가 가능하다.
+    NON_RETRYABLE은 파싱 오류·비즈니스 로직 버그 등 코드 수정 없이는 해결되지 않는 케이스이므로
+    UI에서 버튼 자체를 숨겨 실수로 재발행하는 것을 방지한다.
+-->
+<form th:if="${event.routingType.name() == 'RETRY_EXCEEDED'}"
+      th:action="@{/admin/dlq/{id}/retry(id=${event.eventId})}"
+      method="post"
+      onsubmit="return confirm('메인 큐로 재처리하시겠습니까?')">
+    <button class="btn-retry" type="submit">메인 큐로 재처리</button>
+</form>
+
+<p th:unless="${event.routingType.name() == 'RETRY_EXCEEDED'}"
+   style="color:#dc2626; margin-top:16px;">
+    NON_RETRYABLE: 재시도 불가 항목입니다.
+</p>
+
+</body>
+</html>
