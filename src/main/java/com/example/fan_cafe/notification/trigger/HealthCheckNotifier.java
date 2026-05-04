@@ -45,13 +45,21 @@ public class HealthCheckNotifier {
         publisher.publishEvent(
                 NotificationEvent.of(
                         NotificationOpsType.HEALTH,
-                        current == ComponentHealthStatus.DOWN
-                        ? NotificationLevel.ERROR
-                                :NotificationLevel.INFO,
+                        toLevel(current),
                         component + "health changed", //알림 제목
                         prev + " → " + current, //알림 설명
                         null
                 )
         );
+    }
+
+    private NotificationLevel toLevel(ComponentHealthStatus current) {
+        if (current == ComponentHealthStatus.DOWN) {
+            return NotificationLevel.ERROR;
+        }
+        if (current == ComponentHealthStatus.DEGRADED) {
+            return NotificationLevel.WARN;
+        }
+        return NotificationLevel.INFO;
     }
 }

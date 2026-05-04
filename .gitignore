@@ -45,3 +45,5 @@ src/main/resources/config/application-test.properties
 src/main/resources/firebase/*
 .cursorrules
 logs/*
+logs/
+*.log
