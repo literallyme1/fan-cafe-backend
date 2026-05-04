@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +73,13 @@ class OrderServiceTest {
         paidOrder.addItem(OrderItem.snapshot(100L, "응원봉", BigDecimal.valueOf(10000), 2));
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
+        lenient().when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> {
+            OutboxEvent e = invocation.getArgument(0);
+            if (e.getId() == null) {
+                ReflectionTestUtils.setField(e, "id", 999L);
+            }
+            return e;
+        });
     }
 
     @Test
@@ -118,7 +126,7 @@ class OrderServiceTest {
                 .salePrice(9000L)
                 .stock(0)
                 .status(Status.SOLD_OUT)
-                .category(Category.LIGHT_STICK)
+                .category(Category.CLOTHES)
                 .build();
 
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
@@ -136,10 +144,11 @@ class OrderServiceTest {
         assertThat(merchandise.getStatus()).isEqualTo(Status.SALE);
 
         ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
-        verify(outboxEventRepository, times(1)).save(outboxCaptor.capture());
-        assertThat(outboxCaptor.getValue().getAggregateType()).isEqualTo("ORDER");
-        assertThat(outboxCaptor.getValue().getAggregateId()).isEqualTo(10L);
-        assertThat(outboxCaptor.getValue().getPayload()).contains("ORDER_CANCELLED");
+        verify(outboxEventRepository, times(2)).save(outboxCaptor.capture());
+        assertThat(outboxCaptor.getAllValues().get(1).getAggregateType()).isEqualTo("ORDER");
+        assertThat(outboxCaptor.getAllValues().get(1).getAggregateId()).isEqualTo(10L);
+        assertThat(outboxCaptor.getAllValues().get(1).getPayload()).contains("ORDER_CANCELLED");
+        verify(outboxEventRepository, times(1)).flush();
     }
 
     @Test

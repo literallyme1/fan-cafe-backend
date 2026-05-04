@@ -1,5 +1,6 @@
 package com.example.fan_cafe.notification.infrastructure.push;
 
+import com.example.fan_cafe.outbox.exception.RetryableException;
 import com.example.fan_cafe.notification.application.PushTokenQueryService;
 import com.example.fan_cafe.notification.domain.push.PushToken;
 import com.google.firebase.messaging.FirebaseMessagingException;
@@ -25,7 +26,13 @@ public class FcmPushSender implements MessageSender {
 
         log.info("[PUSH TOKEN COUNT] userId={}, count={}",
                 userId, tokens.size());
-        if(tokens.isEmpty()) { return; }
+        if (tokens.isEmpty()) {
+            return;
+        }
+
+        boolean anySuccess = false;
+        // 무효 토큰이 아닌 예외(네트워크·FCM 일시 장애 등)가 하나라도 있었는지
+        boolean transientFailure = false;
 
         for (PushToken token : tokens) {
             try {
@@ -37,18 +44,23 @@ public class FcmPushSender implements MessageSender {
 
                 fcmClient.send(message);
                 token.markUsed();
+                anySuccess = true;
 
             } catch (Exception e) {
-                // 전송할 시 fcm 이 주는 정보 update
                 if (isInvalidToken(e)) {
-                    log.info("[PUSH SKIP] no push token userId={}", userId);
-                    // 토큰 무효 → 비활성화
+                    log.info("[PUSH SKIP] invalid token userId={}", userId);
                     token.deactivate();
+                } else {
+                    transientFailure = true;
                 }
-                // 실패하면 로그만
                 log.warn("[PUSH FAIL] userId={}, token={}",
                         userId, token.getToken(), e);
             }
+        }
+
+        // 전부 실패했고 그중 일시 장애만 있다면 Outbox가 Retry 큐로 넘길 수 있게 한다.
+        if (!anySuccess && transientFailure) {
+            throw new RetryableException("FCM delivery failed (transient) userId=" + userId);
         }
     }
 

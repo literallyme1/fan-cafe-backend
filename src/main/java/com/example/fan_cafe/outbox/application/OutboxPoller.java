@@ -37,6 +37,7 @@ public class OutboxPoller {
     private final OutboxPublisher outboxPublisher;
     private final OutboxRetryPolicy outboxRetryPolicy;
     private final SlackWebhookClient slackWebhookClient;
+    private final OutboxPayloadJson outboxPayloadJson;
     private volatile LocalDateTime lastExecutedAt;
 
     @Scheduled(fixedDelay = 5000)
@@ -55,7 +56,9 @@ public class OutboxPoller {
 
             OutboxEventStatus statusBefore = event.getStatus();
             try {
-                outboxPublisher.publish(event.getPayload());
+                String eventKey = event.getEventId() != null ? event.getEventId() : String.valueOf(event.getId());
+                String payloadToPublish = outboxPayloadJson.mergeEventId(event.getPayload(), eventKey);
+                outboxPublisher.publish(payloadToPublish);
                 event.markSent();
                 log.info("[SOCKET] - Expo 클라이언트로 알림 전송 성공!");
                 log.info("[OUTBOX] - 상태 변경 완료: {} -> {}", statusBefore, event.getStatus());
