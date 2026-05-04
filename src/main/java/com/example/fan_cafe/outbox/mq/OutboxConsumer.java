@@ -1,5 +1,6 @@
 package com.example.fan_cafe.outbox.mq;
 
+import com.example.fan_cafe.global.test.FaultStatus;
 import com.example.fan_cafe.outbox.application.OutboxMessageProcessingService;
 import com.example.fan_cafe.outbox.application.OutboxMessagingExceptionRouter;
 import com.example.fan_cafe.outbox.application.OutboxPayloadJson;
@@ -13,6 +14,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static com.example.fan_cafe.outbox.mq.OutboxMqRetryHeaders.X_RETRY_COUNT;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_QUEUE;
@@ -23,6 +25,9 @@ import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_QUEUE;
  *
  * <p>{@link OutboxMqRetryHeaders#X_RETRY_COUNT}가 커질수록 지연 큐가 길어지고,
  * 상한을 넘기면 DLQ로만 빠져 동일 이벤트가 영구히 순환하지 않는다.
+ *
+ * <p>예외 발생 시에도 동일 delivery를 재큐잉 없이 종료하려면 재발행·DLQ 적재 후 {@code basicAck}를 쓴다.
+ * {@code basicNack}으로 브로커 재전달을 켜면 retry 큐와 중복 처리 경로가 겹치므로 이 컨슈머에서는 사용하지 않는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -32,6 +37,8 @@ public class OutboxConsumer {
     private final OutboxMessageProcessingService messageProcessingService;
     private final OutboxFailureRoutingPublisher outboxFailureRoutingPublisher;
     private final OutboxPayloadJson outboxPayloadJson;
+    /** {@code test} 프로파일에서만 빈이 주입되며, 그 외에는 empty다. */
+    private final Optional<FaultStatus> faultStatus;
 
     @RabbitListener(queues = OUTBOX_QUEUE, ackMode = "MANUAL")
     public void consume(String payload, Message message, Channel channel) throws IOException {
@@ -40,6 +47,10 @@ public class OutboxConsumer {
         String eventIdForLog = outboxPayloadJson.tryExtractEventId(payload).orElse("(unknown)");
 
         try {
+            if (faultStatus.map(FaultStatus::isNotificationBlocked).orElse(false)) {
+                log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
+                throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
+            }
             messageProcessingService.process(payload);
             channel.basicAck(tag, false);
         } catch (RetryableException e) {
