@@ -1,7 +1,9 @@
 package com.example.fan_cafe.outbox.mq;
 
+import com.example.fan_cafe.global.test.FaultStatus;
 import com.example.fan_cafe.outbox.application.OutboxMessageProcessingService;
 import com.example.fan_cafe.outbox.application.OutboxMessagingExceptionRouter;
+import com.example.fan_cafe.outbox.application.OutboxPayloadJson;
 import com.example.fan_cafe.outbox.exception.NonRetryableException;
 import com.example.fan_cafe.outbox.exception.RetryableException;
 import com.rabbitmq.client.Channel;
@@ -12,12 +14,20 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Optional;
 
+import static com.example.fan_cafe.outbox.mq.OutboxMqRetryHeaders.X_RETRY_COUNT;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_QUEUE;
 
 /**
  * Outbox 메인 큐 소비. 처리 성공 시에만 ACK하고,
- * 일시 오류는 Retry 큐·구조적 오류는 DLQ로 넘긴 뒤 원 메시지는 ACK하여 브로커 재전달 루프를 끊는다.
+ * 일시 오류는 단계별 retry 큐·구조적 오류는 DLQ로 넘긴 뒤 원 메시지는 ACK하여 브로커 재전달 루프를 끊는다.
+ *
+ * <p>{@link OutboxMqRetryHeaders#X_RETRY_COUNT}가 커질수록 지연 큐가 길어지고,
+ * 상한을 넘기면 DLQ로만 빠져 동일 이벤트가 영구히 순환하지 않는다.
+ *
+ * <p>예외 발생 시에도 동일 delivery를 재큐잉 없이 종료하려면 재발행·DLQ 적재 후 {@code basicAck}를 쓴다.
+ * {@code basicNack}으로 브로커 재전달을 켜면 retry 큐와 중복 처리 경로가 겹치므로 이 컨슈머에서는 사용하지 않는다.
  */
 @Component
 @RequiredArgsConstructor
@@ -26,35 +36,102 @@ public class OutboxConsumer {
 
     private final OutboxMessageProcessingService messageProcessingService;
     private final OutboxFailureRoutingPublisher outboxFailureRoutingPublisher;
+    private final OutboxPayloadJson outboxPayloadJson;
+    /** {@code test} 프로파일에서만 빈이 주입되며, 그 외에는 empty다. */
+    private final Optional<FaultStatus> faultStatus;
 
     @RabbitListener(queues = OUTBOX_QUEUE, ackMode = "MANUAL")
     public void consume(String payload, Message message, Channel channel) throws IOException {
         long tag = message.getMessageProperties().getDeliveryTag();
+        int currentRetry = resolveRetryCount(message);
+        String eventIdForLog = outboxPayloadJson.tryExtractEventId(payload).orElse("(unknown)");
 
         try {
-            // DB/트랜잭션까지 성공해야 여기까지 도달 → 그때 ACK
+            if (faultStatus.map(FaultStatus::isNotificationBlocked).orElse(false)) {
+                log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
+                throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
+            }
             messageProcessingService.process(payload);
             channel.basicAck(tag, false);
         } catch (RetryableException e) {
-            log.warn("[OUTBOX RETRY ROUTE] {}", e.getMessage(), e);
-            outboxFailureRoutingPublisher.publishToRetryQueue(payload);
+            routeRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
             channel.basicAck(tag, false);
         } catch (NonRetryableException e) {
-            log.error("[OUTBOX DLQ ROUTE] {}", e.getMessage(), e);
-            outboxFailureRoutingPublisher.publishToDlq(payload);
+            routeNonRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
             channel.basicAck(tag, false);
         } catch (Exception e) {
-            // 명시적 Retryable/NonRetryable가 아닌 경우(예: IllegalArgumentException) 분류
             RuntimeException routed = OutboxMessagingExceptionRouter.wrapForRouting(e);
             if (routed instanceof RetryableException re) {
-                log.warn("[OUTBOX RETRY ROUTE] (classified) {}", re.getMessage(), re);
-                outboxFailureRoutingPublisher.publishToRetryQueue(payload);
+                routeRetryable(payload, currentRetry, eventIdForLog, re.getMessage(), re);
             } else {
                 NonRetryableException ne = (NonRetryableException) routed;
-                log.error("[OUTBOX DLQ ROUTE] (classified) {}", ne.getMessage(), ne);
-                outboxFailureRoutingPublisher.publishToDlq(payload);
+                routeNonRetryable(payload, currentRetry, eventIdForLog, ne.getMessage(), ne);
             }
             channel.basicAck(tag, false);
+        }
+    }
+
+    private void routeRetryable(
+            String payload,
+            int currentRetry,
+            String eventIdForLog,
+            String errorMessage,
+            Exception e
+    ) {
+        int nextRetryCount = currentRetry + 1;
+        if (currentRetry >= 3) {
+            log.error(
+                    "[OUTBOX DLQ] retry exhausted eventId={}, retryCount={}, err={}",
+                    eventIdForLog,
+                    nextRetryCount,
+                    errorMessage,
+                    e
+            );
+            outboxFailureRoutingPublisher.publishToDlq(payload, nextRetryCount, errorMessage, DlqRoutingType.RETRY_EXCEEDED);
+            return;
+        }
+        log.warn(
+                "[OUTBOX RETRY] scheduling backoff eventId={}, nextRetryCount={}, err={}",
+                eventIdForLog,
+                nextRetryCount,
+                errorMessage,
+                e
+        );
+        outboxFailureRoutingPublisher.publishToRetryQueue(payload, nextRetryCount);
+    }
+
+    private void routeNonRetryable(
+            String payload,
+            int currentRetry,
+            String eventIdForLog,
+            String errorMessage,
+            Exception e
+    ) {
+        log.error(
+                "[OUTBOX DLQ] non-retryable eventId={}, retryCount={}, err={}",
+                eventIdForLog,
+                currentRetry,
+                errorMessage,
+                e
+        );
+        outboxFailureRoutingPublisher.publishToDlq(payload, currentRetry, errorMessage, DlqRoutingType.NON_RETRYABLE);
+    }
+
+    /**
+     * 브로커가 숫자 헤더를 Integer/Long 등으로 넘길 수 있어 타입을 흡수한다. 없거나 깨지면 0(최초 소비)이다.
+     */
+    private static int resolveRetryCount(Message message) {
+        Object raw = message.getMessageProperties().getHeaders().get(X_RETRY_COUNT);
+        if (raw == null) {
+            return 0;
+        }
+        if (raw instanceof Number n) {
+            return Math.max(0, n.intValue());
+        }
+        try {
+            return Math.max(0, Integer.parseInt(raw.toString()));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 }
