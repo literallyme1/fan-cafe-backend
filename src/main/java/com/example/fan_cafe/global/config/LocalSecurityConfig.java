@@ -41,6 +41,8 @@ public class LocalSecurityConfig {
                                         "/auth/refresh",
                                         "/reset-password/*"
                                 ).permitAll()
+                                // 관리자 DLQ 화면: local·dev 환경에서 인증 없이 접근 가능
+                                .requestMatchers("/admin/dlq/**").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

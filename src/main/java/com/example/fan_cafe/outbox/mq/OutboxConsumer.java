@@ -4,6 +4,7 @@ import com.example.fan_cafe.global.test.FaultStatus;
 import com.example.fan_cafe.outbox.application.OutboxMessageProcessingService;
 import com.example.fan_cafe.outbox.application.OutboxMessagingExceptionRouter;
 import com.example.fan_cafe.outbox.application.OutboxPayloadJson;
+import com.example.fan_cafe.outbox.domain.DlqRoutingType;
 import com.example.fan_cafe.outbox.exception.NonRetryableException;
 import com.example.fan_cafe.outbox.exception.RetryableException;
 import com.rabbitmq.client.Channel;
