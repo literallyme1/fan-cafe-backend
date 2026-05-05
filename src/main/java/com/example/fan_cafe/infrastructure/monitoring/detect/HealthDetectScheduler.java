@@ -20,7 +20,6 @@ public class HealthDetectScheduler {
 
     @Scheduled(fixedDelayString = "${monitoring.detect.interval}") //현재 1분으로 해놓음.
     public void detect() {
-        log.warn("[SCHEDULER] detect 실행됨");
         detector.detect("REDIS", redisProbe.check());
         detector.detect("RABBIT_CONSUMER", rabbitProbe.check());
         detector.detect("HTTP_P95", httpLatencyProbe.check());

@@ -82,21 +82,19 @@ public class OutboxConsumer {
         int nextRetryCount = currentRetry + 1;
         if (currentRetry >= 3) {
             log.error(
-                    "[OUTBOX DLQ] retry exhausted eventId={}, retryCount={}, err={}",
+                    "[OUTBOX DLQ] retry exhausted eventId={}, retryCount={}, reason={}",
                     eventIdForLog,
                     nextRetryCount,
-                    errorMessage,
-                    e
+                    e.getMessage()
             );
             outboxFailureRoutingPublisher.publishToDlq(payload, nextRetryCount, errorMessage, DlqRoutingType.RETRY_EXCEEDED);
             return;
         }
         log.warn(
-                "[OUTBOX RETRY] scheduling backoff eventId={}, nextRetryCount={}, err={}",
+                "[OUTBOX RETRY] scheduling backoff eventId={}, nextRetryCount={}, reason={}",
                 eventIdForLog,
                 nextRetryCount,
-                errorMessage,
-                e
+                e.getMessage()
         );
         outboxFailureRoutingPublisher.publishToRetryQueue(payload, nextRetryCount);
     }

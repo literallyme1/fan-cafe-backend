@@ -28,6 +28,7 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class OutboxPoller {
+
     private static final String TAG_TIMEOUT = "MQ_TIMEOUT";
     private static final String TAG_CONNECTION = "MQ_CONNECTION_ERROR";
     private static final String TAG_SERIALIZATION = "MQ_SERIALIZATION_ERROR";
@@ -38,75 +39,126 @@ public class OutboxPoller {
     private final OutboxRetryPolicy outboxRetryPolicy;
     private final SlackWebhookClient slackWebhookClient;
     private final OutboxPayloadJson outboxPayloadJson;
+
     private volatile LocalDateTime lastExecutedAt;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void poll() {
+
         LocalDateTime now = LocalDateTime.now();
         lastExecutedAt = now;
-        List<OutboxEvent> events = outboxEventRepository.findProcessableEventsForUpdate(now);
+
+        List<OutboxEvent> events =
+                outboxEventRepository.findProcessableEventsForUpdate(now);
+
+        log.info("[OutboxPoller] [LOCK-START] FOR UPDATE SKIP LOCKED executed, batchSize={}", events.size());
 
         for (OutboxEvent event : events) {
-            log.info("[RELAY] - PENDING 레코드 감지 (ID: {}) -> 발송 시도", event.getId());
-            if (event.getRetryCount() > 0) {
-                log.info("[RELAY] - 재시도 시작 (Attempt: {}/{})",
-                        event.getRetryCount(), OutboxEvent.MAX_RETRY_COUNT);
-            }
+
+            log.info("[OutboxPoller] [LOCK-ACQUIRED] eventId={} lock acquired (processing started)",
+                    event.getId());
 
             OutboxEventStatus statusBefore = event.getStatus();
+
             try {
-                String eventKey = event.getEventId() != null ? event.getEventId() : String.valueOf(event.getId());
-                String payloadToPublish = outboxPayloadJson.mergeEventId(event.getPayload(), eventKey);
-                outboxPublisher.publish(payloadToPublish);
-                event.markSent();
-                log.info("[SOCKET] - Expo 클라이언트로 알림 전송 성공!");
-                log.info("[OUTBOX] - 상태 변경 완료: {} -> {}", statusBefore, event.getStatus());
-            } catch (Exception e) {
-                int previousRetryCount = event.getRetryCount();
-                String errorTag = classifyErrorTag(e);
-                if (previousRetryCount == 0) {
-                    if (TAG_TIMEOUT.equals(errorTag)) {
-                        log.error("[RELAY] - 발송 실패: NOTIFICATION_RELAY_TIMEOUT (Fault Injection Active)", e);
-                    } else {
-                        log.error("[RELAY] - 발송 실패: {} ({})", errorTag, safeMessage(e), e);
-                    }
-                    log.warn("[SLACK] - [긴급] 알림 발송 실패 보고 (Retry 예정: {}회차)", previousRetryCount + 1);
-                } else {
-                    log.error("[RELAY] - 발송 실패: 통신 장애 지속 중", e);
+                // PENDING 감지
+                log.info("[OUTBOX-POLL] eventId={} status=PENDING detected, publishing started",
+                        event.getId());
+
+                if (event.getRetryCount() > 0) {
+                    log.info("[OUTBOX-RETRY] eventId={} attempt={}/{}",
+                            event.getId(),
+                            event.getRetryCount(),
+                            OutboxEvent.MAX_RETRY_COUNT);
                 }
 
+                //publish
+                String eventKey = event.getEventId() != null
+                        ? event.getEventId()
+                        : String.valueOf(event.getId());
+
+                String payloadToPublish =
+                        outboxPayloadJson.mergeEventId(event.getPayload(), eventKey);
+
+                outboxPublisher.publish(payloadToPublish);
+
+                // 성공
+                event.markSent();
+
+                log.info("[OUTBOX-PUBLISH] eventId={} publish success", event.getId());
+
+                log.info("[OUTBOX-STATUS] eventId={} status {} -> {}",
+                        event.getId(), statusBefore, event.getStatus());
+
+                log.info("[NOTIFICATION] push delivered to client");
+
+            } catch (Exception e) {
+
+                int previousRetryCount = event.getRetryCount();
+                String errorTag = classifyErrorTag(e);
+
+                // 첫 실패
+                if (previousRetryCount == 0) {
+
+                    log.error("[OUTBOX-ERROR] eventId={} code={} message={}",
+                            event.getId(), errorTag, safeMessage(e));
+
+                    log.warn("[ALERT] Slack notification triggered for eventId={}, nextRetry={}",
+                            event.getId(), previousRetryCount + 1);
+
+                } else {
+                    // 지속 실패
+                    log.error("[OUTBOX-ERROR] eventId={} retrying due to persistent failure",
+                            event.getId());
+                }
+
+                // 상태 변경
                 event.fail(
                         formatLastError(errorTag, safeMessage(e)),
                         outboxRetryPolicy.nextRetry(event.getRetryCount() + 1)
                 );
+
+                // retry 초과 → 수동 처리
                 if (event.isManualRequired()) {
+
+                    log.error("[OUTBOX-DLQ] eventId={} retryExceeded, manual intervention required",
+                            event.getId());
+
                     NotificationEvent notificationEvent = NotificationEvent.of(
                             NotificationOpsType.OUTBOX,
                             NotificationLevel.ERROR,
-                            "Outbox retry 초과",
-                            "Outbox eventId=" + event.getId() + " 가 수동 조치 상태로 전이되었습니다.",
+                            "Outbox retry exceeded",
+                            "Outbox eventId=" + event.getId() + " requires manual intervention.",
                             Map.of(
                                     "retryCount", event.getRetryCount(),
                                     "error", event.getLastError()
                             )
                     );
+
                     slackWebhookClient.send(notificationEvent);
                 }
-                log.warn("[OUTBOX PUBLISH FAIL] id={}, code={}, retryCount={}",
-                        event.getId(), errorTag, event.getRetryCount(), e);
+
+                log.warn("[OUTBOX-FAIL] eventId={} code={} retryCount={}",
+                        event.getId(), errorTag, event.getRetryCount());
+            } finally {
+                // LOCK RELEASE
+                log.info("[OutboxPoller] [LOCK-RELEASE] eventId={} processing completed, lock released",
+                        event.getId());
             }
         }
     }
 
     private String classifyErrorTag(Throwable throwable) {
-        if (containsType(throwable, AmqpTimeoutException.class) || containsType(throwable, SocketTimeoutException.class)) {
+        if (containsType(throwable, AmqpTimeoutException.class)
+                || containsType(throwable, SocketTimeoutException.class)) {
             return TAG_TIMEOUT;
         }
         if (containsType(throwable, AmqpConnectException.class)) {
             return TAG_CONNECTION;
         }
-        if (containsType(throwable, MessageConversionException.class) || containsType(throwable, JsonProcessingException.class)) {
+        if (containsType(throwable, MessageConversionException.class)
+                || containsType(throwable, JsonProcessingException.class)) {
             return TAG_SERIALIZATION;
         }
         if (containsType(throwable, AmqpException.class)) {
