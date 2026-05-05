@@ -1,1 +1,85 @@
-3
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>DLQ 관리</title>
+    <style>
+        body { font-family: sans-serif; padding: 24px; }
+        h1   { margin-bottom: 16px; }
+        .msg-ok  { color: green; margin-bottom: 12px; }
+        .msg-err { color: red;   margin-bottom: 12px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+        th { background: #f4f4f4; }
+        .badge-retry     { color: #b45309; font-weight: bold; }
+        .badge-nonretry  { color: #dc2626; font-weight: bold; }
+        .btn-retry { background: #2563eb; color: white; border: none;
+                     padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-retry:hover { background: #1d4ed8; }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+
+<h1>DLQ 이벤트 목록</h1>
+
+<!-- 성공/실패 플래시 메시지 -->
+<p class="msg-ok"  th:if="${successMessage}" th:text="${successMessage}"></p>
+<p class="msg-err" th:if="${errorMessage}"   th:text="${errorMessage}"></p>
+
+<table>
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>eventId</th>
+        <th>retryCount</th>
+        <th>routingType</th>
+        <th>errorMessage</th>
+        <th>createdAt</th>
+        <th>액션</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!--
+        th:each로 DlqEvent 목록을 순회한다.
+        routingType 값으로 뱃지 색상과 retry 버튼 표시 여부를 결정한다.
+    -->
+    <tr th:each="event, stat : ${events}">
+        <td th:text="${stat.count}"></td>
+        <td>
+            <!-- 상세 페이지 링크 -->
+            <a th:href="@{/admin/dlq/{id}(id=${event.eventId})}"
+               th:text="${event.eventId}"></a>
+        </td>
+        <td th:text="${event.retryCount}"></td>
+        <td>
+            <span th:classappend="${event.routingType.name() == 'RETRY_EXCEEDED'} ? 'badge-retry' : 'badge-nonretry'"
+                  th:text="${event.routingType.name()}"></span>
+        </td>
+        <td th:text="${#strings.abbreviate(event.errorMessage ?: '-', 80)}"></td>
+        <td th:text="${event.createdAt}"></td>
+        <td>
+            <!--
+                RETRY_EXCEEDED 건만 재처리 버튼을 노출한다.
+                NON_RETRYABLE은 구조적 오류이므로 자동 재시도 의미가 없고,
+                운영자가 수동으로 원인을 분석한 뒤 별도 처리해야 한다.
+            -->
+            <form th:if="${event.routingType.name() == 'RETRY_EXCEEDED'}"
+                  th:action="@{/admin/dlq/{id}/retry(id=${event.eventId})}"
+                  method="post"
+                  onsubmit="return confirm('재처리하시겠습니까?')">
+                <button class="btn-retry" type="submit">Retry</button>
+            </form>
+            <span th:unless="${event.routingType.name() == 'RETRY_EXCEEDED'}"
+                  title="NON_RETRYABLE: 재시도 불가">-</span>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(events)}">
+        <td colspan="7" style="text-align:center; color:#888;">DLQ 이벤트가 없습니다.</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
+
