@@ -2,13 +2,17 @@ package com.example.fan_cafe.global.init;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("test") // 테스트 프로필에서만 실행되도록 설정
+@ConditionalOnProperty(
+        name = "redis.warmup.enabled",
+        havingValue = "true"
+)// 테스트 프로필에서만 실행되도록 설정
 @RequiredArgsConstructor
 public class RedisDataWarmupRunner implements CommandLineRunner {
 

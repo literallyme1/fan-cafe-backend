@@ -22,6 +22,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,7 +73,7 @@ class OutboxPollerTest {
 
         when(outboxPayloadJson.mergeEventId(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(anyString());
+        doThrow(new RuntimeException("mq publish failed")).when(outboxPublisher).publish(anyString(), nullable(String.class));
         when(outboxRetryPolicy.nextRetry(1)).thenReturn(nextRetryAt);
 
         outboxPoller.poll();
@@ -94,7 +95,7 @@ class OutboxPollerTest {
 
         when(outboxPayloadJson.mergeEventId(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(outboxEventRepository.findProcessableEventsForUpdate(any(LocalDateTime.class))).thenReturn(List.of(event));
-        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(anyString());
+        doThrow(new RuntimeException("still failing")).when(outboxPublisher).publish(anyString(), nullable(String.class));
         when(outboxRetryPolicy.nextRetry(OutboxEvent.MAX_RETRY_COUNT + 1)).thenReturn(LocalDateTime.now().plusMinutes(1));
 
         outboxPoller.poll();

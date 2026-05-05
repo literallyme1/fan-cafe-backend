@@ -3,6 +3,7 @@ package com.example.fan_cafe.outbox.mq;
 import com.example.fan_cafe.outbox.application.DlqService;
 import com.example.fan_cafe.outbox.domain.DlqRoutingType;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -48,6 +49,7 @@ public class OutboxFailureRoutingPublisher {
         };
         rabbitTemplate.convertAndSend(OUTBOX_EXCHANGE, routingKey, payload, message -> {
             message.getMessageProperties().setHeader(X_RETRY_COUNT, headerRetryCount);
+            message.getMessageProperties().setHeader("traceId", MDC.get("traceId"));
             return message;
         });
     }

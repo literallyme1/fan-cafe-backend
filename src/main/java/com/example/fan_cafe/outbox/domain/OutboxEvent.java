@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Builder.Default;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.slf4j.MDC;
 
 import java.time.LocalDateTime;
 
@@ -56,6 +57,9 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(name = "last_error")
     private String lastError;
 
+    @Column(name = "trace_id", length = 64)
+    private String traceId;
+
     // 이벤트 최초 저장 상태(NEW, retryCount=0)로 outbox 레코드를 생성한다.
     public static OutboxEvent init(String aggregateType, Long aggregateId, String payload) {
         return OutboxEvent.builder()
@@ -66,6 +70,7 @@ public class OutboxEvent extends BaseTimeEntity {
                 .retryCount(0)
                 .nextRetryAt(LocalDateTime.now())
                 .lastError(null)
+                .traceId(MDC.get("traceId"))
                 .build();
     }
 

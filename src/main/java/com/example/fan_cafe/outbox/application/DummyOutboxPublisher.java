@@ -7,7 +7,7 @@ public class DummyOutboxPublisher implements OutboxPublisher {
 
     // 실제 MQ 연동 전까지 로그 기반 더미 발행기로 동작한다.
     @Override
-    public void publish(String payload) {
-        log.info("[OUTBOX DUMMY PUBLISH] payload={}", payload);
+    public void publish(String payload, String traceId) {
+        log.info("[OUTBOX DUMMY PUBLISH] traceId={} payload={}", traceId, payload);
     }
 }
