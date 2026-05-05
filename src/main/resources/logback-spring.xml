@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8" ?>
 <configuration>
     <springProperty scope="context" name="springAppName" source="spring.application.name"/>
 
@@ -8,41 +7,7 @@
         </encoder>
     </appender>
 
-    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/app-json.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/app-json.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp>
-                    <fieldName>timestamp</fieldName>
-                    <fieldName>timestamp</fieldName>
-                    <timeZone>Asia/Seoul</timeZone>
-                </timestamp>
-                <logLevel>
-                    <fieldName>level</fieldName>
-                </logLevel>
-                <pattern>
-                    <pattern>
-                        {
-                        "app":"${springAppName}",
-                        "logger":"%logger",
-                        "thread":"%thread",
-                        "message":"%message"
-                        }
-                    </pattern>
-                </pattern>
-                <mdc /> <stackTrace>
-                <fieldName>exception</fieldName>
-            </stackTrace>
-            </providers>
-        </encoder>
-    </appender>
-
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="JSON_FILE"/>
     </root>
 </configuration>

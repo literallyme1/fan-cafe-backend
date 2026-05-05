@@ -2,8 +2,7 @@ version: "3.9"
 
 services:
   app:
-    build: .
-    image: fan-cafe-app-test
+    image: literallyme1/fan-cafe-app-test:latest
     container_name: fan-cafe-app-test
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
@@ -14,6 +13,13 @@ services:
     restart: unless-stopped
     depends_on:
       - rabbitmq
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "fan-cafe-logs"
+        awslogs-region: "ap-northeast-2"
+        awslogs-stream: "app-server"
+        awslogs-create-group: "true"
 
   rabbitmq:
     image: rabbitmq:3-management
