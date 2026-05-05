@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Component
-@Profile("test") // 부하 테스트 프로필에서만 작동
+@Profile({"test", "awstest"}) // 부하 테스트 프로필에서만 작동
 public class DummyAuthFilter extends OncePerRequestFilter {
 
     public record PrincipalWrapper(User user) {}

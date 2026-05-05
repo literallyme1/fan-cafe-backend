@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
  * 운영 빈에는 존재하지 않도록 {@code test} 프로파일로 한정한다.
  */
 @Component
-@Profile("test")
+@Profile({"test", "awstest"})
 public class FaultStatus {
 
     private volatile boolean notificationBlocked;

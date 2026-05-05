@@ -29,9 +29,10 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             Map<String, Object> attributes
     ) {
 
-        // 🔥 1. test 환경이면 그냥 통과
-        if (Arrays.asList(env.getActiveProfiles()).contains("test")) {
-            attributes.put("userId", 1L); // 👈 더미 유저
+        // 1. test 환경이면 그냥 통과
+        if (Arrays.stream(env.getActiveProfiles())
+                .anyMatch(p -> p.contains("test"))) {
+            attributes.put("userId", 1L);
             return true;
         }
 
