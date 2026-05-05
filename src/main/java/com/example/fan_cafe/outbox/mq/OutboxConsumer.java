@@ -10,6 +10,7 @@ import com.example.fan_cafe.outbox.exception.RetryableException;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -43,33 +44,53 @@ public class OutboxConsumer {
 
     @RabbitListener(queues = OUTBOX_QUEUE, ackMode = "MANUAL")
     public void consume(String payload, Message message, Channel channel) throws IOException {
-        long tag = message.getMessageProperties().getDeliveryTag();
-        int currentRetry = resolveRetryCount(message);
-        String eventIdForLog = outboxPayloadJson.tryExtractEventId(payload).orElse("(unknown)");
-
+        String traceId = resolveTraceIdHeader(message);
+        String previousTraceId = MDC.get("traceId");
         try {
-            if (faultStatus.map(FaultStatus::isNotificationBlocked).orElse(false)) {
-                log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
-                throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
-            }
-            messageProcessingService.process(payload);
-            channel.basicAck(tag, false);
-        } catch (RetryableException e) {
-            routeRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
-            channel.basicAck(tag, false);
-        } catch (NonRetryableException e) {
-            routeNonRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
-            channel.basicAck(tag, false);
-        } catch (Exception e) {
-            RuntimeException routed = OutboxMessagingExceptionRouter.wrapForRouting(e);
-            if (routed instanceof RetryableException re) {
-                routeRetryable(payload, currentRetry, eventIdForLog, re.getMessage(), re);
+            if (traceId != null) {
+                MDC.put("traceId", traceId);
             } else {
-                NonRetryableException ne = (NonRetryableException) routed;
-                routeNonRetryable(payload, currentRetry, eventIdForLog, ne.getMessage(), ne);
+                MDC.remove("traceId");
             }
-            channel.basicAck(tag, false);
+            long tag = message.getMessageProperties().getDeliveryTag();
+            int currentRetry = resolveRetryCount(message);
+            String eventIdForLog = outboxPayloadJson.tryExtractEventId(payload).orElse("(unknown)");
+
+            try {
+                if (faultStatus.map(FaultStatus::isNotificationBlocked).orElse(false)) {
+                    log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
+                    throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
+                }
+                messageProcessingService.process(payload);
+                channel.basicAck(tag, false);
+            } catch (RetryableException e) {
+                routeRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
+                channel.basicAck(tag, false);
+            } catch (NonRetryableException e) {
+                routeNonRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
+                channel.basicAck(tag, false);
+            } catch (Exception e) {
+                RuntimeException routed = OutboxMessagingExceptionRouter.wrapForRouting(e);
+                if (routed instanceof RetryableException re) {
+                    routeRetryable(payload, currentRetry, eventIdForLog, re.getMessage(), re);
+                } else {
+                    NonRetryableException ne = (NonRetryableException) routed;
+                    routeNonRetryable(payload, currentRetry, eventIdForLog, ne.getMessage(), ne);
+                }
+                channel.basicAck(tag, false);
+            }
+        } finally {
+            if (previousTraceId != null) {
+                MDC.put("traceId", previousTraceId);
+            } else {
+                MDC.remove("traceId");
+            }
         }
+    }
+
+    private static String resolveTraceIdHeader(Message message) {
+        Object raw = message.getMessageProperties().getHeaders().get("traceId");
+        return raw == null ? null : raw.toString();
     }
 
     private void routeRetryable(
@@ -82,21 +103,19 @@ public class OutboxConsumer {
         int nextRetryCount = currentRetry + 1;
         if (currentRetry >= 3) {
             log.error(
-                    "[OUTBOX DLQ] retry exhausted eventId={}, retryCount={}, err={}",
+                    "[OUTBOX DLQ] retry exhausted eventId={}, retryCount={}, reason={}",
                     eventIdForLog,
                     nextRetryCount,
-                    errorMessage,
-                    e
+                    e.getMessage()
             );
             outboxFailureRoutingPublisher.publishToDlq(payload, nextRetryCount, errorMessage, DlqRoutingType.RETRY_EXCEEDED);
             return;
         }
         log.warn(
-                "[OUTBOX RETRY] scheduling backoff eventId={}, nextRetryCount={}, err={}",
+                "[OUTBOX RETRY] scheduling backoff eventId={}, nextRetryCount={}, reason={}",
                 eventIdForLog,
                 nextRetryCount,
-                errorMessage,
-                e
+                e.getMessage()
         );
         outboxFailureRoutingPublisher.publishToRetryQueue(payload, nextRetryCount);
     }

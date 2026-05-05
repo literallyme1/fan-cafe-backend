@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -43,6 +44,7 @@ public class LocalSecurityConfig {
                                 ).permitAll()
                                 // 관리자 DLQ 화면: local·dev 환경에서 인증 없이 접근 가능
                                 .requestMatchers("/admin/dlq/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/log-level").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

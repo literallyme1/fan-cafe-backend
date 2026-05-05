@@ -7,6 +7,7 @@ import com.example.fan_cafe.outbox.exception.DlqErrorCode;
 import com.example.fan_cafe.outbox.infrastructure.DlqEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +70,7 @@ public class DlqService {
 
         rabbitTemplate.convertAndSend(OUTBOX_EXCHANGE, OUTBOX_ROUTING_KEY, latest.getPayload(), message -> {
             message.getMessageProperties().setHeader(X_RETRY_COUNT, 0);
+            message.getMessageProperties().setHeader("traceId", MDC.get("traceId"));
             return message;
         });
         log.info("[DLQ RETRY] re-published to main queue eventId={}", eventId);

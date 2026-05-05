@@ -15,7 +15,10 @@ public enum GlobalErrorCode implements BaseErrorCode{
     UNSUPPORTED_MEDIA_TYPE("G012", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
 
     // 요청 제한
-    TOO_MANY_REQUESTS("G030", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
+    TOO_MANY_REQUESTS("G030", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+
+    UNKNOWN_LOG_DOMAIN("G040", HttpStatus.BAD_REQUEST, "존재하지 않는 도메인입니다."),
+    INVALID_LOG_LEVEL("G041", HttpStatus.BAD_REQUEST, "유효하지 않은 로그 레벨입니다.");
 
 
     private final String code;

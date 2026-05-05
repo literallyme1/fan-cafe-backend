@@ -31,8 +31,6 @@ public class HttpLatencyProbe {
                     .max()
                     .orElse(Double.NaN);
 
-            log.warn("[METRIC] HTTP MAX latency = {} ms", maxMillis);
-
             if (Double.isNaN(maxMillis)) {
                 return ComponentHealthStatus.UP;
             }

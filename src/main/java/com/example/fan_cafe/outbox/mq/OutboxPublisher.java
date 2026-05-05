@@ -1,6 +1,7 @@
 package com.example.fan_cafe.outbox.mq;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.amqp.AmqpTimeoutException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +26,14 @@ public class OutboxPublisher implements com.example.fan_cafe.outbox.application.
     }
 
     @Override
-    public void publish(String payload) {
+    public void publish(String payload, String traceId) {
 
         boolean confirmed = Boolean.TRUE.equals(rabbitTemplate.invoke(ops -> {
-            ops.convertAndSend(OUTBOX_EXCHANGE, OUTBOX_ROUTING_KEY, payload);
+            ops.convertAndSend(OUTBOX_EXCHANGE, OUTBOX_ROUTING_KEY, payload, message -> {
+                String tid = traceId != null ? traceId : MDC.get("traceId");
+                message.getMessageProperties().setHeader("traceId", tid);
+                return message;
+            });
             return ops.waitForConfirms(publisherConfirmTimeoutMs);
         }));
 
