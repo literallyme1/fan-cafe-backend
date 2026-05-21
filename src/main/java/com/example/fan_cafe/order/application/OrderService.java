@@ -43,10 +43,10 @@ public class OrderService {
     private final MerchandiseRepository merchandiseRepository;
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
+    private final OrderPaymentCommandService orderPaymentCommandService;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
-    // 로그인 사용자 기준으로 본인 주문 단건을 조회한다.
     @Transactional(readOnly = true)
     public OrderQueryResponse get(User user, Long orderId) {
         getOrderer(user);
@@ -55,7 +55,6 @@ public class OrderService {
         return OrderQueryResponse.from(order);
     }
 
-    // 로그인 사용자의 주문 목록을 최신순 조회
     @Transactional(readOnly = true)
     public List<OrderQueryResponse> getMyOrders(User user) {
         getOrderer(user);
@@ -72,7 +71,6 @@ public class OrderService {
             throw new CustomException(OrderErrorCode.ORDER_ITEMS_REQUIRED);
         }
 
-        // Mock PG 승인 전까지 PAYMENT_PENDING — Outbox는 승인 시점에만 저장한다.
         Order order = Order.paymentPending(orderer, BigDecimal.ZERO);
         BigDecimal total = BigDecimal.ZERO;
 
@@ -105,9 +103,7 @@ public class OrderService {
         return OrderCreateResponse.from(saved);
     }
 
-    /**
-     * Mock PG 승인. PAYMENT_PENDING → PAID 성공 시에만 Outbox(ORDER_CREATED)를 같은 트랜잭션에 저장한다.
-     */
+    /** REST Mock 승인 API → {@link OrderPaymentCommandService} */
     @Transactional
     public OrderQueryResponse approveMockPayment(User user, Long orderId, MockPaymentApproveRequest request) {
         getOrderer(user);
@@ -119,43 +115,16 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        // 이미 PAID + 동일 키 → 멱등 응답 (Outbox·이력 추가 없음)
-        if (order.isPaidWithPaymentKey(paymentKey)) {
-            log.info("[MOCK-PAYMENT] - 중복 승인 요청 무시 (orderId={}, key={})", orderId, paymentKey);
-            return OrderQueryResponse.from(order);
-        }
-        if (order.getStatus() == Status.PAID) {
-            throw new CustomException(OrderErrorCode.ORDER_ALREADY_PAID);
-        }
-        if (order.getStatus() != Status.PAYMENT_PENDING) {
-            throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
-        }
-
-        if (order.getTotalPrice().compareTo(request.getApprovalAmount()) != 0) {
-            Status from = order.getStatus();
-            order.markPaymentFailed();
-            recordStatusHistory(order, from, Status.PAYMENT_FAILED, "approval amount mismatch");
-            orderRepository.save(order);
-            log.warn("[MOCK-PAYMENT] - 금액 불일치 (orderId={}, expected={}, actual={})",
-                    orderId, order.getTotalPrice(), request.getApprovalAmount());
-            throw new CustomException(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH);
-        }
-
-        Status from = order.getStatus();
-        order.markPaid(paymentKey);
-        recordStatusHistory(order, from, Status.PAID, "mock payment approved");
-
-        OutboxEvent orderCreatedOutbox = persistOutboxWithEventId(
-                OutboxEvent.init("ORDER", order.getId(), buildOrderCreatedPayload(order)));
-        log.info("[OUTBOX] - 결제 승인 후 이벤트 저장 (orderId={}, eventStatus={})",
-                order.getId(), orderCreatedOutbox.getStatus());
-
-        return OrderQueryResponse.from(order);
+        Order updated = orderPaymentCommandService.approvePayment(
+                order,
+                request.getApprovalAmount(),
+                paymentKey,
+                "mock payment approved"
+        );
+        return OrderQueryResponse.from(updated);
     }
 
-    /**
-     * Mock PG 실패. PAYMENT_PENDING → PAYMENT_FAILED, Outbox 저장 없음.
-     */
+    /** REST Mock 실패 API → {@link OrderPaymentCommandService} */
     @Transactional
     public OrderQueryResponse failMockPayment(User user, Long orderId, MockPaymentFailRequest request) {
         getOrderer(user);
@@ -163,24 +132,12 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        if (order.getStatus() == Status.PAYMENT_FAILED) {
-            return OrderQueryResponse.from(order);
-        }
-        if (order.getStatus() != Status.PAYMENT_PENDING) {
-            throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
-        }
-
         String reason = request.getReason() != null && !request.getReason().isBlank()
                 ? request.getReason().trim()
                 : "mock payment failed";
 
-        Status from = order.getStatus();
-        order.markPaymentFailed();
-        recordStatusHistory(order, from, Status.PAYMENT_FAILED, reason);
-        orderRepository.save(order);
-        log.info("[MOCK-PAYMENT] - 결제 실패 처리 (orderId={})", orderId);
-
-        return OrderQueryResponse.from(order);
+        Order updated = orderPaymentCommandService.failPayment(order, reason);
+        return OrderQueryResponse.from(updated);
     }
 
     @Transactional
@@ -229,26 +186,6 @@ public class OrderService {
         Long salePrice = merchandise.getSalePrice();
         Long price = salePrice != null ? salePrice : merchandise.getPrice();
         return BigDecimal.valueOf(price);
-    }
-
-    private String buildOrderCreatedPayload(Order order) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("eventType", "ORDER_CREATED");
-        payload.put("orderId", order.getId());
-        payload.put("userId", order.getUser().getId());
-        payload.put("totalPrice", order.getTotalPrice());
-        payload.put("items", order.getOrderItems().stream().map(i -> Map.of(
-                "productId", i.getProductId(),
-                "productName", i.getProductName(),
-                "price", i.getPrice(),
-                "quantity", i.getQuantity()
-        )).toList());
-
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
-        }
     }
 
     private String buildOrderCancelledPayload(Order order) {

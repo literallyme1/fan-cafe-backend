@@ -44,6 +44,8 @@ public class LocalSecurityConfig {
                                 ).permitAll()
                                 // 관리자 DLQ 화면: local·dev 환경에서 인증 없이 접근 가능
                                 .requestMatchers("/admin/dlq/**").permitAll()
+                                // Mock PG 웹훅: HMAC 서명으로 인증 (JWT 불필요)
+                                .requestMatchers(HttpMethod.POST, "/api/mock-pg/webhook").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/log-level").permitAll()
                                 .anyRequest().authenticated()
                 )

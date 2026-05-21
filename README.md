@@ -10,7 +10,9 @@
 stateDiagram-v2
     [*] --> PAYMENT_PENDING: POST /orders (주문 생성)
     PAYMENT_PENDING --> PAID: POST .../mock-payment/approve (금액 일치)
+    PAYMENT_PENDING --> PAID: POST /api/mock-pg/webhook (PAYMENT_APPROVED)
     PAYMENT_PENDING --> PAYMENT_FAILED: POST .../mock-payment/fail
+    PAYMENT_PENDING --> PAYMENT_FAILED: webhook PAYMENT_FAILED
     PAYMENT_PENDING --> PAYMENT_FAILED: approve 금액 불일치
     PAID --> CANCELLED: PATCH /orders/{id}/cancel
     PAYMENT_PENDING --> CANCELLED: PATCH /orders/{id}/cancel
@@ -76,7 +78,75 @@ Content-Type: application/json
 
 Outbox는 저장하지 않습니다.
 
-#### 4) 주문 조회
+#### 4) Mock PG 웹훅 (서버 푸시형)
+
+JWT 없이 **HMAC-SHA256** 서명만 통과하면 처리합니다.  
+설정: `mock.pg.webhook-secret` (`application.properties` / `application-local.properties`)
+
+| 헤더 | 설명 |
+|------|------|
+| `X-Mock-PG-Timestamp` | Unix epoch **초** (문자열) |
+| `X-Mock-PG-Signature` | `HMAC-SHA256(secret, timestamp + "." + rawBody)` 의 **소문자 hex** |
+
+서명 실패·타임스탬프 5분 초과 시 **주문 상태·Outbox 변경 없음**.
+
+**PAYMENT_APPROVED** 본문 예:
+
+```json
+{
+  "eventType": "PAYMENT_APPROVED",
+  "orderId": 10,
+  "approvalAmount": 20000,
+  "idempotencyKey": "wh-approve-001"
+}
+```
+
+**PAYMENT_FAILED** 본문 예:
+
+```json
+{
+  "eventType": "PAYMENT_FAILED",
+  "orderId": 10,
+  "reason": "card declined"
+}
+```
+
+**curl 예시 (PowerShell에서 서명 생성 후 호출)**
+
+```powershell
+$secret = "local-mock-pg-webhook-secret"
+$body = '{"eventType":"PAYMENT_APPROVED","orderId":10,"approvalAmount":20000,"idempotencyKey":"wh-001"}'
+$ts = [int][double]::Parse((Get-Date -UFormat %s))
+$hmac = New-Object System.Security.Cryptography.HMACSHA256
+$hmac.Key = [Text.Encoding]::UTF8.GetBytes($secret)
+$sigBytes = $hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes("$ts.$body"))
+$sig = -join ($sigBytes | ForEach-Object { $_.ToString("x2") })
+
+curl.exe -X POST "http://localhost:8080/api/mock-pg/webhook" `
+  -H "Content-Type: application/json" `
+  -H "X-Mock-PG-Timestamp: $ts" `
+  -H "X-Mock-PG-Signature: $sig" `
+  -d $body
+```
+
+Linux/macOS (openssl):
+
+```bash
+SECRET="local-mock-pg-webhook-secret"
+BODY='{"eventType":"PAYMENT_APPROVED","orderId":10,"approvalAmount":20000,"idempotencyKey":"wh-001"}'
+TS=$(date +%s)
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+
+curl -X POST http://localhost:8080/api/mock-pg/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-Mock-PG-Timestamp: $TS" \
+  -H "X-Mock-PG-Signature: $SIG" \
+  -d "$BODY"
+```
+
+REST Mock API(`POST /api/orders/...`)와 웹훅은 동일한 `OrderPaymentCommandService` 로직을 사용합니다.
+
+#### 5) 주문 조회
 
 ```http
 GET http://localhost:8080/orders/{orderId}
@@ -103,5 +173,7 @@ JPA `ddl-auto=update`(local) 시 자동 생성됩니다.
 3. 승인 API → `PAID` + DB `outbox_events`에 `ORDER_CREATED` 1건
 4. 동일 `idempotencyKey`로 재승인 → Outbox 추가 없음
 5. (새 주문) 실패 API 또는 잘못된 `approvalAmount` → `PAYMENT_FAILED`, Outbox 없음
+6. 웹훅 `PAYMENT_APPROVED` (서명 포함) → REST 승인과 동일하게 `PAID` + Outbox 1건
+7. 잘못된 서명 웹훅 → HTTP 401, 주문·Outbox 무변경
 
 기존 Outbox Poller / Consumer / Retry / DLQ / Slack / TraceID 구조는 변경하지 않았습니다.

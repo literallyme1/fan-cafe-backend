@@ -16,7 +16,12 @@ public enum OrderErrorCode implements BaseErrorCode {
     PAYMENT_KEY_REQUIRED("O006", HttpStatus.BAD_REQUEST, "idempotencyKey 또는 mockPaymentKey가 필요합니다."),
     INVALID_PAYMENT_STATE("O007", HttpStatus.BAD_REQUEST, "현재 주문 상태에서는 결제 처리를 할 수 없습니다."),
     PAYMENT_AMOUNT_MISMATCH("O008", HttpStatus.BAD_REQUEST, "승인 금액이 주문 금액과 일치하지 않습니다."),
-    ORDER_ALREADY_PAID("O009", HttpStatus.CONFLICT, "이미 결제 완료된 주문입니다.");
+    ORDER_ALREADY_PAID("O009", HttpStatus.CONFLICT, "이미 결제 완료된 주문입니다."),
+    WEBHOOK_SIGNATURE_INVALID("O010", HttpStatus.UNAUTHORIZED, "웹훅 서명이 유효하지 않습니다."),
+    WEBHOOK_TIMESTAMP_INVALID("O011", HttpStatus.BAD_REQUEST, "웹훅 타임스탬프 형식이 올바르지 않습니다."),
+    WEBHOOK_TIMESTAMP_EXPIRED("O012", HttpStatus.BAD_REQUEST, "웹훅 타임스탬프가 만료되었습니다."),
+    INVALID_WEBHOOK_EVENT_TYPE("O013", HttpStatus.BAD_REQUEST, "지원하지 않는 웹훅 eventType입니다."),
+    WEBHOOK_APPROVAL_AMOUNT_REQUIRED("O014", HttpStatus.BAD_REQUEST, "PAYMENT_APPROVED 웹훅에는 approvalAmount가 필요합니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

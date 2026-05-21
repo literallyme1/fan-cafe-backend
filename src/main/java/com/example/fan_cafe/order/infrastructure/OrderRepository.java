@@ -32,5 +32,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             order by o.createdAt desc
             """)
     List<Order> findAllByUserIdWithItems(@Param("userId") Long userId);
+
+    // Mock PG 웹훅: 주문자 검증 없이 주문+항목 조회
+    @Query("""
+            select distinct o
+            from Order o
+            left join fetch o.orderItems oi
+            where o.id = :orderId
+              and o.deletedAt is null
+            """)
+    Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
 }
 
