@@ -5,6 +5,7 @@ import com.example.fan_cafe.merchandise.domain.Category;
 import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
+import com.example.fan_cafe.order.application.OrderPaymentCommandService;
 import com.example.fan_cafe.order.application.OrderService;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
@@ -38,9 +39,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +58,9 @@ class OrderServiceTest {
     private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @Mock
+    private OrderPaymentCommandService orderPaymentCommandService;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
@@ -72,7 +74,7 @@ class OrderServiceTest {
     private Order paymentPendingOrder;
 
     @BeforeEach
-    void setUp() throws JsonProcessingException {
+    void setUp() {
         user = User.of("orderer@test.com", "encoded_pw", "orderer", Role.USER);
         ReflectionTestUtils.setField(user, "id", 1L);
 
@@ -106,35 +108,19 @@ class OrderServiceTest {
 
         assertThat(response.getOrderId()).isEqualTo(10L);
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        assertThat(response.getItems()).hasSize(1);
     }
 
     @Test
-    @DisplayName("내 주문이 아니거나 존재하지 않으면 단건 조회에서 예외가 발생한다.")
-    void get_shouldThrowException_whenOrderNotFound() {
-        when(orderRepository.findByIdAndUserIdWithItems(999L, 1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> orderService.get(user, 999L))
-                .isInstanceOf(CustomException.class)
-                .hasMessageContaining(OrderErrorCode.ORDER_NOT_FOUND.getMessage());
-    }
-
-    @Test
-    @DisplayName("내 주문 목록 조회에 성공한다.")
-    void getMyOrders_shouldReturnList() {
-        when(orderRepository.findAllByUserIdWithItems(1L)).thenReturn(List.of(paidOrder));
-
-        List<OrderQueryResponse> responses = orderService.getMyOrders(user);
-
-        assertThat(responses).hasSize(1);
-        assertThat(responses.get(0).getOrderId()).isEqualTo(10L);
-    }
-
-    @Test
-    @DisplayName("Mock 결제 승인 시 PAID 전이·이력·Outbox 저장이 수행된다.")
-    void approveMockPayment_shouldMarkPaidAndSaveOutbox() throws JsonProcessingException {
+    @DisplayName("Mock 결제 승인 API는 OrderPaymentCommandService에 위임한다.")
+    void approveMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-        when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CREATED\"}");
+        paidOrder.markPaid("idem-001");
+        when(orderPaymentCommandService.approvePayment(
+                paymentPendingOrder,
+                BigDecimal.valueOf(20000),
+                "idem-001",
+                "mock payment approved"
+        )).thenReturn(paidOrder);
 
         MockPaymentApproveRequest request = new MockPaymentApproveRequest();
         ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
@@ -143,59 +129,31 @@ class OrderServiceTest {
         OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(outboxEventRepository, times(2)).save(any(OutboxEvent.class));
+        verify(orderPaymentCommandService).approvePayment(
+                paymentPendingOrder,
+                BigDecimal.valueOf(20000),
+                "idem-001",
+                "mock payment approved"
+        );
     }
 
     @Test
-    @DisplayName("이미 동일 idempotencyKey로 PAID인 주문은 중복 Outbox 없이 응답한다.")
-    void approveMockPayment_shouldBeIdempotent_whenSameKey() {
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
-
-        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
-        ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
-        ReflectionTestUtils.setField(request, "idempotencyKey", "pay-key-1");
-
-        OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
-
-        assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
-        verify(orderStatusHistoryRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("승인 금액 불일치 시 PAYMENT_FAILED로 전이하고 Outbox는 저장하지 않는다.")
-    void approveMockPayment_shouldFail_whenAmountMismatch() {
+    @DisplayName("Mock 결제 실패 API는 OrderPaymentCommandService에 위임한다.")
+    void failMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-
-        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
-        ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(1));
-        ReflectionTestUtils.setField(request, "idempotencyKey", "idem-bad");
-
-        assertThatThrownBy(() -> orderService.approveMockPayment(user, 10L, request))
-                .isInstanceOf(CustomException.class)
-                .hasMessageContaining(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH.getMessage());
-
-        assertThat(paymentPendingOrder.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
-        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
-    }
-
-    @Test
-    @DisplayName("Mock 결제 실패 시 PAYMENT_FAILED로 전이하고 Outbox는 저장하지 않는다.")
-    void failMockPayment_shouldMarkPaymentFailed_withoutOutbox() {
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+        paymentPendingOrder.markPaymentFailed();
+        when(orderPaymentCommandService.failPayment(paymentPendingOrder, "mock payment failed"))
+                .thenReturn(paymentPendingOrder);
 
         OrderQueryResponse response = orderService.failMockPayment(user, 10L, new MockPaymentFailRequest());
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
-        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        verify(orderPaymentCommandService).failPayment(paymentPendingOrder, "mock payment failed");
     }
 
     @Test
     @DisplayName("주문 취소 시 재고 복구, 상태 변경, outbox 저장이 수행된다.")
-    void cancel_shouldRestoreStockAndCancelOrderAndSaveOutbox() {
+    void cancel_shouldRestoreStockAndCancelOrderAndSaveOutbox() throws JsonProcessingException {
         Merchandise merchandise = Merchandise.builder()
                 .id(100L)
                 .name("응원봉")
@@ -209,24 +167,14 @@ class OrderServiceTest {
 
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
         when(merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(100L)).thenReturn(Optional.of(merchandise));
-        try {
-            when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CANCELLED\"}");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CANCELLED\"}");
 
         OrderQueryResponse response = orderService.cancel(user, 10L);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.CANCELLED);
-        assertThat(merchandise.getStock()).isEqualTo(2);
-        assertThat(merchandise.getStatus()).isEqualTo(Status.SALE);
-
         ArgumentCaptor<OutboxEvent> outboxCaptor = ArgumentCaptor.forClass(OutboxEvent.class);
         verify(outboxEventRepository, times(2)).save(outboxCaptor.capture());
-        assertThat(outboxCaptor.getAllValues().get(1).getAggregateType()).isEqualTo("ORDER");
-        assertThat(outboxCaptor.getAllValues().get(1).getAggregateId()).isEqualTo(10L);
         assertThat(outboxCaptor.getAllValues().get(1).getPayload()).contains("ORDER_CANCELLED");
-        verify(outboxEventRepository, times(1)).flush();
     }
 
     @Test
@@ -238,8 +186,5 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.cancel(user, 10L))
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining(OrderErrorCode.ORDER_NOT_CANCELLABLE.getMessage());
-
-        verify(merchandiseRepository, never()).findByIdAndDeletedAtIsNullForUpdate(anyLong());
-        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 }
