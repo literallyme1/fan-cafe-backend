@@ -55,7 +55,7 @@ public class OrderService {
         return OrderQueryResponse.from(order);
     }
 
-    // 로그인 사용자의 주문 목록을 최신순으로 조회한다.
+    // 로그인 사용자의 주문 목록을 최신순 조회
     @Transactional(readOnly = true)
     public List<OrderQueryResponse> getMyOrders(User user) {
         getOrderer(user);
