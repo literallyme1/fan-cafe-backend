@@ -49,4 +49,9 @@ public class ProcessedEventRedisCache {
                 Duration.ofHours(ttlHours)
         );
     }
+
+    /** 수동 재처리 전에 idempotency 캐시를 비운다. */
+    public void clearProcessed(String eventId, String consumerType) {
+        stringRedisTemplate.delete(buildKey(eventId, consumerType));
+    }
 }

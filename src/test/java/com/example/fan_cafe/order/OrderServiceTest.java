@@ -8,8 +8,12 @@ import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.application.OrderService;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
+import com.example.fan_cafe.order.domain.OrderStatusHistory;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
+import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.MockPaymentApproveRequest;
+import com.example.fan_cafe.order.interfaces.dto.MockPaymentFailRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
@@ -52,6 +56,9 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
@@ -62,15 +69,21 @@ class OrderServiceTest {
 
     private User user;
     private Order paidOrder;
+    private Order paymentPendingOrder;
 
     @BeforeEach
     void setUp() throws JsonProcessingException {
         user = User.of("orderer@test.com", "encoded_pw", "orderer", Role.USER);
         ReflectionTestUtils.setField(user, "id", 1L);
 
-        paidOrder = Order.paid(user, BigDecimal.valueOf(20000));
+        paymentPendingOrder = Order.paymentPending(user, BigDecimal.valueOf(20000));
+        ReflectionTestUtils.setField(paymentPendingOrder, "id", 10L);
+        paymentPendingOrder.addItem(OrderItem.snapshot(100L, "응원봉", BigDecimal.valueOf(10000), 2));
+
+        paidOrder = Order.paymentPending(user, BigDecimal.valueOf(20000));
         ReflectionTestUtils.setField(paidOrder, "id", 10L);
         paidOrder.addItem(OrderItem.snapshot(100L, "응원봉", BigDecimal.valueOf(10000), 2));
+        paidOrder.markPaid("pay-key-1");
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> {
@@ -80,6 +93,8 @@ class OrderServiceTest {
             }
             return e;
         });
+        lenient().when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -113,6 +128,69 @@ class OrderServiceTest {
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getOrderId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("Mock 결제 승인 시 PAID 전이·이력·Outbox 저장이 수행된다.")
+    void approveMockPayment_shouldMarkPaidAndSaveOutbox() throws JsonProcessingException {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CREATED\"}");
+
+        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
+        ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
+        ReflectionTestUtils.setField(request, "idempotencyKey", "idem-001");
+
+        OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(outboxEventRepository, times(2)).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    @DisplayName("이미 동일 idempotencyKey로 PAID인 주문은 중복 Outbox 없이 응답한다.")
+    void approveMockPayment_shouldBeIdempotent_whenSameKey() {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+
+        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
+        ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
+        ReflectionTestUtils.setField(request, "idempotencyKey", "pay-key-1");
+
+        OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+        verify(orderStatusHistoryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("승인 금액 불일치 시 PAYMENT_FAILED로 전이하고 Outbox는 저장하지 않는다.")
+    void approveMockPayment_shouldFail_whenAmountMismatch() {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+
+        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
+        ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(1));
+        ReflectionTestUtils.setField(request, "idempotencyKey", "idem-bad");
+
+        assertThatThrownBy(() -> orderService.approveMockPayment(user, 10L, request))
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH.getMessage());
+
+        assertThat(paymentPendingOrder.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    @DisplayName("Mock 결제 실패 시 PAYMENT_FAILED로 전이하고 Outbox는 저장하지 않는다.")
+    void failMockPayment_shouldMarkPaymentFailed_withoutOutbox() {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+
+        OrderQueryResponse response = orderService.failMockPayment(user, 10L, new MockPaymentFailRequest());
+
+        assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
+        verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
+        verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
     }
 
     @Test

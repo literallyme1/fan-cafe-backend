@@ -21,7 +21,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    // 로그인 사용자 기준으로 주문 생성 요청을 서비스에 위임한다.
+    // 주문 생성 — 초기 상태 PAYMENT_PENDING (Outbox는 Mock 결제 승인 후 저장).
     @PostMapping
     public ApiResponse<OrderCreateResponse> create(
             @AuthenticationPrincipal(expression = "user") User user,

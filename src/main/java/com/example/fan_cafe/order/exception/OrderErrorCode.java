@@ -12,7 +12,11 @@ public enum OrderErrorCode implements BaseErrorCode {
     ORDER_ITEMS_REQUIRED("O002", HttpStatus.BAD_REQUEST, "주문 상품은 최소 1개 이상이어야 합니다."),
     INVALID_QUANTITY("O003", HttpStatus.BAD_REQUEST, "주문 수량은 1 이상이어야 합니다."),
     ORDER_NOT_FOUND("O004", HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."),
-    ORDER_NOT_CANCELLABLE("O005", HttpStatus.BAD_REQUEST, "현재 상태에서는 주문 취소가 불가능합니다.");
+    ORDER_NOT_CANCELLABLE("O005", HttpStatus.BAD_REQUEST, "현재 상태에서는 주문 취소가 불가능합니다."),
+    PAYMENT_KEY_REQUIRED("O006", HttpStatus.BAD_REQUEST, "idempotencyKey 또는 mockPaymentKey가 필요합니다."),
+    INVALID_PAYMENT_STATE("O007", HttpStatus.BAD_REQUEST, "현재 주문 상태에서는 결제 처리를 할 수 없습니다."),
+    PAYMENT_AMOUNT_MISMATCH("O008", HttpStatus.BAD_REQUEST, "승인 금액이 주문 금액과 일치하지 않습니다."),
+    ORDER_ALREADY_PAID("O009", HttpStatus.CONFLICT, "이미 결제 완료된 주문입니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

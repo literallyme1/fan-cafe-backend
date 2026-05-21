@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository;
 public interface ProcessedEventRepository extends JpaRepository<ProcessedEvent, Long> {
 
     boolean existsByEventIdAndConsumerType(String eventId, String consumerType);
+
+    long deleteByEventIdAndConsumerType(String eventId, String consumerType);
 }
