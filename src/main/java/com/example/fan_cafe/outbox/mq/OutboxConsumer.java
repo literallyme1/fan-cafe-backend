@@ -55,13 +55,15 @@ public class OutboxConsumer {
             long tag = message.getMessageProperties().getDeliveryTag();
             int currentRetry = resolveRetryCount(message);
             String eventIdForLog = outboxPayloadJson.tryExtractEventId(payload).orElse("(unknown)");
+            log.info("[OUTBOX CONSUME] received eventId={}, retryCount={}", eventIdForLog, currentRetry);
 
             try {
                 if (faultStatus.map(FaultStatus::isNotificationBlocked).orElse(false)) {
                     log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
                     throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
                 }
-                messageProcessingService.process(payload);
+                OutboxMessageProcessingService.ProcessOutcome outcome = messageProcessingService.process(payload);
+                log.info("[OUTBOX CONSUME] completed eventId={}, outcome={}", eventIdForLog, outcome);
                 channel.basicAck(tag, false);
             } catch (RetryableException e) {
                 routeRetryable(payload, currentRetry, eventIdForLog, e.getMessage(), e);
