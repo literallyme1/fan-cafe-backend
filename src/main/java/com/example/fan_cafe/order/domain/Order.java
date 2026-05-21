@@ -41,6 +41,10 @@ public class Order extends BaseTimeEntity {
     @Column(name = "approved_payment_key", length = 100)
     private String approvedPaymentKey;
 
+    /** Mock PG 취소/환불 성공 시 저장 — 동일 idempotencyKey 재요청 멱등 처리에 사용 */
+    @Column(name = "refund_idempotency_key", length = 100)
+    private String refundIdempotencyKey;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Default
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -93,6 +97,23 @@ public class Order extends BaseTimeEntity {
     // 취소 가능 상태일 때만 취소 상태로 변경한다.
     public void cancel() {
         this.status = Status.CANCELLED;
+    }
+
+    /** Mock PG 전체 환불 — PAID → REFUNDED */
+    public void markRefunded(String idempotencyKey) {
+        this.status = Status.REFUNDED;
+        this.refundIdempotencyKey = idempotencyKey;
+    }
+
+    /** 이미 CANCELLED/REFUNDED이고 동일 취소 idempotencyKey로 처리된 경우 */
+    public boolean isRefundedWithIdempotencyKey(String idempotencyKey) {
+        return (this.status == Status.REFUNDED || this.status == Status.CANCELLED)
+                && idempotencyKey != null
+                && idempotencyKey.equals(this.refundIdempotencyKey);
+    }
+
+    public boolean isTerminalRefundOrCancel() {
+        return this.status == Status.REFUNDED || this.status == Status.CANCELLED;
     }
 
     // 외부에서 리스트를 직접 수정하지 못하도록 읽기 전용 뷰만 반환한다.

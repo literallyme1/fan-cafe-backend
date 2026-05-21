@@ -13,6 +13,7 @@ import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentApproveRequest;
+import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentFailRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateResponse;
@@ -140,6 +141,26 @@ public class OrderService {
         return OrderQueryResponse.from(updated);
     }
 
+    /** REST Mock 취소/환불 API → {@link OrderPaymentCommandService} (PAID만, 재고 복구 포함) */
+    @Transactional
+    public OrderQueryResponse cancelMockPayment(User user, Long orderId, MockPaymentCancelRequest request) {
+        getOrderer(user);
+
+        Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (order.getStatus() == Status.PAID) {
+            restoreStock(order);
+        }
+
+        Order updated = orderPaymentCommandService.cancelPayment(
+                order,
+                request.getCancelReason(),
+                request.getIdempotencyKey()
+        );
+        return OrderQueryResponse.from(updated);
+    }
+
     @Transactional
     public OrderQueryResponse cancel(User user, Long orderId) {
         getOrderer(user);
@@ -151,11 +172,7 @@ public class OrderService {
             throw new CustomException(OrderErrorCode.ORDER_NOT_CANCELLABLE);
         }
 
-        for (OrderItem item : order.getOrderItems()) {
-            Merchandise merchandise = merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(item.getProductId())
-                    .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
-            merchandise.increaseStock(item.getQuantity());
-        }
+        restoreStock(order);
 
         Status from = order.getStatus();
         order.cancel();
@@ -175,6 +192,14 @@ public class OrderService {
         outboxEventRepository.flush();
         saved.assignEventIdFromPrimaryKey();
         return outboxEventRepository.save(saved);
+    }
+
+    private void restoreStock(Order order) {
+        for (OrderItem item : order.getOrderItems()) {
+            Merchandise merchandise = merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(item.getProductId())
+                    .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
+            merchandise.increaseStock(item.getQuantity());
+        }
     }
 
     private User getOrderer(User user) {

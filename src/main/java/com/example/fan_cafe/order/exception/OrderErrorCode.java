@@ -21,7 +21,10 @@ public enum OrderErrorCode implements BaseErrorCode {
     WEBHOOK_TIMESTAMP_INVALID("O011", HttpStatus.BAD_REQUEST, "웹훅 타임스탬프 형식이 올바르지 않습니다."),
     WEBHOOK_TIMESTAMP_EXPIRED("O012", HttpStatus.BAD_REQUEST, "웹훅 타임스탬프가 만료되었습니다."),
     INVALID_WEBHOOK_EVENT_TYPE("O013", HttpStatus.BAD_REQUEST, "지원하지 않는 웹훅 eventType입니다."),
-    WEBHOOK_APPROVAL_AMOUNT_REQUIRED("O014", HttpStatus.BAD_REQUEST, "PAYMENT_APPROVED 웹훅에는 approvalAmount가 필요합니다.");
+    WEBHOOK_APPROVAL_AMOUNT_REQUIRED("O014", HttpStatus.BAD_REQUEST, "PAYMENT_APPROVED 웹훅에는 approvalAmount가 필요합니다."),
+    CANCEL_IDEMPOTENCY_KEY_REQUIRED("O015", HttpStatus.BAD_REQUEST, "취소 idempotencyKey가 필요합니다."),
+    ORDER_NOT_REFUNDABLE("O016", HttpStatus.BAD_REQUEST, "결제 완료(PAID) 상태에서만 Mock 취소/환불이 가능합니다."),
+    ORDER_ALREADY_REFUNDED("O017", HttpStatus.CONFLICT, "이미 취소/환불 처리된 주문입니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;
