@@ -14,6 +14,7 @@ import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentApproveRequest;
+import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentFailRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
@@ -149,6 +150,24 @@ class OrderServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
         verify(orderPaymentCommandService).failPayment(paymentPendingOrder, "mock payment failed");
+    }
+
+    @Test
+    @DisplayName("Mock 취소/환불 API는 OrderPaymentCommandService에 위임한다.")
+    void cancelMockPayment_shouldDelegateToCommandService() {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+        paidOrder.markRefunded("cancel-1");
+        when(orderPaymentCommandService.cancelPayment(paidOrder, "고객 변심", "cancel-1"))
+                .thenReturn(paidOrder);
+
+        MockPaymentCancelRequest request = new MockPaymentCancelRequest();
+        ReflectionTestUtils.setField(request, "cancelReason", "고객 변심");
+        ReflectionTestUtils.setField(request, "idempotencyKey", "cancel-1");
+
+        OrderQueryResponse response = orderService.cancelMockPayment(user, 10L, request);
+
+        assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.REFUNDED);
+        verify(orderPaymentCommandService).cancelPayment(paidOrder, "고객 변심", "cancel-1");
     }
 
     @Test

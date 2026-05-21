@@ -14,6 +14,7 @@ stateDiagram-v2
     PAYMENT_PENDING --> PAYMENT_FAILED: POST .../mock-payment/fail
     PAYMENT_PENDING --> PAYMENT_FAILED: webhook PAYMENT_FAILED
     PAYMENT_PENDING --> PAYMENT_FAILED: approve 금액 불일치
+    PAID --> REFUNDED: POST .../mock-payment/cancel
     PAID --> CANCELLED: PATCH /orders/{id}/cancel
     PAYMENT_PENDING --> CANCELLED: PATCH /orders/{id}/cancel
 ```
@@ -24,6 +25,8 @@ stateDiagram-v2
 | 승인 → `PAID` | **저장** (주문 상태와 동일 트랜잭션) | 저장 |
 | 실패 / 금액 불일치 → `PAYMENT_FAILED` | 저장 안 함 | 저장 |
 | 동일 키로 재승인 (`PAID` + 같은 key) | 저장 안 함 | 저장 안 함 |
+| Mock 취소/환불 (`PAID` → `REFUNDED`) | **PAYMENT_REFUNDED** 저장 | 저장 |
+| 동일 키로 재취소 (`REFUNDED` + 같은 key) | 저장 안 함 | 저장 안 함 |
 
 ### API 예시
 
@@ -78,7 +81,29 @@ Content-Type: application/json
 
 Outbox는 저장하지 않습니다.
 
-#### 4) Mock PG 웹훅 (서버 푸시형)
+#### 4) Mock PG 전체 취소/환불 → `REFUNDED` + Outbox
+
+`PATCH /orders/{id}/cancel`(→ `CANCELLED`, `ORDER_CANCELLED`)과 별도로, **결제 완료 후 Mock PG 환불** 전용 API입니다.
+
+```http
+POST http://localhost:8080/api/orders/{orderId}/mock-payment/cancel
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "cancelReason": "고객 변심",
+  "idempotencyKey": "mock-refund-20260521-001"
+}
+```
+
+| 조건 | 동작 |
+|------|------|
+| 주문 상태 `PAID` | `REFUNDED`로 변경 + 재고 복구 + `PAYMENT_REFUNDED` Outbox |
+| 동일 `idempotencyKey`로 재요청 (`REFUNDED`/`CANCELLED` + 키 일치) | 멱등 응답, Outbox·이력 추가 없음 |
+| 다른 `idempotencyKey`로 재요청 (이미 환불/취소됨) | `O017` 예외 |
+| `PAYMENT_PENDING` / `PAYMENT_FAILED` | `O016` 예외, Outbox 없음 |
+
+#### 5) Mock PG 웹훅 (서버 푸시형)
 
 JWT 없이 **HMAC-SHA256** 서명만 통과하면 처리합니다.  
 설정: `mock.pg.webhook-secret` (`application.properties` / `application-local.properties`)
@@ -146,7 +171,7 @@ curl -X POST http://localhost:8080/api/mock-pg/webhook \
 
 REST Mock API(`POST /api/orders/...`)와 웹훅은 동일한 `OrderPaymentCommandService` 로직을 사용합니다.
 
-#### 5) 주문 조회
+#### 6) 주문 조회
 
 ```http
 GET http://localhost:8080/orders/{orderId}
@@ -175,5 +200,14 @@ JPA `ddl-auto=update`(local) 시 자동 생성됩니다.
 5. (새 주문) 실패 API 또는 잘못된 `approvalAmount` → `PAYMENT_FAILED`, Outbox 없음
 6. 웹훅 `PAYMENT_APPROVED` (서명 포함) → REST 승인과 동일하게 `PAID` + Outbox 1건
 7. 잘못된 서명 웹훅 → HTTP 401, 주문·Outbox 무변경
+8. `PAID` 주문 Mock 취소 API → `REFUNDED` + `outbox_events`에 `PAYMENT_REFUNDED` 1건
+9. 동일 `idempotencyKey`로 재취소 → Outbox 추가 없음
+
+### Mock 취소 vs 주문 취소 (`PATCH`)
+
+| API | 상태 | Outbox eventType | 재고 |
+|-----|------|------------------|------|
+| `POST .../mock-payment/cancel` | `REFUNDED` | `PAYMENT_REFUNDED` | 복구 (`PAID`일 때) |
+| `PATCH /orders/{id}/cancel` | `CANCELLED` | `ORDER_CANCELLED` | 복구 |
 
 기존 Outbox Poller / Consumer / Retry / DLQ / Slack / TraceID 구조는 변경하지 않았습니다.
