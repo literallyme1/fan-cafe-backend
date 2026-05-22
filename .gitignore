@@ -38,6 +38,7 @@ out/
 
 ### ignore ###
 src/main/resources/key
+src/test/resources/key/
 .env
 .env.dev
 .env.awstest
