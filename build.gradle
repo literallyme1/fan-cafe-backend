@@ -81,4 +81,22 @@ tasks.named('test') {
 			excludeTags 'integration'
 		}
 	}
+
+	// Gradle CLI -D / env → 테스트 JVM 전달 (Spring Boot가 ci 프로필·JWT 경로 인식)
+	systemProperties System.getProperties()
+
+	if (project.hasProperty('includeIntegration')) {
+		def ciProfile = System.getProperty('spring.profiles.active')
+				?: System.getenv('SPRING_PROFILES_ACTIVE')
+				?: 'ci'
+		systemProperty 'spring.profiles.active', ciProfile
+
+		def keyDir = file('src/main/resources/key').absolutePath
+		if (!System.getProperties().containsKey('jwt.private-key-path')) {
+			systemProperty 'jwt.private-key-path', "file:${keyDir}/ci-private_key.pem"
+		}
+		if (!System.getProperties().containsKey('jwt.public-key-path')) {
+			systemProperty 'jwt.public-key-path', "file:${keyDir}/ci-public_key.pem"
+		}
+	}
 }
