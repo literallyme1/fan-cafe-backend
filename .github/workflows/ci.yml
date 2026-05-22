@@ -73,24 +73,23 @@ jobs:
       - name: Generate CI test RSA keys (ephemeral, not committed)
         run: |
           set -euo pipefail
-          mkdir -p src/test/resources/key
+          mkdir -p src/main/resources/key
 
           openssl genpkey \
             -algorithm RSA \
-            -out src/test/resources/key/ci-private_key.pem \
+            -out src/main/resources/key/ci-private_key.pem \
             -pkeyopt rsa_keygen_bits:2048
 
           openssl rsa \
             -pubout \
-            -in src/test/resources/key/ci-private_key.pem \
-            -out src/test/resources/key/ci-public_key.pem
+            -in src/main/resources/key/ci-private_key.pem \
+            -out src/main/resources/key/ci-public_key.pem
 
-          chmod 600 src/test/resources/key/ci-private_key.pem
-          chmod 644 src/test/resources/key/ci-public_key.pem
+          chmod 600 src/main/resources/key/ci-private_key.pem
+          chmod 644 src/main/resources/key/ci-public_key.pem
 
-          echo "CI test RSA keys ready:"
-          echo "  - src/test/resources/key/ci-private_key.pem (exists, size=$(wc -c < src/test/resources/key/ci-private_key.pem) bytes)"
-          echo "  - src/test/resources/key/ci-public_key.pem (exists, size=$(wc -c < src/test/resources/key/ci-public_key.pem) bytes)"
+          echo "CI test RSA keys directory listing (metadata only):"
+          ls -al src/main/resources/key
 
       - name: Run Gradle tests
         run: ./gradlew test -PincludeIntegration --no-daemon
