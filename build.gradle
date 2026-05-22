@@ -76,5 +76,9 @@ sourceSets {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		if (!project.hasProperty('includeIntegration')) {
+			excludeTags 'integration'
+		}
+	}
 }

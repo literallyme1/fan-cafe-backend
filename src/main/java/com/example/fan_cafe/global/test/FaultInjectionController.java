@@ -15,7 +15,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/admin/simulate")
-@Profile({"test", "awstest"})
+@Profile({"test", "ci", "awstest"})
 @RequiredArgsConstructor
 public class FaultInjectionController {
 
