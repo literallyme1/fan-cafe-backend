@@ -92,13 +92,12 @@ jobs:
           set -euo pipefail
           echo "=== application-ci.properties (jwt keys only) ==="
           grep '^jwt\.' src/main/resources/config/application-ci.properties || true
-          ./gradlew processResources --no-daemon
-          echo "=== build/resources/main/key (metadata only) ==="
-          for f in build/resources/main/key/ci-private_key.pem build/resources/main/key/ci-public_key.pem; do
+          echo "=== CI JWT key files on disk (metadata only) ==="
+          for f in src/main/resources/key/ci-private_key.pem src/main/resources/key/ci-public_key.pem; do
             if [ -f "${f}" ]; then
               echo "${f}: $(wc -c < "${f}") bytes"
             else
-              echo "::error::Missing key in build output: ${f}"
+              echo "::error::Missing CI JWT key file: ${f}"
               exit 1
             fi
           done

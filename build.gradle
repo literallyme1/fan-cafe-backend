@@ -90,13 +90,5 @@ tasks.named('test') {
 				?: System.getenv('SPRING_PROFILES_ACTIVE')
 				?: 'ci'
 		systemProperty 'spring.profiles.active', ciProfile
-
-		def keyDir = file('src/main/resources/key').absolutePath
-		if (!System.getProperties().containsKey('jwt.private-key-path')) {
-			systemProperty 'jwt.private-key-path', "file:${keyDir}/ci-private_key.pem"
-		}
-		if (!System.getProperties().containsKey('jwt.public-key-path')) {
-			systemProperty 'jwt.public-key-path', "file:${keyDir}/ci-public_key.pem"
-		}
 	}
 }
