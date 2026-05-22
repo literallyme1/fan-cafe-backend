@@ -105,12 +105,18 @@ jobs:
       - name: Run Gradle tests
         run: |
           ./gradlew test -PincludeIntegration --no-daemon \
-            -Dspring.profiles.active=ci
+            -Dspring.profiles.active=ci \
+            -Djwt.private-key-path=file:$GITHUB_WORKSPACE/src/main/resources/key/ci-private_key.pem \
+            -Djwt.public-key-path=file:$GITHUB_WORKSPACE/src/main/resources/key/ci-public_key.pem \
+            --stacktrace
 
       - name: Gradle clean build
         run: |
           ./gradlew clean build -PincludeIntegration --no-daemon \
-            -Dspring.profiles.active=ci
+            -Dspring.profiles.active=ci \
+            -Djwt.private-key-path=file:$GITHUB_WORKSPACE/src/main/resources/key/ci-private_key.pem \
+            -Djwt.public-key-path=file:$GITHUB_WORKSPACE/src/main/resources/key/ci-public_key.pem \
+            --stacktrace
 
       - name: Verify Docker image build (no registry push)
         run: docker build -t fan-cafe-backend:ci-test .
