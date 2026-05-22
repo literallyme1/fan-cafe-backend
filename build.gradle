@@ -76,5 +76,26 @@ sourceSets {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		if (!project.hasProperty('includeIntegration')) {
+			excludeTags 'integration'
+		}
+	}
+
+	// Gradle CLI -D → forked test JVM (Spring system property override)
+	systemProperties(System.getProperties())
+
+	['jwt.private-key-path', 'jwt.public-key-path', 'spring.profiles.active'].each { prop ->
+		def value = System.getProperty(prop)
+		if (value != null) {
+			systemProperty prop, value
+		}
+	}
+
+	if (project.hasProperty('includeIntegration')) {
+		def ciProfile = System.getProperty('spring.profiles.active')
+				?: System.getenv('SPRING_PROFILES_ACTIVE')
+				?: 'ci'
+		systemProperty 'spring.profiles.active', ciProfile
+	}
 }

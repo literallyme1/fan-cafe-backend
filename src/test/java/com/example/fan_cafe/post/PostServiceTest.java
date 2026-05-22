@@ -14,6 +14,7 @@ import com.example.fan_cafe.post.interfaces.dto.*;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,6 +59,12 @@ public class PostServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Mock
+    private Cache<String, Integer> commentCountLocalCache;
+
     @InjectMocks
     private PostService postService;
 
@@ -65,6 +73,7 @@ public class PostServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(redisService.getInt(anyString())).thenReturn(0);
         mockUser = User.of("test@test.com", "encode_pw", "nickname", Role.USER);
         ReflectionTestUtils.setField(mockUser, "id", 1L);
         mockPost = Post.builder()

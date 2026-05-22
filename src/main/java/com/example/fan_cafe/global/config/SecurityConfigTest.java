@@ -23,7 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@Profile({"test", "awstest"})
+@Profile({"test", "ci", "awstest"})
 public class SecurityConfigTest {
 
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;

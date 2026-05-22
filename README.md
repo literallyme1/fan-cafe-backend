@@ -1,5 +1,14 @@
 # Fan-Cafe Backend
 
+## CI (GitHub Actions)
+
+GitHub Actions 기반 CI 파이프라인을 구성하여 PR 및 main 브랜치 변경 시 테스트, 빌드, Docker 이미지 생성 가능 여부를 자동 검증합니다. 실제 서버 배포나 이미지 레지스트리 push는 수행하지 않고, Docker 기반으로 언제든 실행 가능한 상태를 검증하는 데 목적이 있습니다.
+
+- 워크플로: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+- CI 전용 프로필: `ci` (`application-ci.properties`, MySQL / Redis / RabbitMQ는 Actions service container 사용)
+- 로컬: `./gradlew test` — DB 없이 단위 테스트만 실행 (`integration` 태그 제외)
+- 통합 테스트 포함: `./gradlew test -PincludeIntegration` (MySQL / Redis / RabbitMQ 필요)
+
 ## Mock 결제 상태 전이 (포트폴리오용)
 
 실제 PG 연동 없이, 주문 생성 → Mock PG 승인/실패 → `PAID` 전이 후 **Transactional Outbox** 알림이 이어지는 흐름을 얇게 보완한 구간입니다.
