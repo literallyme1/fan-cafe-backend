@@ -24,5 +24,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
     List<OutboxEvent> findProcessableEventsForUpdate(@Param("now") LocalDateTime now);
+
+    long countByAggregateTypeAndAggregateId(String aggregateType, Long aggregateId);
+
+    void deleteByAggregateTypeAndAggregateId(String aggregateType, Long aggregateId);
 }
 
