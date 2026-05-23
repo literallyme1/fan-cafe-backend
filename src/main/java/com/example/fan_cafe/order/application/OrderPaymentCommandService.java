@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -40,7 +41,7 @@ public class OrderPaymentCommandService {
      *
      * @return 갱신된 주문 (이미 동일 키로 PAID면 상태 변경·Outbox 없음)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = CustomException.class)
     public Order approvePayment(
             Order order,
             BigDecimal approvalAmount,
@@ -48,38 +49,40 @@ public class OrderPaymentCommandService {
             String historyReason
     ) {
         Long orderId = order.getId();
+        Order lockedOrder = orderRepository.findByIdWithItemsForUpdate(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        if (order.isPaidWithPaymentKey(paymentKey)) {
+        if (lockedOrder.isPaidWithPaymentKey(paymentKey)) {
             log.info("[MOCK-PAYMENT] - 중복 승인 요청 무시 (orderId={}, key={})", orderId, paymentKey);
-            return order;
+            return lockedOrder;
         }
-        if (order.getStatus() == Status.PAID) {
+        if (lockedOrder.getStatus() == Status.PAID) {
             throw new CustomException(OrderErrorCode.ORDER_ALREADY_PAID);
         }
-        if (order.getStatus() != Status.PAYMENT_PENDING) {
+        if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         }
 
-        if (order.getTotalPrice().compareTo(approvalAmount) != 0) {
-            Status from = order.getStatus();
-            order.markPaymentFailed();
-            recordStatusHistory(order, from, Status.PAYMENT_FAILED, "approval amount mismatch");
-            orderRepository.save(order);
+        if (lockedOrder.getTotalPrice().compareTo(approvalAmount) != 0) {
+            Status from = lockedOrder.getStatus();
+            lockedOrder.markPaymentFailed();
+            recordStatusHistory(lockedOrder, from, Status.PAYMENT_FAILED, "approval amount mismatch");
+            orderRepository.save(lockedOrder);
             log.warn("[MOCK-PAYMENT] - 금액 불일치 (orderId={}, expected={}, actual={})",
-                    orderId, order.getTotalPrice(), approvalAmount);
+                    orderId, lockedOrder.getTotalPrice(), approvalAmount);
             throw new CustomException(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
-        Status from = order.getStatus();
-        order.markPaid(paymentKey);
-        recordStatusHistory(order, from, Status.PAID, historyReason);
+        Status from = lockedOrder.getStatus();
+        lockedOrder.markPaid(paymentKey);
+        recordStatusHistory(lockedOrder, from, Status.PAID, historyReason);
 
         OutboxEvent orderCreatedOutbox = persistOutboxWithEventId(
-                OutboxEvent.init("ORDER", order.getId(), buildOrderCreatedPayload(order)));
+                OutboxEvent.init("ORDER", lockedOrder.getId(), buildOrderCreatedPayload(lockedOrder)));
         log.info("[OUTBOX] - 결제 승인 후 이벤트 저장 (orderId={}, eventStatus={})",
-                order.getId(), orderCreatedOutbox.getStatus());
+                lockedOrder.getId(), orderCreatedOutbox.getStatus());
 
-        return order;
+        return lockedOrder;
     }
 
     /** PAYMENT_PENDING → PAYMENT_FAILED. Outbox 저장 없음. */

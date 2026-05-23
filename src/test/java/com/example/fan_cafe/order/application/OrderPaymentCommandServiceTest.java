@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,6 +50,10 @@ class OrderPaymentCommandServiceTest {
 
     private Order paymentPendingOrder;
     private Order paidOrder;
+
+    private void stubLockedOrder(Order order) {
+        when(orderRepository.findByIdWithItemsForUpdate(order.getId())).thenReturn(Optional.of(order));
+    }
 
     @BeforeEach
     void setUp() throws JsonProcessingException {
@@ -79,6 +84,7 @@ class OrderPaymentCommandServiceTest {
     @Test
     @DisplayName("승인 시 PAID 전이·이력·Outbox 저장")
     void approvePayment_shouldMarkPaidAndSaveOutbox() {
+        stubLockedOrder(paymentPendingOrder);
         Order result = orderPaymentCommandService.approvePayment(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
@@ -95,6 +101,7 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("동일 paymentKey 재승인은 멱등 (Outbox 없음)")
     void approvePayment_shouldBeIdempotent_whenSameKey() {
         paymentPendingOrder.markPaid("pay-key-1");
+        stubLockedOrder(paymentPendingOrder);
 
         Order result = orderPaymentCommandService.approvePayment(
                 paymentPendingOrder,
@@ -111,6 +118,7 @@ class OrderPaymentCommandServiceTest {
     @Test
     @DisplayName("금액 불일치 시 PAYMENT_FAILED, Outbox 없음")
     void approvePayment_shouldFail_whenAmountMismatch() {
+        stubLockedOrder(paymentPendingOrder);
         assertThatThrownBy(() -> orderPaymentCommandService.approvePayment(
                 paymentPendingOrder,
                 BigDecimal.ONE,
