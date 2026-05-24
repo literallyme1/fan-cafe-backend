@@ -13,6 +13,10 @@
 -- 참고: 별도 payments 테이블은 없으며, 결제 키는 orders.approved_payment_key 컬럼에 저장됩니다.
 --       주문 삭제 시 payment 관련 컬럼도 함께 제거됩니다.
 --
+-- 수동 초기화용 (Spring 기동 시 seed 프로시저가 자동 reset 포함)
+-- Spring test profile + load-test.seed.payment-pending-orders.enabled=true 이면 별도 실행 불필요
+--
+-- 초기화만 필요할 때: 이 스크립트 단독 실행
 -- 초기화 후 재시드: scripts/seed-payment-pending-orders.sql
 -- =============================================================================
 

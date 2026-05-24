@@ -11,6 +11,7 @@ BEGIN
     DECLARE v_order_id BIGINT;
 
     DECLARE order_id_start BIGINT DEFAULT 900001;
+    DECLARE order_id_end BIGINT;
     DECLARE order_count INT DEFAULT 10000;
     DECLARE unit_price DECIMAL(19, 2) DEFAULT 9000.00;
     DECLARE item_quantity INT DEFAULT 1;
@@ -18,72 +19,79 @@ BEGIN
     DECLARE load_test_user_email VARCHAR(255) DEFAULT 'outbox-k6-loadtest@fan-cafe.test';
     DECLARE load_test_product_name VARCHAR(255) DEFAULT '[K6-OUTBOX-LOAD-TEST] Mock PG Product';
 
-    IF EXISTS (
-        SELECT 1
-        FROM orders
-        WHERE id BETWEEN order_id_start AND (order_id_start + order_count - 1)
-        LIMIT 1
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Load test orders already exist (900001-910000). Run reset-order-outbox-test-data.sql first.';
-    END IF;
+    SET order_id_end = order_id_start + order_count - 1;
 
-    SELECT id INTO v_user_id
-    FROM users
-    WHERE email = load_test_user_email
-    LIMIT 1;
+    -- (0) 기존 부하 테스트 데이터 정리 (재기동 시 idempotent)
+    DELETE FROM outbox_events
+    WHERE aggregate_type = 'ORDER'
+      AND aggregate_id BETWEEN order_id_start AND order_id_end;
 
-    IF v_user_id IS NULL THEN
-        INSERT INTO users (
-            email, password, nickname, role,
-            introduction,
-            password_updated_at_epoch_sec,
-            password_set,
-            follower_count,
-            following_count,
-            created_at,
-            updated_at
-        ) VALUES (
-            load_test_user_email,
-            'load-test-encoded-password',
-            'outbox-k6-loadtest',
-            'USER',
-            '',
-            UNIX_TIMESTAMP(NOW()),
-            1,
-            0,
-            0,
-            NOW(),
-            NOW()
-        );
-        SET v_user_id = LAST_INSERT_ID();
-    END IF;
+    DELETE FROM order_status_history
+    WHERE order_id BETWEEN order_id_start AND order_id_end;
 
-    SELECT id INTO v_product_id
-    FROM merchandises
+    DELETE FROM order_items
+    WHERE order_id BETWEEN order_id_start AND order_id_end;
+
+    DELETE FROM orders
+    WHERE id BETWEEN order_id_start AND order_id_end;
+
+    DELETE FROM merchandises
     WHERE name = load_test_product_name
-      AND deleted_at IS NULL
-    LIMIT 1;
+      AND NOT EXISTS (
+          SELECT 1
+          FROM order_items oi
+          WHERE oi.product_id = merchandises.id
+      );
 
-    IF v_product_id IS NULL THEN
-        INSERT INTO merchandises (
-            name, description, price, sale_price, stock,
-            status, image_url, category,
-            created_at, updated_at
-        ) VALUES (
-            load_test_product_name,
-            'Mock PG Webhook / Outbox k6 load test fixture',
-            10000,
-            9000,
-            200000,
-            'SALE',
-            NULL,
-            'CLOTHES',
-            NOW(),
-            NOW()
-        );
-        SET v_product_id = LAST_INSERT_ID();
-    END IF;
+    DELETE FROM users
+    WHERE email = load_test_user_email
+      AND NOT EXISTS (
+          SELECT 1
+          FROM orders o
+          WHERE o.user_id = users.id
+      );
+
+    INSERT INTO users (
+        email, password, nickname, role,
+        introduction,
+        password_updated_at_epoch_sec,
+        password_set,
+        follower_count,
+        following_count,
+        created_at,
+        updated_at
+    ) VALUES (
+        load_test_user_email,
+        'load-test-encoded-password',
+        'outbox-k6-loadtest',
+        'USER',
+        '',
+        UNIX_TIMESTAMP(NOW()),
+        1,
+        0,
+        0,
+        NOW(),
+        NOW()
+    );
+    SET v_user_id = LAST_INSERT_ID();
+
+    INSERT INTO merchandises (
+        name, description, price, sale_price, stock,
+        status, image_url, category,
+        created_at, updated_at
+    ) VALUES (
+        load_test_product_name,
+        'Mock PG Webhook / Outbox k6 load test fixture',
+        10000,
+        9000,
+        200000,
+        'SALE',
+        NULL,
+        'CLOTHES',
+        NOW(),
+        NOW()
+    );
+    SET v_product_id = LAST_INSERT_ID();
 
     WHILE i <= order_count DO
         SET v_order_id = order_id_start + i - 1;
@@ -140,7 +148,7 @@ BEGIN
 
     SELECT
         order_id_start AS order_id_start,
-        order_id_start + order_count - 1 AS order_id_end,
+        order_id_end AS order_id_end,
         order_count AS seeded_order_count,
         unit_price * item_quantity AS approval_amount_per_order,
         v_user_id AS load_test_user_id,
