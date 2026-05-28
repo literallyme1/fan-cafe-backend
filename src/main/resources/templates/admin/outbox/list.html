@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Outbox Manual Retry 관리</title>
+    <style>
+        body { font-family: sans-serif; padding: 24px; }
+        h1 { margin-bottom: 16px; }
+        .top-links { margin-bottom: 12px; }
+        .top-links a { color: #2563eb; margin-right: 12px; }
+        .msg-ok { color: green; margin-bottom: 12px; }
+        .msg-err { color: red; margin-bottom: 12px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; vertical-align: top; }
+        th { background: #f4f4f4; }
+        .btn { background: #2563eb; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+        .mono { font-family: Consolas, monospace; word-break: break-all; }
+        .muted { color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="top-links">
+    <a href="/admin/dlq">DLQ 관리</a>
+    <a href="/admin/outbox-manual-retry">Outbox Manual Retry</a>
+</div>
+
+<h1>MANUAL_REQUIRED Outbox 이벤트 목록</h1>
+<p id="okMessage" class="msg-ok" style="display:none;"></p>
+<p id="errorMessage" class="msg-err" style="display:none;"></p>
+
+<table>
+    <thead>
+    <tr>
+        <th>id</th>
+        <th>eventId</th>
+        <th>eventType</th>
+        <th>status</th>
+        <th>retryCount</th>
+        <th>lastError</th>
+        <th>createdAt</th>
+        <th>nextRetryAt</th>
+        <th>액션</th>
+    </tr>
+    </thead>
+    <tbody id="eventRows"></tbody>
+</table>
+
+<script>
+    async function loadEvents(successText) {
+        hideMessages();
+        if (successText) {
+            showOk(successText);
+        }
+
+        const tbody = document.getElementById('eventRows');
+        tbody.innerHTML = '<tr><td colspan="9" class="muted">조회 중...</td></tr>';
+
+        try {
+            const response = await fetch('/api/admin/outbox-events/manual-required');
+            const result = await response.json();
+            const events = (result && result.data) ? result.data : [];
+            renderRows(events);
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="9" class="msg-err">목록 조회에 실패했습니다.</td></tr>';
+        }
+    }
+
+    function renderRows(events) {
+        const tbody = document.getElementById('eventRows');
+        if (!events || events.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="muted">MANUAL_REQUIRED 이벤트가 없습니다.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = events.map(event => {
+            const payloadInfo = parsePayload(event.payload);
+            const eventId = payloadInfo.eventId || '-';
+            const eventType = payloadInfo.eventType || '-';
+            const createdAt = event.createdAt || '-';
+            const nextRetryAt = event.nextRetryAt || '-';
+            const lastError = shorten(event.lastError || '-', 120);
+            return `
+                <tr>
+                    <td>${event.id ?? '-'}</td>
+                    <td class="mono">${escapeHtml(eventId)}</td>
+                    <td>${escapeHtml(eventType)}</td>
+                    <td>${escapeHtml(event.status || '-')}</td>
+                    <td>${event.retryCount ?? '-'}</td>
+                    <td title="${escapeHtml(event.lastError || '-')}">${escapeHtml(lastError)}</td>
+                    <td>${escapeHtml(createdAt)}</td>
+                    <td>${escapeHtml(nextRetryAt)}</td>
+                    <td>
+                        <button class="btn" onclick="goDetail(${event.id})">상세 보기</button>
+                        <button class="btn" onclick="requestRetry(${event.id}, this)">재시도 요청</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function requestRetry(id, buttonEl) {
+        if (!confirm('해당 이벤트를 재시도 요청하시겠습니까?')) {
+            return;
+        }
+
+        buttonEl.disabled = true;
+        hideMessages();
+        try {
+            const response = await fetch(`/api/admin/outbox-events/${id}/retry`, { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result && result.message ? result.message : '재시도 요청에 실패했습니다.');
+            }
+            await loadEvents(`id=${id} 재시도 요청이 완료되었습니다.`);
+        } catch (e) {
+            showError(e.message || '재시도 요청에 실패했습니다.');
+        } finally {
+            buttonEl.disabled = false;
+        }
+    }
+
+    function goDetail(id) {
+        location.href = `/admin/outbox-manual-retry/${id}`;
+    }
+
+    function parsePayload(payload) {
+        if (!payload) {
+            return {};
+        }
+        try {
+            return JSON.parse(payload);
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function shorten(text, maxLen) {
+        if (!text || text.length <= maxLen) {
+            return text || '';
+        }
+        return text.substring(0, maxLen) + ' ...';
+    }
+
+    function showOk(message) {
+        const el = document.getElementById('okMessage');
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+
+    function showError(message) {
+        const el = document.getElementById('errorMessage');
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+
+    function hideMessages() {
+        document.getElementById('okMessage').style.display = 'none';
+        document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    loadEvents();
+</script>
+
+</body>
+</html>

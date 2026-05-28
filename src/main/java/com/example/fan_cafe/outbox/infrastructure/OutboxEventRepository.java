@@ -1,6 +1,7 @@
 package com.example.fan_cafe.outbox.infrastructure;
 
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
+import com.example.fan_cafe.outbox.domain.OutboxEventStatus;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +25,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
     List<OutboxEvent> findProcessableEventsForUpdate(@Param("now") LocalDateTime now);
+
+    List<OutboxEvent> findAllByStatusOrderByCreatedAtDesc(OutboxEventStatus status);
 
     long countByAggregateTypeAndAggregateId(String aggregateType, Long aggregateId);
 
