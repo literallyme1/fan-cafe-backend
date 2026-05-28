@@ -17,6 +17,15 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Table(name = "outbox_events")
+//@Table(
+//        name = "outbox_events",
+//        indexes = {
+//                @Index(
+//                        name = "idx_outbox_polling",
+//                        columnList = "status, next_retry_at, id"
+//                )
+//        }
+//)
 public class OutboxEvent extends BaseTimeEntity {
     // outbox 이벤트의 최대 재시도 횟수.
     public static final int MAX_RETRY_COUNT = 5;
@@ -106,6 +115,14 @@ public class OutboxEvent extends BaseTimeEntity {
 
     public boolean isManualRequired() {
         return this.status == OutboxEventStatus.MANUAL_REQUIRED;
+    }
+
+    public void markManualRetryRequested(LocalDateTime now) {
+        if (!isManualRequired()) {
+            throw new IllegalStateException("Outbox event is not MANUAL_REQUIRED.");
+        }
+        this.status = OutboxEventStatus.FAILED;
+        this.nextRetryAt = now;
     }
 }
 

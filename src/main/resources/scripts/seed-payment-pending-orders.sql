@@ -12,7 +12,7 @@ BEGIN
 
     DECLARE order_id_start BIGINT DEFAULT 900001;
     DECLARE order_id_end BIGINT;
-    DECLARE order_count INT DEFAULT 10000;
+    DECLARE order_count INT DEFAULT 100000;
     DECLARE unit_price DECIMAL(19, 2) DEFAULT 9000.00;
     DECLARE item_quantity INT DEFAULT 1;
 

@@ -6,7 +6,7 @@
 -- 실행 예: mysql -u root -p fan_cafe < scripts/reset-order-outbox-test-data.sql
 --
 -- 삭제 범위
---   - orders.id 900001 ~ 910000 (시드 스크립트와 동일 범위)
+--   - orders.id 900001 ~ 1000000 (시드 스크립트와 동일 범위, 100,000건)
 --   - 연관 order_items, order_status_history, outbox_events
 --   - 부하 테스트 전용 user / merchandise (다른 데이터와 겹치지 않는 fixture)
 --
@@ -21,7 +21,7 @@
 -- =============================================================================
 
 SET @order_id_start = 900001;
-SET @order_id_end = 910000;
+SET @order_id_end = 1000000;
 SET @load_test_user_email = 'outbox-k6-loadtest@fan-cafe.test';
 SET @load_test_product_name = '[K6-OUTBOX-LOAD-TEST] Mock PG Product';
 

@@ -1,5 +1,5 @@
 -- =============================================================================
--- Mock PG Webhook / Outbox k6 부하 테스트용 PAYMENT_PENDING 주문 10,000건 시드
+-- Mock PG Webhook / Outbox k6 부하 테스트용 PAYMENT_PENDING 주문 100,000건 시드
 -- =============================================================================
 --
 -- 대상 DB: MySQL (fan_cafe)
@@ -16,7 +16,7 @@
 --
 -- k6 예측 가능 값 (JavaScript 예시)
 --   const ORDER_ID_START = 900001;
---   const ORDER_COUNT    = 10000;
+--   const ORDER_COUNT    = 100000;
 --   const APPROVAL_AMOUNT = 9000;
 --   const orderId = ORDER_ID_START + ((__VU - 1 + __ITER) % ORDER_COUNT);
 --   const idempotencyKey = `K6-MOCK-PG-${orderId}`;
@@ -49,7 +49,7 @@ BEGIN
   -- k6 와 1:1 매핑되는 고정 상수
     DECLARE order_id_start BIGINT DEFAULT 900001;
     DECLARE order_id_end BIGINT;
-    DECLARE order_count INT DEFAULT 10000;
+    DECLARE order_count INT DEFAULT 100000;
     DECLARE unit_price DECIMAL(19, 2) DEFAULT 9000.00;
     DECLARE item_quantity INT DEFAULT 1;
 
@@ -132,7 +132,7 @@ BEGIN
     );
     SET v_product_id = LAST_INSERT_ID();
 
-  -- (3) PAYMENT_PENDING 주문 + order_items 10,000건
+  -- (3) PAYMENT_PENDING 주문 + order_items 100,000건
     WHILE i <= order_count DO
         SET v_order_id = order_id_start + i - 1;
 

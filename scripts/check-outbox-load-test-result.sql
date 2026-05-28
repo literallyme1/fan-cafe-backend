@@ -5,15 +5,15 @@
 -- 대상 DB: MySQL (fan_cafe)
 -- 실행 예: mysql -u root -p fan_cafe < scripts/check-outbox-load-test-result.sql
 --
--- 기대 결과 (웹훅 10,000건 모두 성공 처리 후)
---   - orders: PAID 10,000건, PAYMENT_PENDING 0건
---   - outbox_events: ORDER aggregate 10,000건 (status 분포는 Poller/MQ 처리량에 따라 NEW/SENT 혼재)
---   - order_status_history: PAYMENT_PENDING → PAID 10,000건
+-- 기대 결과 (웹훅 100,000건 모두 성공 처리 후)
+--   - orders: PAID 100,000건, PAYMENT_PENDING 0건
+--   - outbox_events: ORDER aggregate 100,000건 (status 분포는 Poller/MQ 처리량에 따라 NEW/SENT 혼재)
+--   - order_status_history: PAYMENT_PENDING → PAID 100,000건
 -- =============================================================================
 
 SET @order_id_start = 900001;
-SET @order_id_end = 910000;
-SET @expected_order_count = 10000;
+SET @order_id_end = 1000000;
+SET @expected_order_count = 100000;
 SET @approval_amount = 9000.00;
 
 -- ---------------------------------------------------------------------------

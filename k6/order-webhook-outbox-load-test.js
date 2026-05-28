@@ -6,7 +6,7 @@ import crypto from 'k6/crypto';
  * Mock PG Webhook → Outbox NEW 생성 → Poller SENT 처리 흐름 부하 테스트
  *
  * 사전 준비 (test profile)
- *   load-test.seed.payment-pending-orders.enabled=true 로 PAYMENT_PENDING 주문 10,000건 시드
+ *   load-test.seed.payment-pending-orders.enabled=true 로 PAYMENT_PENDING 주문 100,000건 시드
  *
  * 실행 예
  *   k6 run k6/order-webhook-outbox-load-test.js
@@ -15,9 +15,9 @@ import crypto from 'k6/crypto';
 
 export const options = {
   stages: [
-    { duration: '1m', target: 100 },
-    { duration: '2m', target: 300 },
-    { duration: '2m', target: 500 },
+    { duration: '1m', target: 30 },
+    { duration: '2m', target: 50 },
+    { duration: '2m', target: 100 },
     { duration: '1m', target: 0 },
   ],
   thresholds: {
@@ -29,13 +29,14 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const WEBHOOK_SECRET = __ENV.MOCK_PG_WEBHOOK_SECRET || 'test-mock-pg-webhook-secret';
 const WEBHOOK_PATH = '/api/mock-pg/webhook';
+const REQUEST_TIMEOUT = '10s';
 
 const HEADER_TIMESTAMP = 'X-Mock-PG-Timestamp';
 const HEADER_SIGNATURE = 'X-Mock-PG-Signature';
 
-// seed-payment-pending-orders.sql 과 동일
+// seed-payment-pending-orders.sql 과 동일 (900001 ~ 1000000)
 const ORDER_ID_START = 900001;
-const ORDER_COUNT = 10000;
+const ORDER_COUNT = 100000;
 const APPROVAL_AMOUNT = 9000;
 
 function buildIdempotencyKey(orderId) {
@@ -70,6 +71,7 @@ export default function () {
   const signature = signWebhook(WEBHOOK_SECRET, timestamp, rawBody);
 
   const res = http.post(`${BASE_URL}${WEBHOOK_PATH}`, rawBody, {
+    timeout: REQUEST_TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
       [HEADER_TIMESTAMP]: timestamp,

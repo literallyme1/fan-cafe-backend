@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Outbox 이벤트 상세</title>
+    <style>
+        body { font-family: sans-serif; padding: 24px; }
+        h1 { margin-bottom: 16px; }
+        .top-links { margin-bottom: 12px; }
+        .top-links a { color: #2563eb; margin-right: 12px; }
+        .msg-err { color: red; margin-bottom: 12px; }
+        table { border-collapse: collapse; width: 100%; max-width: 1000px; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; vertical-align: top; }
+        th { background: #f4f4f4; width: 180px; }
+        pre { background: #f9f9f9; padding: 12px; border: 1px solid #ddd; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+        .btn { background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; margin-top: 16px; }
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+        .mono { font-family: Consolas, monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="top-links">
+    <a href="/admin/dlq">DLQ 관리</a>
+    <a href="/admin/outbox-manual-retry">Outbox Manual Retry</a>
+</div>
+
+<h1>Outbox 이벤트 상세</h1>
+<p id="errorMessage" class="msg-err" style="display:none;"></p>
+
+<table>
+    <tbody id="detailBody"></tbody>
+</table>
+
+<button id="retryButton" class="btn" onclick="requestRetry()">재시도 요청</button>
+
+<script>
+    const id = Number(location.pathname.split('/').pop());
+    let loadedEvent = null;
+
+    async function loadDetail() {
+        hideError();
+        const tbody = document.getElementById('detailBody');
+        tbody.innerHTML = '<tr><td colspan="2">조회 중...</td></tr>';
+
+        try {
+            const response = await fetch(`/api/admin/outbox-events/${id}`);
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result && result.message ? result.message : '상세 조회에 실패했습니다.');
+            }
+            loadedEvent = result.data;
+            renderDetail(loadedEvent);
+        } catch (e) {
+            showError(e.message || '상세 조회에 실패했습니다.');
+            tbody.innerHTML = '';
+        }
+    }
+
+    function renderDetail(event) {
+        const payloadInfo = parsePayload(event.payload);
+        const idempotencyKey = payloadInfo.idempotencyKey || '-';
+        const rows = [
+            row('id', event.id),
+            row('eventId', payloadInfo.eventId || '-'),
+            row('eventType', payloadInfo.eventType || '-'),
+            row('status', event.status || '-'),
+            row('retryCount', event.retryCount ?? '-'),
+            row('lastError', event.lastError || '-'),
+            row('createdAt', event.createdAt || '-'),
+            row('nextRetryAt', event.nextRetryAt || '-'),
+            row('idempotencyKey', idempotencyKey, true),
+            rowPre('payload', event.payload || '-')
+        ];
+
+        document.getElementById('detailBody').innerHTML = rows.join('');
+        document.getElementById('retryButton').disabled = event.status !== 'MANUAL_REQUIRED';
+    }
+
+    function row(label, value, isMono) {
+        const cls = isMono ? ' class="mono"' : '';
+        return `<tr><th>${escapeHtml(label)}</th><td${cls}>${escapeHtml(String(value))}</td></tr>`;
+    }
+
+    function rowPre(label, value) {
+        return `<tr><th>${escapeHtml(label)}</th><td><pre>${escapeHtml(value)}</pre></td></tr>`;
+    }
+
+    async function requestRetry() {
+        if (!loadedEvent) {
+            return;
+        }
+        if (!confirm('해당 이벤트를 재시도 요청하시겠습니까?')) {
+            return;
+        }
+
+        const button = document.getElementById('retryButton');
+        button.disabled = true;
+        hideError();
+
+        try {
+            const response = await fetch(`/api/admin/outbox-events/${id}/retry`, { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result && result.message ? result.message : '재시도 요청에 실패했습니다.');
+            }
+            location.href = '/admin/outbox-manual-retry';
+        } catch (e) {
+            showError(e.message || '재시도 요청에 실패했습니다.');
+            button.disabled = false;
+        }
+    }
+
+    function parsePayload(payload) {
+        if (!payload) {
+            return {};
+        }
+        try {
+            return JSON.parse(payload);
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function showError(message) {
+        const el = document.getElementById('errorMessage');
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+
+    function hideError() {
+        document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    loadDetail();
+</script>
+
+</body>
+</html>
