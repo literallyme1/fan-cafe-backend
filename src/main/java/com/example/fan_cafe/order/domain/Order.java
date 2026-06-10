@@ -88,10 +88,9 @@ public class Order extends BaseTimeEntity {
     }
 
     // 현재 주문 상태가 취소 가능한지 도메인 규칙으로 판단한다.
+    /** 결제 전(PAYMENT_PENDING)에만 주문 취소 가능. 결제 후 환불은 별도 Mock 환불 API 사용. */
     public boolean cancellable() {
-        return this.status == Status.PAID
-                || this.status == Status.PENDING
-                || this.status == Status.PAYMENT_PENDING;
+        return this.status == Status.PAYMENT_PENDING;
     }
 
     // 취소 가능 상태일 때만 취소 상태로 변경한다.

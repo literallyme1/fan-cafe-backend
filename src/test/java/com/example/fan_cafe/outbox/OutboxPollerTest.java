@@ -51,7 +51,7 @@ class OutboxPollerTest {
     @Test
     @DisplayName("publisher 성공 시 상태가 SENT로 전이된다.")
     void poll_shouldMarkSent_whenPublishSucceeds() {
-        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_CREATED\"}");
+        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_PAID\"}");
         ReflectionTestUtils.setField(event, "id", 1L);
         ReflectionTestUtils.setField(event, "eventId", "1");
         when(outboxPayloadJson.mergeEventId(anyString(), anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -66,7 +66,7 @@ class OutboxPollerTest {
     @Test
     @DisplayName("publisher 실패 시 상태가 FAILED로 전이되고 retry_count가 증가한다.")
     void poll_shouldMarkFailedAndIncreaseRetryCount_whenPublishFails() {
-        OutboxEvent event = OutboxEvent.init("ORDER", 2L, "{\"eventType\":\"ORDER_CREATED\"}");
+        OutboxEvent event = OutboxEvent.init("ORDER", 2L, "{\"eventType\":\"ORDER_PAID\"}");
         ReflectionTestUtils.setField(event, "id", 2L);
         ReflectionTestUtils.setField(event, "eventId", "2");
         LocalDateTime nextRetryAt = LocalDateTime.now().plusSeconds(10);

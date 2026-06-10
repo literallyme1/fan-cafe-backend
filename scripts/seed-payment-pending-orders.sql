@@ -10,7 +10,7 @@
 --   → PaymentPendingOrderLoadTestSeedRunner 가 classpath:scripts/seed-payment-pending-orders.sql 실행
 --
 -- 선행 조건
---   - outbox_events 는 시드하지 않음 (웹훅 PAYMENT_APPROVED 처리 시 ORDER_CREATED 생성)
+--   - outbox_events 는 시드하지 않음 (웹훅 PAYMENT_APPROVED 처리 시 ORDER_PAID 생성)
 --   - 기동 시 자동 reset 후 재생성 (Spring: load-test.seed.payment-pending-orders.enabled=true)
 --   - 수동 reset만 필요할 때: scripts/reset-order-outbox-test-data.sql
 --

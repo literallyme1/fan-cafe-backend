@@ -153,9 +153,21 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Mock 취소/환불 API는 OrderPaymentCommandService에 위임한다.")
+    @DisplayName("Mock 취소/환불 API는 재고 복구 후 OrderPaymentCommandService에 위임한다.")
     void cancelMockPayment_shouldDelegateToCommandService() {
+        Merchandise merchandise = Merchandise.builder()
+                .id(100L)
+                .name("응원봉")
+                .description("응원봉")
+                .price(10000L)
+                .salePrice(9000L)
+                .stock(0)
+                .status(Status.SOLD_OUT)
+                .category(Category.CLOTHES)
+                .build();
+
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+        when(merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(100L)).thenReturn(Optional.of(merchandise));
         paidOrder.markRefunded("cancel-1");
         when(orderPaymentCommandService.cancelPayment(paidOrder, "고객 변심", "cancel-1"))
                 .thenReturn(paidOrder);
@@ -171,7 +183,7 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("주문 취소 시 재고 복구, 상태 변경, outbox 저장이 수행된다.")
+    @DisplayName("PAYMENT_PENDING 주문 취소 시 재고 복구, 상태 변경, outbox 저장이 수행된다.")
     void cancel_shouldRestoreStockAndCancelOrderAndSaveOutbox() throws JsonProcessingException {
         Merchandise merchandise = Merchandise.builder()
                 .id(100L)
@@ -184,7 +196,7 @@ class OrderServiceTest {
                 .category(Category.CLOTHES)
                 .build();
 
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
         when(merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(100L)).thenReturn(Optional.of(merchandise));
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CANCELLED\"}");
 
@@ -197,10 +209,20 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("PAID 주문은 cancel API로 취소할 수 없다.")
+    void cancel_shouldThrowException_whenOrderAlreadyPaid() {
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+
+        assertThatThrownBy(() -> orderService.cancel(user, 10L))
+                .isInstanceOf(CustomException.class)
+                .hasMessageContaining(OrderErrorCode.ORDER_NOT_CANCELLABLE.getMessage());
+    }
+
+    @Test
     @DisplayName("이미 취소된 주문은 취소할 수 없다.")
     void cancel_shouldThrowException_whenOrderNotCancellable() {
-        ReflectionTestUtils.setField(paidOrder, "status", com.example.fan_cafe.order.domain.Status.CANCELLED);
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+        ReflectionTestUtils.setField(paymentPendingOrder, "status", com.example.fan_cafe.order.domain.Status.CANCELLED);
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
 
         assertThatThrownBy(() -> orderService.cancel(user, 10L))
                 .isInstanceOf(CustomException.class)

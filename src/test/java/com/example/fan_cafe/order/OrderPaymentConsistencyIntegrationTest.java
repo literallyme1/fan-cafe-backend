@@ -127,7 +127,7 @@ class OrderPaymentConsistencyIntegrationTest {
                 .filter(e -> "ORDER".equals(e.getAggregateType()) && orderId.equals(e.getAggregateId()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(outbox.getPayload()).contains("ORDER_CREATED");
+        assertThat(outbox.getPayload()).contains("ORDER_PAID");
     }
 
     @Test
@@ -233,7 +233,7 @@ class OrderPaymentConsistencyIntegrationTest {
                 .filter(e -> "ORDER".equals(e.getAggregateType()) && orderId.equals(e.getAggregateId()))
                 .toList();
         assertThat(outboxEvents).hasSize(2);
-        assertThat(outboxEvents.stream().filter(e -> e.getPayload().contains("ORDER_CREATED")).count()).isEqualTo(1);
+        assertThat(outboxEvents.stream().filter(e -> e.getPayload().contains("ORDER_PAID")).count()).isEqualTo(1);
         assertThat(outboxEvents.stream().filter(e -> e.getPayload().contains("PAYMENT_REFUNDED")).count()).isEqualTo(1);
     }
 

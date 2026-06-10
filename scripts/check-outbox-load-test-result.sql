@@ -43,7 +43,7 @@ FROM orders o
 WHERE o.id BETWEEN @order_id_start AND @order_id_end;
 
 -- ---------------------------------------------------------------------------
--- 2) Outbox 이벤트 요약 (웹훅 승인 시 ORDER_CREATED payload)
+-- 2) Outbox 이벤트 요약 (웹훅 승인 시 ORDER_PAID payload)
 -- ---------------------------------------------------------------------------
 SELECT '2) outbox event summary' AS section;
 
@@ -157,7 +157,7 @@ WHERE o.id BETWEEN @order_id_start AND (@order_id_start + 4)
 ORDER BY o.id;
 
 -- ---------------------------------------------------------------------------
--- 6) 최근 Outbox 샘플 payload (ORDER_CREATED)
+-- 6) 최근 Outbox 샘플 payload (ORDER_PAID)
 -- ---------------------------------------------------------------------------
 SELECT '6) recent outbox payload sample' AS section;
 

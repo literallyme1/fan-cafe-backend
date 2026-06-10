@@ -78,7 +78,7 @@ class OrderPaymentCommandServiceTest {
         });
         lenient().when(orderStatusHistoryRepository.save(any(OrderStatusHistory.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CREATED\"}");
+        lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_PAID\"}");
     }
 
     @Test

@@ -149,9 +149,7 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        if (order.getStatus() == Status.PAID) {
-            restoreStock(order);
-        }
+        restoreStock(order);
 
         Order updated = orderPaymentCommandService.cancelPayment(
                 order,
