@@ -37,7 +37,7 @@ public class OrderPaymentCommandService {
     private final ObjectMapper objectMapper;
 
     /**
-     * PAYMENT_PENDING → PAID (금액 일치 시). 성공 시 Outbox ORDER_CREATED 저장.
+     * PAYMENT_PENDING → PAID (금액 일치 시). 성공 시 Outbox ORDER_PAID 저장.
      *
      * @return 갱신된 주문 (이미 동일 키로 PAID면 상태 변경·Outbox 없음)
      */
@@ -77,10 +77,10 @@ public class OrderPaymentCommandService {
         lockedOrder.markPaid(paymentKey);
         recordStatusHistory(lockedOrder, from, Status.PAID, historyReason);
 
-        OutboxEvent orderCreatedOutbox = persistOutboxWithEventId(
-                OutboxEvent.init("ORDER", lockedOrder.getId(), buildOrderCreatedPayload(lockedOrder)));
+        OutboxEvent orderPaidOutbox = persistOutboxWithEventId(
+                OutboxEvent.init("ORDER", lockedOrder.getId(), buildOrderPaidPayload(lockedOrder)));
         log.info("[OUTBOX] - 결제 승인 후 이벤트 저장 (orderId={}, eventStatus={})",
-                lockedOrder.getId(), orderCreatedOutbox.getStatus());
+                lockedOrder.getId(), orderPaidOutbox.getStatus());
 
         return lockedOrder;
     }
@@ -179,9 +179,9 @@ public class OrderPaymentCommandService {
         }
     }
 
-    private String buildOrderCreatedPayload(Order order) {
+    private String buildOrderPaidPayload(Order order) {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("eventType", "ORDER_CREATED");
+        payload.put("eventType", "ORDER_PAID");
         payload.put("orderId", order.getId());
         payload.put("userId", order.getUser().getId());
         payload.put("totalPrice", order.getTotalPrice());

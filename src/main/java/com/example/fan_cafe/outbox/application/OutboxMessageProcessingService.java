@@ -41,8 +41,8 @@ public class OutboxMessageProcessingService {
         String eventId = extractEventId(payload);
         String consumerType = CONSUMER_TYPE_OUTBOX_NOTIFICATION;
 
-        // 1) Redis: 빠른 중복 판별
-        if (processedEventRedisCache.isProcessed(eventId, consumerType)) {
+        // 1) Redis: 빠른 중복 판별 (장애 시 DB authoritative check로 fallback)
+        if (isProcessedInRedis(eventId, consumerType)) {
             log.info(
                     "[OUTBOX IDEMPOTENT] redis hit, skip eventId={}, consumerType={}",
                     eventId,
@@ -53,7 +53,7 @@ public class OutboxMessageProcessingService {
 
         // 2) DB: 권위 있는 중복 여부. 있으면 캐시만 채우고 끝낸다.
         if (processedEventRepository.existsByEventIdAndConsumerType(eventId, consumerType)) {
-            processedEventRedisCache.markProcessed(eventId, consumerType);
+            warmRedisCache(eventId, consumerType);
             log.info(
                     "[OUTBOX IDEMPOTENT] db hit, cache warmed eventId={}, consumerType={}",
                     eventId,
@@ -68,12 +68,42 @@ public class OutboxMessageProcessingService {
             return ProcessOutcome.PROCESSED;
         } catch (DuplicateProcessedEventException e) {
             // 동시에 다른 워커가 먼저 커밋한 경우 — 중복으로 간주하고 캐시만 맞춘다.
-            processedEventRedisCache.markProcessed(eventId, consumerType);
+            warmRedisCache(eventId, consumerType);
             log.info(
                     "[OUTBOX IDEMPOTENT] unique constraint race, treat as done eventId={}",
                     eventId
             );
             return ProcessOutcome.DUPLICATE_SKIPPED;
+        }
+    }
+
+    /**
+     * Redis는 조회 가속용. 장애·timeout 시 false로 간주하고 DB fallback을 이어간다.
+     */
+    private boolean isProcessedInRedis(String eventId, String consumerType) {
+        try {
+            return processedEventRedisCache.isProcessed(eventId, consumerType);
+        } catch (Exception e) {
+            log.warn(
+                    "[OUTBOX IDEMPOTENT] redis check failed, fallback to DB eventId={}, consumerType={}",
+                    eventId,
+                    consumerType,
+                    e
+            );
+            return false;
+        }
+    }
+
+    private void warmRedisCache(String eventId, String consumerType) {
+        try {
+            processedEventRedisCache.markProcessed(eventId, consumerType);
+        } catch (Exception e) {
+            log.warn(
+                    "[OUTBOX IDEMPOTENT] redis cache warm failed eventId={}, consumerType={}",
+                    eventId,
+                    consumerType,
+                    e
+            );
         }
     }
 

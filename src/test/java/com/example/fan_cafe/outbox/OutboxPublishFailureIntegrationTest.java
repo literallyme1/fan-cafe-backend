@@ -70,7 +70,7 @@ class OutboxPublishFailureIntegrationTest {
         doThrow(new RuntimeException("mq publish failed"))
                 .when(outboxPublisher).publish(any(String.class), nullable(String.class));
 
-        OutboxEvent event = persistProcessableOutbox("{\"eventType\":\"ORDER_CREATED\",\"orderId\":1}");
+        OutboxEvent event = persistProcessableOutbox("{\"eventType\":\"ORDER_PAID\",\"orderId\":1}");
 
         outboxPoller.poll();
         flushAndClear();

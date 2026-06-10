@@ -32,7 +32,7 @@ class OutboxAdminServiceTest {
     @Test
     @DisplayName("MANUAL_REQUIRED 이벤트 수동 재시도 요청 시 상태가 FAILED로 변경된다.")
     void requestManualRetry_shouldChangeStatusToFailed() {
-        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_CREATED\"}");
+        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_PAID\"}");
         ReflectionTestUtils.setField(event, "id", 1L);
         ReflectionTestUtils.setField(event, "status", OutboxEventStatus.MANUAL_REQUIRED);
 
@@ -46,7 +46,7 @@ class OutboxAdminServiceTest {
     @Test
     @DisplayName("수동 재시도 요청 시 nextRetryAt이 현재 시각으로 갱신된다.")
     void requestManualRetry_shouldUpdateNextRetryAtToNow() {
-        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_CREATED\"}");
+        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_PAID\"}");
         ReflectionTestUtils.setField(event, "id", 1L);
         ReflectionTestUtils.setField(event, "status", OutboxEventStatus.MANUAL_REQUIRED);
         ReflectionTestUtils.setField(event, "nextRetryAt", null);
@@ -64,7 +64,7 @@ class OutboxAdminServiceTest {
     @Test
     @DisplayName("수동 재시도 요청 시 payload, lastError, retryCount는 보존된다.")
     void requestManualRetry_shouldPreservePayloadLastErrorRetryCount() {
-        String payload = "{\"eventType\":\"ORDER_CREATED\",\"orderId\":10}";
+        String payload = "{\"eventType\":\"ORDER_PAID\",\"orderId\":10}";
         String lastError = "[MQ_TIMEOUT] timeout";
         Integer retryCount = 6;
 
@@ -86,7 +86,7 @@ class OutboxAdminServiceTest {
     @Test
     @DisplayName("MANUAL_REQUIRED가 아닌 이벤트 수동 재시도 요청 시 예외가 발생한다.")
     void requestManualRetry_shouldThrowExceptionWhenStatusIsNotManualRequired() {
-        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_CREATED\"}");
+        OutboxEvent event = OutboxEvent.init("ORDER", 1L, "{\"eventType\":\"ORDER_PAID\"}");
         ReflectionTestUtils.setField(event, "id", 1L);
         ReflectionTestUtils.setField(event, "status", OutboxEventStatus.FAILED);
 
