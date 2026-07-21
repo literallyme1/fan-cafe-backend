@@ -1,5 +1,6 @@
 package com.example.fan_cafe.promotion.interfaces.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import com.example.fan_cafe.promotion.domain.Promotion;
 import com.querydsl.core.annotations.QueryProjection;
@@ -13,11 +14,17 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor
 public class PromotionResponse {
+    @Schema(description = "프로모션 식별자", example = "701")
     private Long id;
+    @Schema(description = "프로모션 제목", example = "월드투어 굿즈 사전 판매")
     private String title;
+    @Schema(description = "프로모션 설명", example = "공연 전 공식 굿즈를 먼저 만나보세요.")
     private String description;
+    @Schema(description = "프로모션 이미지", example = "https://cdn.fancafe.kr/promotions/701/banner.jpg")
     private String imageUrl;
+    @Schema(description = "시작일", example = "2026-07-21")
     private LocalDate startAt;
+    @Schema(description = "종료일", example = "2026-08-10")
     private LocalDate endAt;
 
     @QueryProjection

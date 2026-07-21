@@ -1,15 +1,20 @@
 package com.example.fan_cafe.global.response;
 
 import com.example.fan_cafe.global.exception.BaseErrorCode;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
 public class ApiResponse<T> {
 
-    private final String code;   // 에러/응답 코드
-    private final int status;    // HTTP 상태 코드 (200, 400 등)
+    @Schema(description = "서비스 응답 코드", example = "S001")
+    private final String code;
+    @Schema(description = "HTTP 상태 코드", example = "200")
+    private final int status;
+    @Schema(description = "응답 메시지", example = "요청에 성공했습니다.")
     private final String message;
+    @Schema(description = "응답 데이터", example = "{\"orderId\":10001,\"status\":\"PAID\"}")
     private final T data;
 
     private ApiResponse(String code, HttpStatus status, String message, T data) {

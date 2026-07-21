@@ -1,6 +1,7 @@
 package com.example.fan_cafe.order.interfaces.dto;
 
 import jakarta.validation.constraints.NotNull;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -11,12 +12,15 @@ import java.math.BigDecimal;
 public class MockPaymentApproveRequest {
 
     @NotNull(message = "승인 금액은 필수입니다.")
+    @Schema(description = "PG 승인 금액", example = "59000")
     private BigDecimal approvalAmount;
 
     /** Mock PG 결제 식별자 (idempotencyKey 없을 때 사용) */
+    @Schema(description = "Mock 결제 키", example = "PAY-20260721-001")
     private String mockPaymentKey;
 
     /** 중복 승인 요청 식별용 — mockPaymentKey보다 우선 */
+    @Schema(description = "결제 멱등 키", example = "PAY-20260721-001")
     private String idempotencyKey;
 
     // 멱등 키 하나로 통일: idempotencyKey → mockPaymentKey 순.

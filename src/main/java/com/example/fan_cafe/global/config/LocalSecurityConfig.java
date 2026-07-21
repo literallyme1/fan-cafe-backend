@@ -34,6 +34,7 @@ public class LocalSecurityConfig {
                         auth
                                 //local에서만 health 추가
                                 .requestMatchers("/actuator/health/**").permitAll()
+                                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                                 // 기존 그대로
                                 .requestMatchers(

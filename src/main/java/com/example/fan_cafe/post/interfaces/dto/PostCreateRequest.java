@@ -1,5 +1,6 @@
 package com.example.fan_cafe.post.interfaces.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import com.example.fan_cafe.post.domain.Post;
 import com.example.fan_cafe.post.domain.PostImage;
@@ -21,8 +22,10 @@ import java.util.List;
 public class PostCreateRequest {
 
     @NotBlank(message = "제목을 입력하세요")
+    @Schema(description = "게시글 제목", example = "서울 콘서트 첫날 후기")
     private String title;
 
+    @Schema(description = "게시글 내용", example = "무대 연출과 앙코르가 정말 인상적이었어요.")
     private String content;
 
 }

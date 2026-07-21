@@ -5,6 +5,9 @@ import ch.qos.logback.classic.Logger;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.global.logging.dto.LogLevelApplyResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,6 +20,7 @@ import java.util.Map;
 
 @RestController
 @Profile("!prod")
+@Tag(name = "로그 운영", description = "개발 환경 도메인별 로그 레벨 제어")
 public class LogLevelController {
 
     private final Map<String, String> domainLoggerPackages;
@@ -28,6 +32,11 @@ public class LogLevelController {
     }
 
     @PostMapping("/log-level")
+    @Operation(summary = "로그 레벨 변경", description = "도메인 패키지의 런타임 로그 레벨을 변경함.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "변경 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "도메인 또는 로그 레벨 오류")
+    })
     public LogLevelApplyResponse setLogLevel(
             @RequestParam String domain,
             @RequestParam String level

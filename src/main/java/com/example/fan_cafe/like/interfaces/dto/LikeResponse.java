@@ -1,5 +1,6 @@
 package com.example.fan_cafe.like.interfaces.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Builder;
 import lombok.Getter;
@@ -8,8 +9,11 @@ import lombok.Getter;
 @Getter
 public class LikeResponse {
 
+    @Schema(description = "게시글 식별자", example = "3201")
     private Long postId;
+    @Schema(description = "내 좋아요 여부", example = "true")
     private boolean liked;
+    @Schema(description = "좋아요 수", example = "215")
     private int likeCount;
 
     @QueryProjection
