@@ -81,7 +81,7 @@ public class OrderService {
                 throw new CustomException(OrderErrorCode.INVALID_QUANTITY);
             }
 
-            Merchandise merchandise = merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(item.getProductId())
+            Merchandise merchandise = merchandiseRepository.findMerchandiseWithPessimisticLock(item.getProductId())
                     .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
 
             BigDecimal unitPrice = resolveUnitPrice(merchandise);
@@ -104,7 +104,6 @@ public class OrderService {
         return OrderCreateResponse.from(saved);
     }
 
-    /** REST Mock 승인 API → {@link OrderPaymentCommandService} */
     @Transactional
     public OrderQueryResponse approveMockPayment(User user, Long orderId, MockPaymentApproveRequest request) {
         getOrderer(user);
@@ -116,7 +115,7 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        Order updated = orderPaymentCommandService.approvePayment(
+        Order updated = orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 order,
                 request.getApprovalAmount(),
                 paymentKey,
@@ -125,7 +124,6 @@ public class OrderService {
         return OrderQueryResponse.from(updated);
     }
 
-    /** REST Mock 실패 API → {@link OrderPaymentCommandService} */
     @Transactional
     public OrderQueryResponse failMockPayment(User user, Long orderId, MockPaymentFailRequest request) {
         getOrderer(user);
@@ -141,7 +139,6 @@ public class OrderService {
         return OrderQueryResponse.from(updated);
     }
 
-    /** REST Mock 취소/환불 API → {@link OrderPaymentCommandService} (PAID만, 재고 복구 포함) */
     @Transactional
     public OrderQueryResponse cancelMockPayment(User user, Long orderId, MockPaymentCancelRequest request) {
         getOrderer(user);
@@ -194,7 +191,7 @@ public class OrderService {
 
     private void restoreStock(Order order) {
         for (OrderItem item : order.getOrderItems()) {
-            Merchandise merchandise = merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(item.getProductId())
+            Merchandise merchandise = merchandiseRepository.findMerchandiseWithPessimisticLock(item.getProductId())
                     .orElseThrow(() -> new CustomException(MerchandiseErrorCode.MERCHANDISE_NOT_FOUND));
             merchandise.increaseStock(item.getQuantity());
         }

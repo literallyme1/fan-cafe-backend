@@ -116,7 +116,7 @@ class OrderServiceTest {
     void approveMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
         paidOrder.markPaid("idem-001");
-        when(orderPaymentCommandService.approvePayment(
+        when(orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
                 "idem-001",
@@ -130,7 +130,7 @@ class OrderServiceTest {
         OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(orderPaymentCommandService).approvePayment(
+        verify(orderPaymentCommandService).approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
                 "idem-001",
@@ -167,7 +167,7 @@ class OrderServiceTest {
                 .build();
 
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
-        when(merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(100L)).thenReturn(Optional.of(merchandise));
+        when(merchandiseRepository.findMerchandiseWithPessimisticLock(100L)).thenReturn(Optional.of(merchandise));
         paidOrder.markRefunded("cancel-1");
         when(orderPaymentCommandService.cancelPayment(paidOrder, "고객 변심", "cancel-1"))
                 .thenReturn(paidOrder);
@@ -197,7 +197,7 @@ class OrderServiceTest {
                 .build();
 
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-        when(merchandiseRepository.findByIdAndDeletedAtIsNullForUpdate(100L)).thenReturn(Optional.of(merchandise));
+        when(merchandiseRepository.findMerchandiseWithPessimisticLock(100L)).thenReturn(Optional.of(merchandise));
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CANCELLED\"}");
 
         OrderQueryResponse response = orderService.cancel(user, 10L);

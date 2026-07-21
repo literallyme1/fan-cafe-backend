@@ -9,16 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-/**
- * RabbitMQ Outbox 메시지 처리 진입점. Redis→DB 순으로 중복 여부를 보고,
- * 신규만 {@link OutboxNotificationDeliverService}로 넘긴다.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OutboxMessageProcessingService {
 
-    /** processed_events·Redis 키에 붙는 소비자 구분값. */
     public static final String CONSUMER_TYPE_OUTBOX_NOTIFICATION = "OUTBOX_NOTIFICATION";
 
     private final ProcessedEventRedisCache processedEventRedisCache;
@@ -27,21 +22,14 @@ public class OutboxMessageProcessingService {
     private final OutboxNotificationDeliverService outboxNotificationDeliverService;
 
     public enum ProcessOutcome {
-        /** 최초 처리 성공(트랜잭션 커밋까지 포함). */
         PROCESSED,
-        /** 이미 처리됨(또는 동시 삽입 경합으로 중복으로 확정). */
         DUPLICATE_SKIPPED
     }
 
-    /**
-     * Read-through 순서: Redis 히트 → 즉시 스킵 / Redis 미스 → DB 존재 시 캐시 워밍 후 스킵 /
-     * 둘 다 없으면 트랜잭션 내 발송+DB insert, 커밋 후 Redis는 {@link OutboxNotificationDeliverService}에서 설정.
-     */
-    public ProcessOutcome process(String payload) {
+    public ProcessOutcome processIdempotently(String payload) {
         String eventId = extractEventId(payload);
         String consumerType = CONSUMER_TYPE_OUTBOX_NOTIFICATION;
 
-        // 1) Redis: 빠른 중복 판별 (장애 시 DB authoritative check로 fallback)
         if (isProcessedInRedis(eventId, consumerType)) {
             log.info(
                     "[OUTBOX IDEMPOTENT] redis hit, skip eventId={}, consumerType={}",
@@ -51,7 +39,6 @@ public class OutboxMessageProcessingService {
             return ProcessOutcome.DUPLICATE_SKIPPED;
         }
 
-        // 2) DB: 권위 있는 중복 여부. 있으면 캐시만 채우고 끝낸다.
         if (processedEventRepository.existsByEventIdAndConsumerType(eventId, consumerType)) {
             warmRedisCache(eventId, consumerType);
             log.info(
@@ -63,11 +50,9 @@ public class OutboxMessageProcessingService {
         }
 
         try {
-            // 3) 신규: 트랜잭션 안에서 발송 + processed_events insert
-            outboxNotificationDeliverService.deliver(payload, eventId, consumerType);
+            outboxNotificationDeliverService.deliverAndRecordProcessedEvent(payload, eventId, consumerType);
             return ProcessOutcome.PROCESSED;
         } catch (DuplicateProcessedEventException e) {
-            // 동시에 다른 워커가 먼저 커밋한 경우 — 중복으로 간주하고 캐시만 맞춘다.
             warmRedisCache(eventId, consumerType);
             log.info(
                     "[OUTBOX IDEMPOTENT] unique constraint race, treat as done eventId={}",
@@ -77,9 +62,6 @@ public class OutboxMessageProcessingService {
         }
     }
 
-    /**
-     * Redis는 조회 가속용. 장애·timeout 시 false로 간주하고 DB fallback을 이어간다.
-     */
     private boolean isProcessedInRedis(String eventId, String consumerType) {
         try {
             return processedEventRedisCache.isProcessed(eventId, consumerType);
@@ -107,7 +89,6 @@ public class OutboxMessageProcessingService {
         }
     }
 
-    /** 페이로드 JSON의 eventId(outbox PK 문자열). 없으면 DLQ로 보내기 위해 IllegalArgumentException. */
     private String extractEventId(String payload) {
         try {
             JsonNode node = objectMapper.readTree(payload);

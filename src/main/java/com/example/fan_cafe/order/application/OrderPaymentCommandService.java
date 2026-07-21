@@ -22,10 +22,6 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Mock 결제 승인/실패/취소(환불) 공통 처리.
- * REST Mock API·Mock PG 웹훅이 동일 로직을 사용한다.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,20 +32,15 @@ public class OrderPaymentCommandService {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
-    /**
-     * PAYMENT_PENDING → PAID (금액 일치 시). 성공 시 Outbox ORDER_PAID 저장.
-     *
-     * @return 갱신된 주문 (이미 동일 키로 PAID면 상태 변경·Outbox 없음)
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = CustomException.class)
-    public Order approvePayment(
+    public Order approvePaymentWithPessimisticLock(
             Order order,
             BigDecimal approvalAmount,
             String paymentKey,
             String historyReason
     ) {
         Long orderId = order.getId();
-        Order lockedOrder = orderRepository.findByIdWithItemsForUpdate(orderId)
+        Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
         if (lockedOrder.isPaidWithPaymentKey(paymentKey)) {
@@ -85,7 +76,6 @@ public class OrderPaymentCommandService {
         return lockedOrder;
     }
 
-    /** PAYMENT_PENDING → PAYMENT_FAILED. Outbox 저장 없음. */
     @Transactional
     public Order failPayment(Order order, String reason) {
         if (order.getStatus() == Status.PAYMENT_FAILED) {
@@ -108,9 +98,6 @@ public class OrderPaymentCommandService {
         return order;
     }
 
-    /**
-     * PAID → REFUNDED (Mock PG 전체 취소/환불). 성공 시 Outbox PAYMENT_REFUNDED 저장.
-     */
     @Transactional
     public Order cancelPayment(Order order, String cancelReason, String idempotencyKey) {
         Long orderId = order.getId();

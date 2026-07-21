@@ -56,12 +56,12 @@ class OutboxMessageProcessingServiceTest {
                 .isProcessed("42", OutboxMessageProcessingService.CONSUMER_TYPE_OUTBOX_NOTIFICATION);
 
         OutboxMessageProcessingService.ProcessOutcome outcome =
-                outboxMessageProcessingService.process(PAYLOAD);
+                outboxMessageProcessingService.processIdempotently(PAYLOAD);
 
         assertThat(outcome).isEqualTo(OutboxMessageProcessingService.ProcessOutcome.PROCESSED);
         verify(processedEventRepository).existsByEventIdAndConsumerType(
                 "42", OutboxMessageProcessingService.CONSUMER_TYPE_OUTBOX_NOTIFICATION);
-        verify(outboxNotificationDeliverService).deliver(
+        verify(outboxNotificationDeliverService).deliverAndRecordProcessedEvent(
                 eq(PAYLOAD),
                 eq("42"),
                 eq(OutboxMessageProcessingService.CONSUMER_TYPE_OUTBOX_NOTIFICATION));
@@ -78,9 +78,9 @@ class OutboxMessageProcessingServiceTest {
                 .thenReturn(true);
 
         OutboxMessageProcessingService.ProcessOutcome outcome =
-                outboxMessageProcessingService.process(PAYLOAD);
+                outboxMessageProcessingService.processIdempotently(PAYLOAD);
 
         assertThat(outcome).isEqualTo(OutboxMessageProcessingService.ProcessOutcome.DUPLICATE_SKIPPED);
-        verify(outboxNotificationDeliverService, never()).deliver(anyString(), anyString(), anyString());
+        verify(outboxNotificationDeliverService, never()).deliverAndRecordProcessedEvent(anyString(), anyString(), anyString());
     }
 }

@@ -15,9 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Mock PG 웹훅 수신: 서명 검증 후 공통 결제 명령으로 위임한다.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,9 +28,6 @@ public class MockPgWebhookService {
     private final OrderPaymentCommandService orderPaymentCommandService;
     private final ObjectMapper objectMapper;
 
-    /**
-     * 서명 검증 후 본 처리. 서명 실패 시 트랜잭션 롤백만 되고 주문·Outbox는 변경되지 않는다.
-     */
     @Transactional
     public OrderQueryResponse receive(
             String rawBody,
@@ -65,7 +59,7 @@ public class MockPgWebhookService {
             throw new CustomException(OrderErrorCode.WEBHOOK_APPROVAL_AMOUNT_REQUIRED);
         }
 
-        Order updated = orderPaymentCommandService.approvePayment(
+        Order updated = orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 order,
                 payload.getApprovalAmount(),
                 paymentKey,

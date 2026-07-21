@@ -66,7 +66,7 @@ class OutboxPublishFailureIntegrationTest {
     @DisplayName("[4차] outboxPoller_marksFailedWithLastErrorAndNextRetryAt_whenPublishFails")
     void outboxPoller_marksFailedWithLastErrorAndNextRetryAt_whenPublishFails() {
         LocalDateTime expectedNextRetry = LocalDateTime.now().plusMinutes(5);
-        when(outboxRetryPolicy.nextRetry(1)).thenReturn(expectedNextRetry);
+        when(outboxRetryPolicy.nextRetryWithExponentialBackoffAndJitter(1)).thenReturn(expectedNextRetry);
         doThrow(new RuntimeException("mq publish failed"))
                 .when(outboxPublisher).publish(any(String.class), nullable(String.class));
 

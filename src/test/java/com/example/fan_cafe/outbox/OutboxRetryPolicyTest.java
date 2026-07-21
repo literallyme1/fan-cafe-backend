@@ -16,7 +16,7 @@ class OutboxRetryPolicyTest {
     @DisplayName("retryCount=0이면 4~6초 범위의 nextRetry가 계산된다.")
     void nextRetry_shouldApplyBaseDelayWithJitter() {
         LocalDateTime before = LocalDateTime.now();
-        LocalDateTime nextRetryAt = retryPolicy.nextRetry(0);
+        LocalDateTime nextRetryAt = retryPolicy.nextRetryWithExponentialBackoffAndJitter(0);
         LocalDateTime after = LocalDateTime.now();
 
         long minSeconds = 4L;
@@ -30,7 +30,7 @@ class OutboxRetryPolicyTest {
     @DisplayName("지수 백오프는 최대 5분 상한을 넘지 않는다.")
     void nextRetry_shouldCapDelayAtFiveMinutes() {
         LocalDateTime before = LocalDateTime.now();
-        LocalDateTime nextRetryAt = retryPolicy.nextRetry(10);
+        LocalDateTime nextRetryAt = retryPolicy.nextRetryWithExponentialBackoffAndJitter(10);
         LocalDateTime after = LocalDateTime.now();
 
         long minSeconds = 240L; // 300 * 0.8

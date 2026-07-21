@@ -16,18 +16,16 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Getter
 @Entity
-@Table(name = "outbox_events")
-//@Table(
-//        name = "outbox_events",
-//        indexes = {
-//                @Index(
-//                        name = "idx_outbox_polling",
-//                        columnList = "status, next_retry_at, id"
-//                )
-//        }
-//)
+@Table(
+        name = "outbox_events",
+        indexes = {
+                @Index(
+                        name = "idx_outbox_polling",
+                        columnList = "status, next_retry_at, id"
+                )
+        }
+)
 public class OutboxEvent extends BaseTimeEntity {
-    // outbox 이벤트의 최대 재시도 횟수.
     public static final int MAX_RETRY_COUNT = 5;
 
     @Id
@@ -55,10 +53,6 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
 
-    /**
-     * 브로커/컨슈머 idempotency용 식별자. DB PK(id)와 동일한 값을 문자열로 둔다.
-     * 최초 insert 직후 {@link #assignEventIdFromPrimaryKey()}로 채운다.
-     */
     @Column(name = "event_id", length = 64)
     private String eventId;
 
@@ -69,7 +63,6 @@ public class OutboxEvent extends BaseTimeEntity {
     @Column(name = "trace_id", length = 64)
     private String traceId;
 
-    // 이벤트 최초 저장 상태(NEW, retryCount=0)로 outbox 레코드를 생성한다.
     public static OutboxEvent init(String aggregateType, Long aggregateId, String payload) {
         return OutboxEvent.builder()
                 .aggregateType(aggregateType)
@@ -83,7 +76,6 @@ public class OutboxEvent extends BaseTimeEntity {
                 .build();
     }
 
-    /** 영속화 후 {@link #id}가 배정된 뒤 한 번 호출해 event_id를 채운다. */
     public void assignEventIdFromPrimaryKey() {
         if (this.id == null) {
             throw new IllegalStateException("Outbox id must be assigned before eventId");
@@ -91,13 +83,11 @@ public class OutboxEvent extends BaseTimeEntity {
         this.eventId = String.valueOf(this.id);
     }
 
-    // 발행 성공 시 SENT로 전이하고 에러 정보를 초기화한다.
     public void markSent() {
         this.status = OutboxEventStatus.SENT;
         this.lastError = null;
     }
 
-    // 발행 실패 시 재시도 상태/수동조치 상태를 한 번에 전이한다.
     public void fail(String errorMessage, LocalDateTime nextRetryAt) {
         int nextRetryCount = this.retryCount + 1;
         this.retryCount = nextRetryCount;
@@ -125,4 +115,3 @@ public class OutboxEvent extends BaseTimeEntity {
         this.nextRetryAt = now;
     }
 }
-

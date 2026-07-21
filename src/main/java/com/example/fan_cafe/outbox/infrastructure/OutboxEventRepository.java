@@ -12,9 +12,6 @@ import java.util.List;
 
 @Repository
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
-    // outbox 이벤트 저장/조회는 기본 JPA 메서드로 처리한다.
-
-    // 처리 가능한 outbox 이벤트를 잠금 기반으로 최대 50건 조회한다.
     @Query(value = """
             SELECT *
             FROM outbox_events
@@ -24,7 +21,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
             LIMIT 50
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
-    List<OutboxEvent> findProcessableEventsForUpdate(@Param("now") LocalDateTime now);
+    List<OutboxEvent> findProcessableBatchWithSkipLocked(@Param("now") LocalDateTime now);
 
     List<OutboxEvent> findAllByStatusOrderByCreatedAtDesc(OutboxEventStatus status);
 
@@ -32,4 +29,3 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     void deleteByAggregateTypeAndAggregateId(String aggregateType, Long aggregateId);
 }
-

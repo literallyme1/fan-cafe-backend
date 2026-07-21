@@ -52,7 +52,7 @@ class OrderPaymentCommandServiceTest {
     private Order paidOrder;
 
     private void stubLockedOrder(Order order) {
-        when(orderRepository.findByIdWithItemsForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(orderRepository.findPaymentOrderWithPessimisticLock(order.getId())).thenReturn(Optional.of(order));
     }
 
     @BeforeEach
@@ -85,7 +85,7 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("승인 시 PAID 전이·이력·Outbox 저장")
     void approvePayment_shouldMarkPaidAndSaveOutbox() {
         stubLockedOrder(paymentPendingOrder);
-        Order result = orderPaymentCommandService.approvePayment(
+        Order result = orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
                 "idem-001",
@@ -103,7 +103,7 @@ class OrderPaymentCommandServiceTest {
         paymentPendingOrder.markPaid("pay-key-1");
         stubLockedOrder(paymentPendingOrder);
 
-        Order result = orderPaymentCommandService.approvePayment(
+        Order result = orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
                 "pay-key-1",
@@ -119,7 +119,7 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("금액 불일치 시 PAYMENT_FAILED, Outbox 없음")
     void approvePayment_shouldFail_whenAmountMismatch() {
         stubLockedOrder(paymentPendingOrder);
-        assertThatThrownBy(() -> orderPaymentCommandService.approvePayment(
+        assertThatThrownBy(() -> orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.ONE,
                 "bad",

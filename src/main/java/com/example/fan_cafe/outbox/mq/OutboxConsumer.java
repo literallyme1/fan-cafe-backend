@@ -21,16 +21,6 @@ import java.util.Optional;
 import static com.example.fan_cafe.outbox.mq.OutboxMqRetryHeaders.X_RETRY_COUNT;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_QUEUE;
 
-/**
- * Outbox 메인 큐 소비. 처리 성공 시에만 ACK하고,
- * 일시 오류는 단계별 retry 큐·구조적 오류는 DLQ로 넘긴 뒤 원 메시지는 ACK하여 브로커 재전달 루프를 끊는다.
- *
- * <p>{@link OutboxMqRetryHeaders#X_RETRY_COUNT}가 커질수록 지연 큐가 길어지고,
- * 상한을 넘기면 DLQ로만 빠져 동일 이벤트가 영구히 순환하지 않는다.
- *
- * <p>예외 발생 시에도 동일 delivery를 재큐잉 없이 종료하려면 재발행·DLQ 적재 후 {@code basicAck}를 쓴다.
- * {@code basicNack}으로 브로커 재전달을 켜면 retry 큐와 중복 처리 경로가 겹치므로 이 컨슈머에서는 사용하지 않는다.
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -39,7 +29,6 @@ public class OutboxConsumer {
     private final OutboxMessageProcessingService messageProcessingService;
     private final OutboxFailureRoutingPublisher outboxFailureRoutingPublisher;
     private final OutboxPayloadJson outboxPayloadJson;
-    /** {@code test} 프로파일에서만 빈이 주입되며, 그 외에는 empty다. */
     private final Optional<FaultStatus> faultStatus;
 
     @RabbitListener(queues = OUTBOX_QUEUE, ackMode = "MANUAL")
@@ -62,7 +51,7 @@ public class OutboxConsumer {
                     log.warn("[FAULT] Delivery Blocked by Admin eventId={}", eventIdForLog);
                     throw new RetryableException("FAULT_INJECTION: FINAL_DELIVERY_FAILED");
                 }
-                OutboxMessageProcessingService.ProcessOutcome outcome = messageProcessingService.process(payload);
+                OutboxMessageProcessingService.ProcessOutcome outcome = messageProcessingService.processIdempotently(payload);
                 log.info("[OUTBOX CONSUME] completed eventId={}, outcome={}", eventIdForLog, outcome);
                 channel.basicAck(tag, false);
             } catch (RetryableException e) {
@@ -139,9 +128,6 @@ public class OutboxConsumer {
         outboxFailureRoutingPublisher.publishToDlq(payload, currentRetry, errorMessage, DlqRoutingType.NON_RETRYABLE);
     }
 
-    /**
-     * 브로커가 숫자 헤더를 Integer/Long 등으로 넘길 수 있어 타입을 흡수한다. 없거나 깨지면 0(최초 소비)이다.
-     */
     private static int resolveRetryCount(Message message) {
         Object raw = message.getMessageProperties().getHeaders().get(X_RETRY_COUNT);
         if (raw == null) {

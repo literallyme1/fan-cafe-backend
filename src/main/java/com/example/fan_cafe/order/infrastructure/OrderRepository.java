@@ -13,7 +13,6 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-    // 내 주문 단건 조회 시 주문 항목까지 한 번에 조회해 N+1을 방지한다.
     @Query("""
             select distinct o
             from Order o
@@ -24,7 +23,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     Optional<Order> findByIdAndUserIdWithItems(@Param("orderId") Long orderId, @Param("userId") Long userId);
 
-    // 내 주문 목록 조회 시 주문 항목을 fetch join으로 함께 로딩한다.
     @Query("""
             select distinct o
             from Order o
@@ -35,7 +33,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     List<Order> findAllByUserIdWithItems(@Param("userId") Long userId);
 
-    // Mock PG 웹훅: 주문자 검증 없이 주문+항목 조회
     @Query("""
             select distinct o
             from Order o
@@ -45,7 +42,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     Optional<Order> findByIdWithItems(@Param("orderId") Long orderId);
 
-    /** 결제 승인 동시성 제어: 주문 행 비관적 락 후 상태 전이 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select distinct o
@@ -54,6 +50,5 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             where o.id = :orderId
               and o.deletedAt is null
             """)
-    Optional<Order> findByIdWithItemsForUpdate(@Param("orderId") Long orderId);
+    Optional<Order> findPaymentOrderWithPessimisticLock(@Param("orderId") Long orderId);
 }
-

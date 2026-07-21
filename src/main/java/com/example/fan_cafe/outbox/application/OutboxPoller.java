@@ -51,7 +51,7 @@ public class OutboxPoller {
         lastExecutedAt = now;
 
         List<OutboxEvent> events =
-                outboxEventRepository.findProcessableEventsForUpdate(now);
+                outboxEventRepository.findProcessableBatchWithSkipLocked(now);
         if (events.isEmpty()) {
             return;
         }
@@ -74,7 +74,6 @@ public class OutboxPoller {
                 OutboxEventStatus statusBefore = event.getStatus();
 
                 try {
-                    // PENDING 감지
                     log.info("[OUTBOX-POLL] eventId={} status=PENDING detected, publishing started",
                             event.getId());
 
@@ -85,7 +84,6 @@ public class OutboxPoller {
                                 OutboxEvent.MAX_RETRY_COUNT);
                     }
 
-                    //publish (헤더는 DB traceId 우선 — 스케줄 스레드에 요청 MDC가 없음)
                     String eventKey = event.getEventId() != null
                             ? event.getEventId()
                             : String.valueOf(event.getId());
@@ -95,7 +93,6 @@ public class OutboxPoller {
 
                     outboxPublisher.publish(payloadToPublish, event.getTraceId());
 
-                    // 성공
                     event.markSent();
 
                     log.info("[OUTBOX-PUBLISH] eventId={} publish success", event.getId());
@@ -110,7 +107,6 @@ public class OutboxPoller {
                     int previousRetryCount = event.getRetryCount();
                     String errorTag = classifyErrorTag(e);
 
-                    // 첫 실패
                     if (previousRetryCount == 0) {
 
                         log.error("[OUTBOX-ERROR] eventId={} code={} message={}",
@@ -120,18 +116,15 @@ public class OutboxPoller {
                                 event.getId(), previousRetryCount + 1);
 
                     } else {
-                        // 지속 실패
                         log.error("[OUTBOX-ERROR] eventId={} retrying due to persistent failure",
                                 event.getId());
                     }
 
-                    // 상태 변경
                     event.fail(
                             formatLastError(errorTag, safeMessage(e)),
-                            outboxRetryPolicy.nextRetry(event.getRetryCount() + 1)
+                            outboxRetryPolicy.nextRetryWithExponentialBackoffAndJitter(event.getRetryCount() + 1)
                     );
 
-                    // retry 초과 → 수동 처리
                     if (event.isManualRequired()) {
 
                         log.error("[OUTBOX-DLQ] eventId={} retryExceeded, manual intervention required",
@@ -154,7 +147,6 @@ public class OutboxPoller {
                     log.warn("[OUTBOX-FAIL] eventId={} code={} retryCount={}",
                             event.getId(), errorTag, event.getRetryCount());
                 } finally {
-                    // LOCK RELEASE
                     log.info("[OutboxPoller] [LOCK-RELEASE] eventId={} processing completed, lock released",
                             event.getId());
                 }

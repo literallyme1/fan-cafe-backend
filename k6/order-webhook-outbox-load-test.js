@@ -79,7 +79,9 @@ export default function () {
     },
     tags: { name: 'mock-pg-webhook' },
   });
-
+ if (res.status !== 200) {
+    console.log(`FAILED status=${res.status}, orderId=${orderId}, body=${res.body}`);
+  }
   check(res, {
     'webhook status 200': (r) => r.status === 200,
     'webhook success code': (r) => {

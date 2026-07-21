@@ -21,13 +21,6 @@ import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_RETRY_5S_QUEUE
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_RETRY_5S_ROUTING_KEY;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_ROUTING_KEY;
 
-/**
- * Outbox 메인 큐·단계별 Retry(TTL 백오프)·DLQ 및 동일 {@link OutboxMQNames#OUTBOX_EXCHANGE} 바인딩.
- *
- * <p>retry 큐는 “처리 대기함”으로만 쓰이며 별도 리스너가 없다. 브로커가 설정한 TTL만큼 메시지를 보관한 뒤
- * 만료 시점에 dead-letter 교환으로 원본 흐름({@link OutboxMQNames#OUTBOX_EXCHANGE} +
- * {@link OutboxMQNames#OUTBOX_ROUTING_KEY})에 다시 넣어 지연(backoff) 후 재시도하게 한다.
- */
 @Configuration
 public class OutboxMQConfig {
 
@@ -52,9 +45,6 @@ public class OutboxMQConfig {
                 .with(OUTBOX_ROUTING_KEY);
     }
 
-    /**
-     * 첫 재시도 전 5초 대기. TTL 만료 후 DLX로 {@code outbox.event} 라우팅 키를 써 메인 큐로 복귀한다.
-     */
     @Bean
     public Queue outboxRetry5sQueue() {
         return QueueBuilder.durable(OUTBOX_RETRY_5S_QUEUE)
@@ -64,9 +54,6 @@ public class OutboxMQConfig {
                 .build();
     }
 
-    /**
-     * 두 번째 재시도 전 30초 대기. 원리는 {@link #outboxRetry5sQueue()}와 동일한 TTL·dead-letter 패턴이다.
-     */
     @Bean
     public Queue outboxRetry30sQueue() {
         return QueueBuilder.durable(OUTBOX_RETRY_30S_QUEUE)
@@ -76,9 +63,6 @@ public class OutboxMQConfig {
                 .build();
     }
 
-    /**
-     * 세 번째 재시도 전 1분 대기. 단계가 길수록 외부 의존성 복구 시간을 벌기 위한 마지막 지연 단계다.
-     */
     @Bean
     public Queue outboxRetry1mQueue() {
         return QueueBuilder.durable(OUTBOX_RETRY_1M_QUEUE)

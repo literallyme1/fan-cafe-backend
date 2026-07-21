@@ -77,7 +77,7 @@ class MockPgWebhookServiceTest {
                 .isInstanceOf(CustomException.class)
                 .hasMessageContaining(OrderErrorCode.WEBHOOK_SIGNATURE_INVALID.getMessage());
 
-        verify(orderPaymentCommandService, never()).approvePayment(any(), any(), any(), any());
+        verify(orderPaymentCommandService, never()).approvePaymentWithPessimisticLock(any(), any(), any(), any());
         verify(orderPaymentCommandService, never()).failPayment(any(), any());
         verify(orderRepository, never()).findByIdWithItems(any());
     }
@@ -94,7 +94,7 @@ class MockPgWebhookServiceTest {
         when(orderRepository.findByIdWithItems(10L)).thenReturn(Optional.of(paymentPendingOrder));
         Order paidResult = paymentPendingOrder;
         paidResult.markPaid("wh-001");
-        when(orderPaymentCommandService.approvePayment(
+        when(orderPaymentCommandService.approvePaymentWithPessimisticLock(
                 eq(paymentPendingOrder),
                 eq(BigDecimal.valueOf(20000)),
                 eq("wh-001"),
@@ -104,7 +104,7 @@ class MockPgWebhookServiceTest {
         OrderQueryResponse response = mockPgWebhookService.receive(rawBody, timestamp, signature);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(orderPaymentCommandService).approvePayment(
+        verify(orderPaymentCommandService).approvePaymentWithPessimisticLock(
                 paymentPendingOrder,
                 BigDecimal.valueOf(20000),
                 "wh-001",
@@ -130,6 +130,6 @@ class MockPgWebhookServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
         verify(orderPaymentCommandService).failPayment(paymentPendingOrder, "card declined");
-        verify(orderPaymentCommandService, never()).approvePayment(any(), any(), any(), any());
+        verify(orderPaymentCommandService, never()).approvePaymentWithPessimisticLock(any(), any(), any(), any());
     }
 }
