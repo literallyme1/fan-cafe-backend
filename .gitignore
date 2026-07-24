@@ -36,16 +36,32 @@ out/
 ### VS Code ###
 .vscode/
 
-### ignore ###
-src/main/resources/key
+### Secrets ###
 .env
-.env.dev
-.env.awstest
+.env.*
+!.env.example
+
+*.pem
+*.pem.*
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+ci-keys/
+secrets/
+src/main/resources/key/
+src/main/resources/firebase/
+**/service-account*.json
+**/firebase-adminsdk-*.json
+**/*credentials*.json
+
 src/main/resources/config/application-local.properties
 src/main/resources/config/application-test.properties
-src/main/resources/firebase/*
+
+### Local files ###
 .cursorrules
 logs/*
 logs/
 *.log
-./ci-keys/

@@ -12,6 +12,24 @@ build/
 *.swp
 .DS_Store
 
+# Secrets
+.env
+.env.*
+**/*.pem
+**/*.pem.*
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+ci-keys/
+secrets/
+src/main/resources/key/
+src/main/resources/firebase/
+**/service-account*.json
+**/firebase-adminsdk-*.json
+**/*credentials*.json
+
 # IDE
 .idea/
 .vscode/

@@ -14,6 +14,13 @@ services:
 
     environment:
       SPRING_PROFILES_ACTIVE: dev
+      JWT_PRIVATE_KEY_PATH: file:/run/secrets/jwt/private_key.pem
+      JWT_PUBLIC_KEY_PATH: file:/run/secrets/jwt/public_key.pem
+      FIREBASE_SERVICE_ACCOUNT_PATH: file:/run/secrets/firebase/service-account.json
+
+    volumes:
+      - ./src/main/resources/key:/run/secrets/jwt:ro
+      - ./src/main/resources/firebase/service-account.json:/run/secrets/firebase/service-account.json:ro
 
     depends_on:
       - db
