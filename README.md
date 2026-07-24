@@ -1,222 +1,163 @@
-# Fan-Cafe Backend
+# Fan-Cafe
 
-## CI (GitHub Actions)
+굿즈 주문이 집중되는 환경에서 재고 동시성, 결제 중복 처리와 후속 이벤트 유실 문제를 다루는 Spring Boot 백엔드 프로젝트입니다. 
+## 기술 스택 및 아키텍처
 
-GitHub Actions 기반 CI 파이프라인을 구성하여 PR 및 main 브랜치 변경 시 테스트, 빌드, Docker 이미지 생성 가능 여부를 자동 검증합니다. 실제 서버 배포나 이미지 레지스트리 push는 수행하지 않고, Docker 기반으로 언제든 실행 가능한 상태를 검증하는 데 목적이 있습니다.
 
-- 워크플로: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-- CI 전용 프로필: `ci` (`application-ci.properties`, MySQL / Redis / RabbitMQ는 Actions service container 사용)
-- 로컬: `./gradlew test` — DB 없이 단위 테스트만 실행 (`integration` 태그 제외)
-- 통합 테스트 포함: `./gradlew test -PincludeIntegration` (MySQL / Redis / RabbitMQ 필요)
 
-## Mock 결제 상태 전이 (포트폴리오용)
+### 기술 스택
 
-실제 PG 연동 없이, 주문 생성 → Mock PG 승인/실패 → `PAID` 전이 후 **Transactional Outbox** 알림이 이어지는 흐름을 얇게 보완한 구간입니다.
+| 구분 | 기술 / 버전 | 도입 목적                             |
+| --- | --- |-----------------------------------|
+| Language / Framework | Java 21, Spring Boot 3.5.13, Spring Data JPA, Spring Security | 도메인 로직, 트랜잭션, JWT 인증 구현           |
+| Database / Cache | MySQL 8.0, Redis 7, QueryDSL 5.0.0 | 영속 데이터 저장, 멱등성 조회 부하 완화, 동적 조회 구현 |
+| Messaging | RabbitMQ 3 (`rabbitmq:3-management`), Spring AMQP | 결제 후 알림 분리, 지연 재시도 및 DLQ 구성       |
+| Infra / Monitoring | Docker Compose 3.9, AWS S3, CloudWatch Logs, Actuator, Slack | 실행 환경 구성, 파일 저장, 상태 감지 및 장애 알림    |
+| Test / Tools | JUnit 5, Mockito, k6 | 단위, 통합 테스트와 Webhook, Outbox 부하 측정 |
 
-### 상태 전이 다이어그램
+### 아키텍처 및 주문·결제 처리 흐름
 
-```mermaid
-stateDiagram-v2
-    [*] --> PAYMENT_PENDING: POST /orders (주문 생성)
-    PAYMENT_PENDING --> PAID: POST .../mock-payment/approve (금액 일치)
-    PAYMENT_PENDING --> PAID: POST /api/mock-pg/webhook (PAYMENT_APPROVED)
-    PAYMENT_PENDING --> PAYMENT_FAILED: POST .../mock-payment/fail
-    PAYMENT_PENDING --> PAYMENT_FAILED: webhook PAYMENT_FAILED
-    PAYMENT_PENDING --> PAYMENT_FAILED: approve 금액 불일치
-    PAID --> REFUNDED: POST .../mock-payment/cancel
-    PAID --> CANCELLED: PATCH /orders/{id}/cancel
-    PAYMENT_PENDING --> CANCELLED: PATCH /orders/{id}/cancel
+#### 전체 시스템 아키텍처
+
+<p align="center">
+  <img src="./docs/images/fan_cafe_system.png"
+       alt="전체 시스템 아키텍처"
+       width="800">
+</p>
+
+#### Transactional Outbox 기반 결제 이벤트 처리 흐름
+
+<p align="center">
+  <img src="./docs/images/fan_cafe_outbox.png"
+       alt="Transactional Outbox 기반 결제 이벤트 처리 흐름"
+       width="800">
+</p>
+
+주문 시 재고를 안전하게 확보한 후 결제 검증을 합니다. 
+주문 상태와 알림 이벤트를 함께 저장한 뒤 RabbitMQ를 통해 중복 없이 사용자 알림을 전달합니다.
+
+## 핵심 기술적 문제 해결
+
+### 1. Transactional Outbox를 통한 이벤트 유실 방지
+
+**Problem:** DB 커밋과 MQ 발행 사이에 서버가 중단되면 결제 상태만 반영되고 알림 이벤트가 유실될 수 있었습니다. 알림을 동기 처리하면 RabbitMQ 지연과 장애가 결제 응답에 영향을 미칩니다.
+
+**Cause:** MySQL 트랜잭션과 RabbitMQ 발행 시, 주문 상태 변경과 외부 메시지 발행 사이에 부분 실패 구간이 존재했습니다.
+
+**Fix:** 결제 승인, 상태 이력, `OutboxEvent` 저장을 하나의 DB 트랜잭션으로 묶고, 커밋된 이벤트 발행은 별도 Poller로 분리했습니다. 이벤트 상태는 `NEW`, `SENT`, `FAILED`, `MANUAL_REQUIRED`로 관리합니다.
+
+**Result:** 결제 정합성 및 Outbox 발행 실패 통합 테스트의 10개 시나리오에서 중복 Webhook, 동시 요청, 금액 불일치, 서명, 시간 검증 실패, MQ 발행 실패에 따른 중복 반영과 유실 되지 않음을 검증했습니다.
+
+<details>
+<summary>관련 코드 및 파일</summary>
+
+- [`OrderPaymentCommandService.java`](src/main/java/com/example/fan_cafe/order/application/OrderPaymentCommandService.java): 결제 상태, 상태 이력, Outbox를 하나의 트랜잭션에서 변경합니다.
+- [`OutboxEvent.java`](src/main/java/com/example/fan_cafe/outbox/domain/OutboxEvent.java): 이벤트 상태와 발행 재시도 정보를 관리합니다.
+
+```java
+lockedOrder.markPaid(paymentKey);
+recordStatusHistory(lockedOrder, from, Status.PAID, historyReason);
+persistOutboxWithEventId(
+        OutboxEvent.init("ORDER", lockedOrder.getId(), buildOrderPaidPayload(lockedOrder))
+);
 ```
 
-| 전이 | Outbox `ORDER_CREATED` | `order_status_history` |
-|------|------------------------|-------------------------|
-| 생성 → `PAYMENT_PENDING` | 저장 안 함 | 저장 안 함 |
-| 승인 → `PAID` | **저장** (주문 상태와 동일 트랜잭션) | 저장 |
-| 실패 / 금액 불일치 → `PAYMENT_FAILED` | 저장 안 함 | 저장 |
-| 동일 키로 재승인 (`PAID` + 같은 key) | 저장 안 함 | 저장 안 함 |
-| Mock 취소/환불 (`PAID` → `REFUNDED`) | **PAYMENT_REFUNDED** 저장 | 저장 |
-| 동일 키로 재취소 (`REFUNDED` + 같은 key) | 저장 안 함 | 저장 안 함 |
+</details>
 
-### API 예시
+### 2. Outbox Poller 조회 병목 개선
 
-기본 주문 API는 `POST /orders`, Mock 결제는 `POST /api/orders/...` 입니다.  
-모든 요청에 JWT(`Authorization: Bearer <token>`)가 필요합니다 (local/dev 프로필).
+**Problem:** Outbox 이벤트 누적 시 처리 대상 조회 p95가 3초까지 증가했습니다. Polling 주기를 늘리면 DB 부하는 줄지만 이벤트 전달이 지연되고, 다중 Poller는 잠금 대기가 발생할 수 있습니다.
 
-#### 1) 주문 생성 → `PAYMENT_PENDING`
+**Cause:** `status`, `next_retry_at` 조건의 반복 필터링과 `id` 정렬 비용이 증가했으며, 여러 Poller가 같은 행을 처리 대상으로 선택할 수 있었습니다.
 
-```http
-POST http://localhost:8080/orders
-Authorization: Bearer <access_token>
-Content-Type: application/json
+**Fix:** 조회 조건 순서에 맞춘 `(status, next_retry_at, id)` 복합 인덱스와 `LIMIT 50`, `FOR UPDATE SKIP LOCKED`를 적용했습니다.
 
-{
-  "items": [
-    { "productId": 1, "quantity": 2 }
-  ]
-}
+**Result:** Poller 조회 p95는 3초에서 70.04ms로 감소했고 API p95는 19.2% 개선됐습니다.
+
+<details>
+<summary>관련 코드 및 파일</summary>
+
+- [`OutboxEvent.java`](src/main/java/com/example/fan_cafe/outbox/domain/OutboxEvent.java): `status`, `next_retry_at`, `id` 순서의 복합 인덱스를 정의합니다.
+- [`OutboxEventRepository.java`](src/main/java/com/example/fan_cafe/outbox/infrastructure/OutboxEventRepository.java): 처리 대상 50건을 `FOR UPDATE SKIP LOCKED`로 조회합니다.
+
+```sql
+SELECT *
+FROM outbox_events
+WHERE status IN ('NEW', 'FAILED')
+  AND next_retry_at <= :now
+ORDER BY id
+LIMIT 50
+FOR UPDATE SKIP LOCKED;
 ```
 
-응답 예: `status` = `PAYMENT_PENDING`, Outbox 미저장.
+</details>
 
-#### 2) Mock PG 승인 → `PAID` + Outbox
+### 3. 실패 이벤트 재시도 및 수동 복구
 
-```http
-POST http://localhost:8080/api/orders/{orderId}/mock-payment/approve
-Authorization: Bearer <access_token>
-Content-Type: application/json
+**Problem:** 일시적 장애는 재시도로 복구할 가치가 있지만 반복 실패 이벤트는 빠르게 제외해야 합니다. 로그만으로는 재시도 대기, 한도 초과, 수동 처리 대상을 구분하기 어렵습니다.
 
-{
-  "approvalAmount": 20000,
-  "idempotencyKey": "mock-pay-20260521-001"
-}
+**Cause:** 실패 유형별 상태와 재시도 정책, 한도 초과 이벤트를 정상 처리 흐름에서 분리하는 경로가 필요했습니다.
+
+**Fix:** Poller에 지수 Backoff와 Jitter를 적용하고 `retry_count`, `next_retry_at`, `last_error`를 기록합니다. 발행 한도 초과는 `MANUAL_REQUIRED`, Consumer 처리 한도 초과는 DLQ로 분리하고 관리자 재처리, Trace ID 로그, Slack 알림과 HealthIndicator를 연결했습니다.
+
+**Result:** 일시적 발행 실패는 자동 재시도로 복구하고, 재시도 한도를 초과한 이벤트는 `MANUAL_REQUIRED` 또는 DLQ로 격리했습니다. 장애 감지 시 Slack 알림이 전송되고, 관리자가 격리된 이벤트를 재처리하는 흐름을 테스트했습니다.
+
+<details>
+<summary>관련 코드 및 파일</summary>
+
+- [`OutboxPoller.java`](src/main/java/com/example/fan_cafe/outbox/application/OutboxPoller.java): 발행 실패 상태, 다음 재시도 시각과 수동 처리 상태를 기록합니다.
+- [`DlqService.java`](src/main/java/com/example/fan_cafe/outbox/application/DlqService.java): DLQ 이력을 저장하고 재시도 소진 이벤트를 Main Queue로 재발행합니다.
+
+</details>
+
+## 실행 및 부하 테스트
+
+<details>
+<summary>환경 변수</summary>
+
+```env
+SPRING_PROFILES_ACTIVE=dev
+MOCK_PG_WEBHOOK_SECRET=
+
+DB_URL=
+DB_USERNAME=
+DB_PASSWORD=
+
+REDIS_HOST=
+REDIS_PORT=
+
+RABBITMQ_HOST=
+RABBITMQ_PORT=
+RABBITMQ_USERNAME=
+RABBITMQ_PASSWORD=
+
+AWS_REGION=
+AWS_S3_BUCKET=
+MAIL_PORT=
+SERVER_PORT=
+
+ACTUATOR_USER=
+ACTUATOR_PASSWORD=
 ```
 
-- `approvalAmount`는 주문 `totalPrice`와 **반드시 일치**해야 합니다.
-- `idempotencyKey` 또는 `mockPaymentKey` 중 하나는 필수입니다.
-- 이미 `PAID`이고 **같은 키**면 200 응답만 반환 (Outbox·이력 중복 없음).
-- 금액 불일치 시 `PAYMENT_FAILED`로 바뀐 뒤 `O008` 예외.
+JWT RSA 키, Firebase 서비스 계정 파일, AWS S3 접근 권한이 추가로 필요합니다. 비밀값은 저장소에 커밋하지 않습니다.
 
-#### 3) Mock PG 실패 → `PAYMENT_FAILED`
+</details>
 
-```http
-POST http://localhost:8080/api/orders/{orderId}/mock-payment/fail
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-  "reason": "user cancelled mock checkout"
-}
-```
-
-Outbox는 저장하지 않습니다.
-
-#### 4) Mock PG 전체 취소/환불 → `REFUNDED` + Outbox
-
-`PATCH /orders/{id}/cancel`(→ `CANCELLED`, `ORDER_CANCELLED`)과 별도로, **결제 완료 후 Mock PG 환불** 전용 API입니다.
-
-```http
-POST http://localhost:8080/api/orders/{orderId}/mock-payment/cancel
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-  "cancelReason": "고객 변심",
-  "idempotencyKey": "mock-refund-20260521-001"
-}
-```
-
-| 조건 | 동작 |
-|------|------|
-| 주문 상태 `PAID` | `REFUNDED`로 변경 + 재고 복구 + `PAYMENT_REFUNDED` Outbox |
-| 동일 `idempotencyKey`로 재요청 (`REFUNDED`/`CANCELLED` + 키 일치) | 멱등 응답, Outbox·이력 추가 없음 |
-| 다른 `idempotencyKey`로 재요청 (이미 환불/취소됨) | `O017` 예외 |
-| `PAYMENT_PENDING` / `PAYMENT_FAILED` | `O016` 예외, Outbox 없음 |
-
-#### 5) Mock PG 웹훅 (서버 푸시형)
-
-JWT 없이 **HMAC-SHA256** 서명만 통과하면 처리합니다.  
-설정: `mock.pg.webhook-secret` (`application.properties` / `application-local.properties`)
-
-| 헤더 | 설명 |
-|------|------|
-| `X-Mock-PG-Timestamp` | Unix epoch **초** (문자열) |
-| `X-Mock-PG-Signature` | `HMAC-SHA256(secret, timestamp + "." + rawBody)` 의 **소문자 hex** |
-
-서명 실패·타임스탬프 5분 초과 시 **주문 상태·Outbox 변경 없음**.
-
-**PAYMENT_APPROVED** 본문 예:
-
-```json
-{
-  "eventType": "PAYMENT_APPROVED",
-  "orderId": 10,
-  "approvalAmount": 20000,
-  "idempotencyKey": "wh-approve-001"
-}
-```
-
-**PAYMENT_FAILED** 본문 예:
-
-```json
-{
-  "eventType": "PAYMENT_FAILED",
-  "orderId": 10,
-  "reason": "card declined"
-}
-```
-
-**curl 예시 (PowerShell에서 서명 생성 후 호출)**
-
-```powershell
-$secret = "local-mock-pg-webhook-secret"
-$body = '{"eventType":"PAYMENT_APPROVED","orderId":10,"approvalAmount":20000,"idempotencyKey":"wh-001"}'
-$ts = [int][double]::Parse((Get-Date -UFormat %s))
-$hmac = New-Object System.Security.Cryptography.HMACSHA256
-$hmac.Key = [Text.Encoding]::UTF8.GetBytes($secret)
-$sigBytes = $hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes("$ts.$body"))
-$sig = -join ($sigBytes | ForEach-Object { $_.ToString("x2") })
-
-curl.exe -X POST "http://localhost:8080/api/mock-pg/webhook" `
-  -H "Content-Type: application/json" `
-  -H "X-Mock-PG-Timestamp: $ts" `
-  -H "X-Mock-PG-Signature: $sig" `
-  -d $body
-```
-
-Linux/macOS (openssl):
+Docker Compose 실행:
 
 ```bash
-SECRET="local-mock-pg-webhook-secret"
-BODY='{"eventType":"PAYMENT_APPROVED","orderId":10,"approvalAmount":20000,"idempotencyKey":"wh-001"}'
-TS=$(date +%s)
-SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
-
-curl -X POST http://localhost:8080/api/mock-pg/webhook \
-  -H "Content-Type: application/json" \
-  -H "X-Mock-PG-Timestamp: $TS" \
-  -H "X-Mock-PG-Signature: $SIG" \
-  -d "$BODY"
+docker compose up -d --build
 ```
 
-REST Mock API(`POST /api/orders/...`)와 웹훅은 동일한 `OrderPaymentCommandService` 로직을 사용합니다.
+### k6 부하 테스트
 
-#### 6) 주문 조회
+부하 테스트 전에 DB 프로시저 파일 `scripts/seed-payment-pending-orders.sql`을 실행해 `PAYMENT_PENDING` 주문 100,000건을 생성합니다.
 
-```http
-GET http://localhost:8080/orders/{orderId}
-Authorization: Bearer <access_token>
+```bash
+mysql -u root -p fan_cafe < scripts/seed-payment-pending-orders.sql
 ```
 
-### `order_status_history` 테이블
-
-| 컬럼 | 설명 |
-|------|------|
-| `id` | PK |
-| `order_id` | 주문 FK |
-| `from_status` | 이전 상태 |
-| `to_status` | 변경 후 상태 |
-| `reason` | 예: `mock payment approved`, `approval amount mismatch` |
-| `created_at` | 기록 시각 |
-
-JPA `ddl-auto=update`(local) 시 자동 생성됩니다.
-
-### 로컬 검증 순서
-
-1. 로그인 → 토큰 발급 (`POST /auth/login`)
-2. 주문 생성 → `PAYMENT_PENDING` 확인
-3. 승인 API → `PAID` + DB `outbox_events`에 `ORDER_CREATED` 1건
-4. 동일 `idempotencyKey`로 재승인 → Outbox 추가 없음
-5. (새 주문) 실패 API 또는 잘못된 `approvalAmount` → `PAYMENT_FAILED`, Outbox 없음
-6. 웹훅 `PAYMENT_APPROVED` (서명 포함) → REST 승인과 동일하게 `PAID` + Outbox 1건
-7. 잘못된 서명 웹훅 → HTTP 401, 주문·Outbox 무변경
-8. `PAID` 주문 Mock 취소 API → `REFUNDED` + `outbox_events`에 `PAYMENT_REFUNDED` 1건
-9. 동일 `idempotencyKey`로 재취소 → Outbox 추가 없음
-
-### Mock 취소 vs 주문 취소 (`PATCH`)
-
-| API | 상태 | Outbox eventType | 재고 |
-|-----|------|------------------|------|
-| `POST .../mock-payment/cancel` | `REFUNDED` | `PAYMENT_REFUNDED` | 복구 (`PAID`일 때) |
-| `PATCH /orders/{id}/cancel` | `CANCELLED` | `ORDER_CANCELLED` | 복구 |
-
-기존 Outbox Poller / Consumer / Retry / DLQ / Slack / TraceID 구조는 변경하지 않았습니다.
+```bash
+k6 run -e BASE_URL=http://localhost:8080 -e MOCK_PG_WEBHOOK_SECRET=<MOCK_PG_WEBHOOK_SECRET> k6/order-webhook-outbox-load-test.js
+```
