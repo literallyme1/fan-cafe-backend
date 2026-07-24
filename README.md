@@ -1,6 +1,6 @@
 # Fan-Cafe
 
-굿즈 주문이 집중되는 환경에서 재고 동시성, 결제 중복 처리와 후속 이벤트 유실 문제를 다루는 Spring Boot 백엔드 프로젝트입니다. 
+굿즈 주문이 집중되는 환경에서 재고 동시성, 결제 중복 처리와 후속 이벤트 유실 문제를 다루는 Spring Boot 백엔드 프로젝트입니다. (개인 프로젝트)
 ## 기술 스택 및 아키텍처
 
 
@@ -148,6 +148,14 @@ Docker Compose 실행:
 
 ```bash
 docker compose up -d --build
+```
+
+### API 문서
+
+애플리케이션 실행 후 Swagger UI에서 API 명세를 확인하고 요청을 테스트할 수 있습니다.
+
+```text
+http://localhost:{SERVER_PORT}/swagger-ui/index.html
 ```
 
 ### k6 부하 테스트
