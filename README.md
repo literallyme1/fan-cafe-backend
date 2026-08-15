@@ -1,9 +1,11 @@
 # Fan-Cafe
 
 굿즈 주문이 집중되는 환경에서 재고 동시성, 결제 중복 처리와 후속 이벤트 유실 문제를 다루는 Spring Boot 백엔드 프로젝트입니다. (개인 프로젝트)
+
+## 시연 영상
+[시연 영상 보기](https://youtu.be/hIbWzBgVqBk)
+
 ## 기술 스택 및 아키텍처
-
-
 
 ### 기술 스택
 
@@ -15,11 +17,8 @@
 | Infra / Monitoring | Docker Compose 3.9, AWS S3, CloudWatch Logs, Actuator, Slack | 실행 환경 구성, 파일 저장, 상태 감지 및 장애 알림    |
 | Test / Tools | JUnit 5, Mockito, k6 | 단위, 통합 테스트와 Webhook, Outbox 부하 측정 |
 
+
 ### 아키텍처 및 주문·결제 처리 흐름
-
-[시연 영상 보기](https://youtu.be/hIbWzBgVqBk)
-
-#### 전체 시스템 아키텍처
 
 **Spring Boot 기반 주문·결제 서버와 MySQL, Redis, RabbitMQ 및 외부 서비스를 연동한 전체 시스템 구성입니다.**
 
