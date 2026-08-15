@@ -17,7 +17,11 @@
 
 ### 아키텍처 및 주문·결제 처리 흐름
 
+[시연 영상 보기](https://youtu.be/hIbWzBgVqBk)
+
 #### 전체 시스템 아키텍처
+
+**Spring Boot 기반 주문·결제 서버와 MySQL, Redis, RabbitMQ 및 외부 서비스를 연동한 전체 시스템 구성입니다.**
 
 <p align="center">
   <img src="./docs/images/fan_cafe_system.png"
@@ -26,6 +30,8 @@
 </p>
 
 #### Transactional Outbox 기반 결제 이벤트 처리 흐름
+
+**결제 상태와 Outbox 이벤트를 원자적으로 저장하고, RabbitMQ를 통해 후속 처리를 비동기로 수행하는 흐름입니다.**
 
 <p align="center">
   <img src="./docs/images/fan_cafe_outbox.png"
