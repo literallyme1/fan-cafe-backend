@@ -42,7 +42,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -53,7 +55,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 
 /**
  * Order 결제/환불 정합성 통합 테스트.
@@ -330,6 +335,75 @@ class OrderPaymentConsistencyIntegrationTest {
     }
 
     // --- 3차: 동시성 ---
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("[3차] concurrentSamePaymentApproval_completesBothRequestsIdempotently")
+    void concurrentSamePaymentApproval_completesBothRequestsIdempotently() throws InterruptedException {
+        PaymentPendingFixture fixture = trackFixture(fixtures.createPaymentPendingOrder());
+        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
+        ReflectionTestUtils.setField(request, "approvalAmount", fixture.totalPrice());
+        ReflectionTestUtils.setField(request, "idempotencyKey", PAYMENT_KEY);
+
+        int threadCount = 2;
+        CountDownLatch approvalsEntered = new CountDownLatch(threadCount);
+        doAnswer(invocation -> {
+                    approvalsEntered.countDown();
+                    if (!approvalsEntered.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("concurrent approvals did not reach payment boundary");
+                    }
+                    return new PaymentResultResponse(
+                            fixture.order().getId(), PaymentResultStatus.APPROVED,
+                            PAYMENT_KEY, null, null);
+                }).when(paymentClient).approve(
+                        fixture.order().getId(), fixture.totalPrice(), fixture.totalPrice(), PAYMENT_KEY);
+
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger();
+        Queue<Throwable> failures = new ConcurrentLinkedQueue<>();
+
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await(10, TimeUnit.SECONDS);
+                        orderService.approveMockPayment(
+                                fixture.user(), fixture.order().getId(), request);
+                        successCount.incrementAndGet();
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        failures.add(exception);
+                    } catch (Exception exception) {
+                        failures.add(exception);
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        entityManager.clear();
+        Long orderId = fixture.order().getId();
+        assertThat(failures).isEmpty();
+        assertThat(successCount.get()).isEqualTo(threadCount);
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus()).isEqualTo(Status.PAID);
+        assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(1);
+        assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
+        assertThat(sagaInstanceRepository.findByOrderId(orderId).orElseThrow().getStatus())
+                .isEqualTo(SagaStatus.COMPLETED);
+        verify(paymentClient, times(threadCount)).approve(
+                orderId, fixture.totalPrice(), fixture.totalPrice(), PAYMENT_KEY);
+    }
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)

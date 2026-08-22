@@ -40,4 +40,14 @@ public class SagaTransactionService {
         }
         return SagaSnapshot.from(saga);
     }
+
+    @Transactional
+    public SagaSnapshot advanceToMilestone(UUID sagaId, SagaStatus milestone) {
+        SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+        if (!saga.getStatus().isAtOrAfter(milestone)) {
+            stateMachine.transition(saga, milestone);
+        }
+        return SagaSnapshot.from(saga);
+    }
 }

@@ -40,9 +40,9 @@ class PaymentSagaOrchestratorTest {
         OrderQueryResponse completedOrder = mock(OrderQueryResponse.class);
 
         when(sagaTransactionService.start(10L)).thenReturn(started);
-        when(sagaTransactionService.transition(sagaId, SagaStatus.PAYMENT_PENDING)).thenReturn(pending);
+        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_PENDING)).thenReturn(pending);
         when(paymentClient.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1")).thenReturn(approved);
-        when(sagaTransactionService.transition(sagaId, SagaStatus.PAYMENT_COMPLETED))
+        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED))
                 .thenReturn(paymentCompleted);
         when(completionService.complete(sagaId, 10L, "mock payment approved")).thenReturn(completedOrder);
 
@@ -52,10 +52,33 @@ class PaymentSagaOrchestratorTest {
         assertThat(result).isSameAs(completedOrder);
         InOrder order = inOrder(sagaTransactionService, paymentClient, completionService);
         order.verify(sagaTransactionService).start(10L);
-        order.verify(sagaTransactionService).transition(sagaId, SagaStatus.PAYMENT_PENDING);
+        order.verify(sagaTransactionService).advanceToMilestone(sagaId, SagaStatus.PAYMENT_PENDING);
         order.verify(paymentClient).approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1");
-        order.verify(sagaTransactionService).transition(sagaId, SagaStatus.PAYMENT_COMPLETED);
+        order.verify(sagaTransactionService).advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
         order.verify(completionService).complete(sagaId, 10L, "mock payment approved");
+    }
+
+    @Test
+    void lateConcurrentRequestTreatsAdvancedMilestoneAsIdempotentSuccess() {
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        SagaSnapshot started = snapshot(sagaId, SagaStatus.STARTED, SagaStep.PAYMENT_APPROVAL);
+        SagaSnapshot paymentCompleted = snapshot(
+                sagaId, SagaStatus.PAYMENT_COMPLETED, SagaStep.ORDER_COMPLETION);
+        OrderQueryResponse completedOrder = mock(OrderQueryResponse.class);
+
+        when(sagaTransactionService.start(10L)).thenReturn(started);
+        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_PENDING))
+                .thenReturn(paymentCompleted);
+        when(completionService.complete(sagaId, 10L, "mock payment approved"))
+                .thenReturn(completedOrder);
+
+        OrderQueryResponse result = orchestrator.approve(
+                10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1");
+
+        assertThat(result).isSameAs(completedOrder);
+        verifyNoInteractions(paymentClient);
+        verify(sagaTransactionService, never())
+                .advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
     }
 
     @Test

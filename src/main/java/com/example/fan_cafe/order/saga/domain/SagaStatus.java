@@ -4,5 +4,9 @@ public enum SagaStatus {
     STARTED,
     PAYMENT_PENDING,
     PAYMENT_COMPLETED,
-    COMPLETED
+    COMPLETED;
+
+    public boolean isAtOrAfter(SagaStatus milestone) {
+        return ordinal() >= milestone.ordinal();
+    }
 }

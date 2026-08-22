@@ -28,14 +28,13 @@ public class PaymentSagaOrchestrator {
             Long orderId,
             BigDecimal expectedAmount,
             BigDecimal approvalAmount,
-            String paymentKey
+        String paymentKey
     ) {
         SagaSnapshot saga = sagaTransactionService.start(orderId);
-        if (saga.status() == SagaStatus.PAYMENT_COMPLETED || saga.status() == SagaStatus.COMPLETED) {
+        saga = sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_PENDING);
+        if (saga.status().isAtOrAfter(SagaStatus.PAYMENT_COMPLETED)) {
             return completionService.complete(saga.sagaId(), orderId, APPROVED_REASON);
         }
-
-        saga = sagaTransactionService.transition(saga.sagaId(), SagaStatus.PAYMENT_PENDING);
 
         PaymentResultResponse payment = paymentClient.approve(
                 orderId, expectedAmount, approvalAmount, paymentKey);
@@ -46,7 +45,7 @@ public class PaymentSagaOrchestrator {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
 
-        sagaTransactionService.transition(saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
+        sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
         return completionService.complete(saga.sagaId(), orderId, APPROVED_REASON);
     }
 }
