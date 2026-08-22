@@ -10,6 +10,7 @@ import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateResponse;
+import com.example.fan_cafe.order.saga.infrastructure.SagaInstanceRepository;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
@@ -52,6 +53,9 @@ public class OrderIntegrationTestSupport {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private SagaInstanceRepository sagaInstanceRepository;
 
     @Value("${mock.pg.webhook-secret}")
     private String webhookSecret;
@@ -118,6 +122,7 @@ public class OrderIntegrationTestSupport {
             return;
         }
         Long orderId = fixture.order().getId();
+        sagaInstanceRepository.deleteByOrderId(orderId);
         orderStatusHistoryRepository.deleteByOrder_Id(orderId);
         outboxEventRepository.deleteByAggregateTypeAndAggregateId("ORDER", orderId);
         orderRepository.deleteById(orderId);

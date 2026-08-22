@@ -23,6 +23,7 @@ import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
+import com.example.fan_cafe.order.saga.application.PaymentSagaOrchestrator;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
@@ -78,6 +79,9 @@ class OrderServiceTest {
     private PaymentClient paymentClient;
 
     @Mock
+    private PaymentSagaOrchestrator paymentSagaOrchestrator;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
@@ -131,12 +135,8 @@ class OrderServiceTest {
     @DisplayName("Mock 결제 승인 API는 Payment 호출 후 결과 반영을 위임한다.")
     void approveMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-        PaymentResultResponse result = new PaymentResultResponse(
-                10L, PaymentResultStatus.APPROVED, "idem-001", null, null);
-        when(paymentClient.approve(10L, BigDecimal.valueOf(20000),
-                BigDecimal.valueOf(20000), "idem-001")).thenReturn(result);
-        when(orderPaymentResultService.apply(
-                10L, result, "mock payment approved", "mock payment failed"))
+        when(paymentSagaOrchestrator.approve(10L, BigDecimal.valueOf(20000),
+                BigDecimal.valueOf(20000), "idem-001"))
                 .thenReturn(OrderQueryResponse.from(paidOrder));
 
         MockPaymentApproveRequest request = new MockPaymentApproveRequest();
@@ -146,7 +146,7 @@ class OrderServiceTest {
         OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(paymentClient).approve(10L, BigDecimal.valueOf(20000),
+        verify(paymentSagaOrchestrator).approve(10L, BigDecimal.valueOf(20000),
                 BigDecimal.valueOf(20000), "idem-001");
     }
 

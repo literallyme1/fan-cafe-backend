@@ -14,6 +14,9 @@ import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
+import com.example.fan_cafe.order.saga.domain.SagaStatus;
+import com.example.fan_cafe.order.saga.domain.SagaStep;
+import com.example.fan_cafe.order.saga.infrastructure.SagaInstanceRepository;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.PaymentPendingFixture;
@@ -33,6 +36,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -82,6 +86,9 @@ class OrderPaymentConsistencyIntegrationTest {
     private MerchandiseRepository merchandiseRepository;
 
     @Autowired
+    private SagaInstanceRepository sagaInstanceRepository;
+
+    @Autowired
     private OrderIntegrationTestSupport fixtures;
 
     @Autowired
@@ -125,9 +132,15 @@ class OrderPaymentConsistencyIntegrationTest {
                             "REFUND:" + sagaId, invocation.getArgument(2), null);
                 });
         when(paymentClient.approve(anyLong(), any(BigDecimal.class), any(BigDecimal.class), anyString()))
-                .thenAnswer(invocation -> new PaymentResultResponse(
-                        invocation.getArgument(0), PaymentResultStatus.APPROVED,
-                        invocation.getArgument(3), null, null));
+                .thenAnswer(invocation -> {
+                    Long orderId = invocation.getArgument(0);
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    assertThat(sagaInstanceRepository.findByOrderId(orderId).orElseThrow().getStatus())
+                            .isEqualTo(SagaStatus.PAYMENT_PENDING);
+                    return new PaymentResultResponse(
+                            orderId, PaymentResultStatus.APPROVED,
+                            invocation.getArgument(3), null, null);
+                });
     }
 
     @AfterEach
@@ -281,6 +294,10 @@ class OrderPaymentConsistencyIntegrationTest {
         Long orderId = fixture.order().getId();
         assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(1);
         assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
+        var saga = sagaInstanceRepository.findByOrderId(orderId).orElseThrow();
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPLETED);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.DONE);
+        assertThat(saga.getRetryCount()).isZero();
     }
 
     @Test

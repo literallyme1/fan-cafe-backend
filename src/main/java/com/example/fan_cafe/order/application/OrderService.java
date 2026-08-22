@@ -21,6 +21,7 @@ import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
+import com.example.fan_cafe.order.saga.application.PaymentSagaOrchestrator;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.User;
@@ -51,6 +52,7 @@ public class OrderService {
     private final OrderPaymentResultService orderPaymentResultService;
     private final OrderRefundResultService orderRefundResultService;
     private final PaymentClient paymentClient;
+    private final PaymentSagaOrchestrator paymentSagaOrchestrator;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
@@ -120,10 +122,8 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        PaymentResultResponse result = paymentClient.approve(
+        return paymentSagaOrchestrator.approve(
                 orderId, order.getTotalPrice(), request.getApprovalAmount(), paymentKey);
-        return orderPaymentResultService.apply(
-                orderId, result, "mock payment approved", "mock payment failed");
     }
 
     public OrderQueryResponse failMockPayment(User user, Long orderId, MockPaymentFailRequest request) {
