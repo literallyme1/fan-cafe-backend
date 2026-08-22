@@ -67,7 +67,7 @@ class OrderPaymentCommandServiceTest {
         paidOrder = Order.paymentPending(user, BigDecimal.valueOf(20000));
         ReflectionTestUtils.setField(paidOrder, "id", 11L);
         paidOrder.addItem(OrderItem.snapshot(100L, "응원봉", BigDecimal.valueOf(10000), 2));
-        paidOrder.markPaid("pay-key-1");
+        paidOrder.markPaid();
 
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> {
             OutboxEvent e = invocation.getArgument(0);
@@ -85,12 +85,8 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("승인 시 PAID 전이·이력·Outbox 저장")
     void approvePayment_shouldMarkPaidAndSaveOutbox() {
         stubLockedOrder(paymentPendingOrder);
-        Order result = orderPaymentCommandService.approvePaymentWithPessimisticLock(
-                paymentPendingOrder,
-                BigDecimal.valueOf(20000),
-                "idem-001",
-                "mock payment approved"
-        );
+        Order result = orderPaymentCommandService.applyPaymentApproved(
+                paymentPendingOrder.getId(), "mock payment approved");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));
@@ -98,17 +94,13 @@ class OrderPaymentCommandServiceTest {
     }
 
     @Test
-    @DisplayName("동일 paymentKey 재승인은 멱등 (Outbox 없음)")
+    @DisplayName("이미 반영된 승인 결과는 멱등하게 무시한다")
     void approvePayment_shouldBeIdempotent_whenSameKey() {
-        paymentPendingOrder.markPaid("pay-key-1");
+        paymentPendingOrder.markPaid();
         stubLockedOrder(paymentPendingOrder);
 
-        Order result = orderPaymentCommandService.approvePaymentWithPessimisticLock(
-                paymentPendingOrder,
-                BigDecimal.valueOf(20000),
-                "pay-key-1",
-                "mock payment approved"
-        );
+        Order result = orderPaymentCommandService.applyPaymentApproved(
+                paymentPendingOrder.getId(), "mock payment approved");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
         verify(outboxEventRepository, never()).save(any());
@@ -116,25 +108,11 @@ class OrderPaymentCommandServiceTest {
     }
 
     @Test
-    @DisplayName("금액 불일치 시 PAYMENT_FAILED, Outbox 없음")
-    void approvePayment_shouldFail_whenAmountMismatch() {
-        stubLockedOrder(paymentPendingOrder);
-        assertThatThrownBy(() -> orderPaymentCommandService.approvePaymentWithPessimisticLock(
-                paymentPendingOrder,
-                BigDecimal.ONE,
-                "bad",
-                "mock"
-        )).isInstanceOf(CustomException.class)
-                .hasMessageContaining(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH.getMessage());
-
-        assertThat(paymentPendingOrder.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
-        verify(outboxEventRepository, never()).save(any());
-    }
-
-    @Test
     @DisplayName("실패 처리 시 PAYMENT_FAILED, Outbox 없음")
     void failPayment_shouldMarkPaymentFailed_withoutOutbox() {
-        Order result = orderPaymentCommandService.failPayment(paymentPendingOrder, "webhook fail");
+        stubLockedOrder(paymentPendingOrder);
+        Order result = orderPaymentCommandService.applyPaymentFailed(
+                paymentPendingOrder.getId(), "webhook fail");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
         verify(orderStatusHistoryRepository).save(any(OrderStatusHistory.class));

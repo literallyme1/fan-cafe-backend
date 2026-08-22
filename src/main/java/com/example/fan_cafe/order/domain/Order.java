@@ -37,10 +37,6 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private Status status;
 
-    /** Mock PG 승인 성공 시 저장 — 동일 키 재요청 멱등 처리에 사용 */
-    @Column(name = "approved_payment_key", length = 100)
-    private String approvedPaymentKey;
-
     /** Mock PG 취소/환불 성공 시 저장 — 동일 idempotencyKey 재요청 멱등 처리에 사용 */
     @Column(name = "refund_idempotency_key", length = 100)
     private String refundIdempotencyKey;
@@ -70,21 +66,13 @@ public class Order extends BaseTimeEntity {
     }
 
     // Mock PG 승인 성공 시 PAID로 전이한다.
-    public void markPaid(String paymentKey) {
+    public void markPaid() {
         this.status = Status.PAID;
-        this.approvedPaymentKey = paymentKey;
     }
 
     // 승인 금액 불일치·Mock PG 실패 API 호출 시 PAYMENT_FAILED로 전이한다.
     public void markPaymentFailed() {
         this.status = Status.PAYMENT_FAILED;
-    }
-
-    // 이미 동일 결제 키로 승인된 주문인지 확인한다 (중복 승인 멱등).
-    public boolean isPaidWithPaymentKey(String paymentKey) {
-        return this.status == Status.PAID
-                && paymentKey != null
-                && paymentKey.equals(this.approvedPaymentKey);
     }
 
     // 현재 주문 상태가 취소 가능한지 도메인 규칙으로 판단한다.

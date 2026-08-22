@@ -34,7 +34,6 @@ SELECT
     SUM(CASE WHEN o.status = 'PAYMENT_PENDING' THEN 1 ELSE 0 END) AS payment_pending_count,
     SUM(CASE WHEN o.status = 'PAID' THEN 1 ELSE 0 END) AS paid_count,
     SUM(CASE WHEN o.status = 'PAYMENT_FAILED' THEN 1 ELSE 0 END) AS payment_failed_count,
-    SUM(CASE WHEN o.approved_payment_key IS NOT NULL THEN 1 ELSE 0 END) AS orders_with_payment_key,
     ROUND(
         100.0 * SUM(CASE WHEN o.status = 'PAID' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0),
         2
@@ -120,15 +119,6 @@ FROM orders o
 WHERE o.id BETWEEN @order_id_start AND @order_id_end
   AND o.status = 'PAYMENT_FAILED';
 
--- paymentKey(idempotencyKey) 패턴 불일치
-SELECT
-    'unexpected_payment_key_pattern' AS check_name,
-    COUNT(*) AS issue_count
-FROM orders o
-WHERE o.id BETWEEN @order_id_start AND @order_id_end
-  AND o.status = 'PAID'
-  AND o.approved_payment_key <> CONCAT('K6-MOCK-PG-', o.id);
-
 -- 주문 수가 기대치와 다른 경우
 SELECT
     'order_count_mismatch' AS check_name,
@@ -150,8 +140,7 @@ SELECT
     o.id AS order_id,
     o.total_price AS approval_amount,
     CONCAT('K6-MOCK-PG-', o.id) AS idempotency_key,
-    o.status,
-    o.approved_payment_key AS approved_payment_key
+    o.status
 FROM orders o
 WHERE o.id BETWEEN @order_id_start AND (@order_id_start + 4)
 ORDER BY o.id;

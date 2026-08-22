@@ -24,7 +24,9 @@ public enum OrderErrorCode implements BaseErrorCode {
     WEBHOOK_APPROVAL_AMOUNT_REQUIRED("O014", HttpStatus.BAD_REQUEST, "PAYMENT_APPROVED 웹훅에는 approvalAmount가 필요합니다."),
     CANCEL_IDEMPOTENCY_KEY_REQUIRED("O015", HttpStatus.BAD_REQUEST, "취소 idempotencyKey가 필요합니다."),
     ORDER_NOT_REFUNDABLE("O016", HttpStatus.BAD_REQUEST, "결제 완료(PAID) 상태에서만 Mock 취소/환불이 가능합니다."),
-    ORDER_ALREADY_REFUNDED("O017", HttpStatus.CONFLICT, "이미 취소/환불 처리된 주문입니다.");
+    ORDER_ALREADY_REFUNDED("O017", HttpStatus.CONFLICT, "이미 취소/환불 처리된 주문입니다."),
+    PAYMENT_SERVICE_UNAVAILABLE("O018", HttpStatus.SERVICE_UNAVAILABLE, "결제 서비스에 연결할 수 없습니다."),
+    PAYMENT_SERVICE_ERROR("O019", HttpStatus.BAD_GATEWAY, "결제 서비스 처리 중 오류가 발생했습니다.");
     private final String code;
     private final HttpStatus status;
     private final String message;

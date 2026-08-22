@@ -60,4 +60,49 @@ public class Payment {
     protected Payment() {
     }
 
+    private Payment(Long orderId, BigDecimal expectedAmount) {
+        this.orderId = orderId;
+        this.expectedAmount = expectedAmount;
+        this.status = PaymentStatus.PENDING;
+    }
+
+    public static Payment pending(Long orderId, BigDecimal expectedAmount) {
+        return new Payment(orderId, expectedAmount);
+    }
+
+    public boolean hasExpectedAmount(BigDecimal amount) {
+        return amount != null && expectedAmount.compareTo(amount) == 0;
+    }
+
+    public boolean isApprovedWith(String key) {
+        return status == PaymentStatus.APPROVED && paymentKey.equals(key);
+    }
+
+    public void approve(BigDecimal amount, String key) {
+        this.status = PaymentStatus.APPROVED;
+        this.approvedAmount = amount;
+        this.paymentKey = key;
+        this.failureReason = null;
+    }
+
+    public void fail(String reason) {
+        this.status = PaymentStatus.FAILED;
+        this.failureReason = reason;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public PaymentStatus getStatus() {
+        return status;
+    }
+
+    public String getPaymentKey() {
+        return paymentKey;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
 }
