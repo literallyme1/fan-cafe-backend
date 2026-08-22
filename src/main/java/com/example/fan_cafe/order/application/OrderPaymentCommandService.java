@@ -8,13 +8,13 @@ import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,14 +32,13 @@ public class OrderPaymentCommandService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public Order applyPaymentApproved(Long orderId, String historyReason) {
+    public OrderQueryResponse applyPaymentApproved(Long orderId, String historyReason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
-        Hibernate.initialize(lockedOrder.getOrderItems());
 
         if (lockedOrder.getStatus() == Status.PAID) {
             log.info("[PAYMENT] - 이미 반영된 승인 결과 무시 (orderId={})", orderId);
-            return lockedOrder;
+            return OrderQueryResponse.from(lockedOrder);
         }
         if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
@@ -54,17 +53,16 @@ public class OrderPaymentCommandService {
         log.info("[OUTBOX] - 결제 승인 후 이벤트 저장 (orderId={}, eventStatus={})",
                 lockedOrder.getId(), orderPaidOutbox.getStatus());
 
-        return lockedOrder;
+        return OrderQueryResponse.from(lockedOrder);
     }
 
     @Transactional
-    public Order applyPaymentFailed(Long orderId, String reason) {
+    public OrderQueryResponse applyPaymentFailed(Long orderId, String reason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
-        Hibernate.initialize(lockedOrder.getOrderItems());
 
         if (lockedOrder.getStatus() == Status.PAYMENT_FAILED) {
-            return lockedOrder;
+            return OrderQueryResponse.from(lockedOrder);
         }
         if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
@@ -79,7 +77,7 @@ public class OrderPaymentCommandService {
         recordStatusHistory(lockedOrder, from, Status.PAYMENT_FAILED, resolvedReason);
         log.info("[PAYMENT] - 결제 실패 결과 반영 (orderId={})", lockedOrder.getId());
 
-        return lockedOrder;
+        return OrderQueryResponse.from(lockedOrder);
     }
 
     private void recordStatusHistory(Order order, Status from, Status to, String reason) {

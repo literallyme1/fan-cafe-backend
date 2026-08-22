@@ -9,6 +9,7 @@ import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
+import com.example.fan_cafe.order.interfaces.dto.MockPaymentApproveRequest;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
@@ -55,7 +56,7 @@ import static org.mockito.Mockito.when;
  * DB에 남는 {@code Order}, {@code OrderStatusHistory}, {@code OutboxEvent} 건수를 검증한다.
  */
 @Tag("integration")
-@SpringBootTest
+@SpringBootTest(properties = "spring.jpa.open-in-view=false")
 @ActiveProfiles("ci")
 class OrderPaymentConsistencyIntegrationTest {
 
@@ -123,6 +124,10 @@ class OrderPaymentConsistencyIntegrationTest {
                             orderId, PaymentResultStatus.REFUNDED, null, null, PAYMENT_KEY, null,
                             "REFUND:" + sagaId, invocation.getArgument(2), null);
                 });
+        when(paymentClient.approve(anyLong(), any(BigDecimal.class), any(BigDecimal.class), anyString()))
+                .thenAnswer(invocation -> new PaymentResultResponse(
+                        invocation.getArgument(0), PaymentResultStatus.APPROVED,
+                        invocation.getArgument(3), null, null));
     }
 
     @AfterEach
@@ -256,6 +261,24 @@ class OrderPaymentConsistencyIntegrationTest {
 
         Long orderId = fixture.order().getId();
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus()).isEqualTo(Status.PAID);
+        assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(1);
+        assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("[2차] duplicatePaymentApproval_returnsDtoWithoutDuplicateHistoryOrOutbox")
+    void duplicatePaymentApproval_returnsDtoInsideTransaction() {
+        PaymentPendingFixture fixture = trackFixture(fixtures.createPaymentPendingOrder());
+        MockPaymentApproveRequest request = new MockPaymentApproveRequest();
+        ReflectionTestUtils.setField(request, "approvalAmount", fixture.totalPrice());
+        ReflectionTestUtils.setField(request, "idempotencyKey", PAYMENT_KEY);
+
+        var first = orderService.approveMockPayment(fixture.user(), fixture.order().getId(), request);
+        var duplicate = orderService.approveMockPayment(fixture.user(), fixture.order().getId(), request);
+
+        assertThat(first.getItems()).hasSize(1);
+        assertThat(duplicate.getItems()).hasSize(1);
+        Long orderId = fixture.order().getId();
         assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(1);
         assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
     }

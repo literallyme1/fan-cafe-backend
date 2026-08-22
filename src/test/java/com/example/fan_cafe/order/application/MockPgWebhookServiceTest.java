@@ -5,6 +5,7 @@ import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
@@ -69,8 +70,8 @@ class MockPgWebhookServiceTest {
         String rawBody = "{\"eventType\":\"PAYMENT_APPROVED\",\"orderId\":10,\"approvalAmount\":20000}";
         PaymentResultResponse result = new PaymentResultResponse(
                 10L, PaymentResultStatus.APPROVED, "wh-001", null, null);
-        Order paid = paymentPendingOrder;
-        paid.markPaid();
+        paymentPendingOrder.markPaid();
+        OrderQueryResponse paid = OrderQueryResponse.from(paymentPendingOrder);
 
         when(orderRepository.findByIdWithItems(10L)).thenReturn(Optional.of(paymentPendingOrder));
         when(paymentClient.forwardWebhook(rawBody, "100", "signature", BigDecimal.valueOf(20000)))

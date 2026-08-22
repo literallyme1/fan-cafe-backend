@@ -12,6 +12,7 @@ import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
@@ -20,7 +21,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,18 +38,17 @@ public class OrderRefundResultService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public Order apply(Long orderId, PaymentStatusResponse payment, String cancelReason) {
+    public OrderQueryResponse apply(Long orderId, PaymentStatusResponse payment, String cancelReason) {
         if (!orderId.equals(payment.orderId()) || payment.status() != PaymentResultStatus.REFUNDED) {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
 
         Order order = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
-        Hibernate.initialize(order.getOrderItems());
 
         if (order.getStatus() == Status.REFUNDED) {
             log.info("[REFUND] - 이미 반영된 환불 결과 무시 (orderId={})", orderId);
-            return order;
+            return OrderQueryResponse.from(order);
         }
         if (order.getStatus() != Status.PAID) {
             throw new CustomException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
@@ -66,7 +65,7 @@ public class OrderRefundResultService {
         OutboxEvent outbox = persistOutboxWithEventId(OutboxEvent.init(
                 "ORDER", orderId, buildPaymentRefundedPayload(order, reason, payment.refundIdempotencyKey())));
         log.info("[OUTBOX] - 환불 결과 이벤트 저장 (orderId={}, eventStatus={})", orderId, outbox.getStatus());
-        return order;
+        return OrderQueryResponse.from(order);
     }
 
     private void restoreStock(Order order) {

@@ -7,6 +7,7 @@ import com.example.fan_cafe.order.domain.OrderStatusHistory;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
@@ -85,7 +86,7 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("승인 시 PAID 전이·이력·Outbox 저장")
     void approvePayment_shouldMarkPaidAndSaveOutbox() {
         stubLockedOrder(paymentPendingOrder);
-        Order result = orderPaymentCommandService.applyPaymentApproved(
+        OrderQueryResponse result = orderPaymentCommandService.applyPaymentApproved(
                 paymentPendingOrder.getId(), "mock payment approved");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
@@ -99,7 +100,7 @@ class OrderPaymentCommandServiceTest {
         paymentPendingOrder.markPaid();
         stubLockedOrder(paymentPendingOrder);
 
-        Order result = orderPaymentCommandService.applyPaymentApproved(
+        OrderQueryResponse result = orderPaymentCommandService.applyPaymentApproved(
                 paymentPendingOrder.getId(), "mock payment approved");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
@@ -111,7 +112,7 @@ class OrderPaymentCommandServiceTest {
     @DisplayName("실패 처리 시 PAYMENT_FAILED, Outbox 없음")
     void failPayment_shouldMarkPaymentFailed_withoutOutbox() {
         stubLockedOrder(paymentPendingOrder);
-        Order result = orderPaymentCommandService.applyPaymentFailed(
+        OrderQueryResponse result = orderPaymentCommandService.applyPaymentFailed(
                 paymentPendingOrder.getId(), "webhook fail");
 
         assertThat(result.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);

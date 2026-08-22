@@ -9,6 +9,7 @@ import com.example.fan_cafe.order.domain.OrderStatusHistory;
 import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
@@ -74,7 +75,7 @@ class OrderRefundResultServiceTest {
         when(orderRepository.findPaymentOrderWithPessimisticLock(10L)).thenReturn(Optional.of(paidOrder));
         when(merchandiseRepository.findMerchandiseWithPessimisticLock(100L)).thenReturn(Optional.of(merchandise));
 
-        Order result = orderRefundResultService.apply(10L, refundedPayment, "customer request");
+        OrderQueryResponse result = orderRefundResultService.apply(10L, refundedPayment, "customer request");
 
         assertThat(result.getStatus()).isEqualTo(Status.REFUNDED);
         assertThat(merchandise.getStock()).isEqualTo(2);
@@ -87,7 +88,7 @@ class OrderRefundResultServiceTest {
         paidOrder.markRefunded();
         when(orderRepository.findPaymentOrderWithPessimisticLock(10L)).thenReturn(Optional.of(paidOrder));
 
-        Order result = orderRefundResultService.apply(10L, refundedPayment, "retry");
+        OrderQueryResponse result = orderRefundResultService.apply(10L, refundedPayment, "retry");
 
         assertThat(result.getStatus()).isEqualTo(Status.REFUNDED);
         assertThat(merchandise.getStock()).isZero();

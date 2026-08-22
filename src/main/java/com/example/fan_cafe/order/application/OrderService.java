@@ -122,9 +122,8 @@ public class OrderService {
 
         PaymentResultResponse result = paymentClient.approve(
                 orderId, order.getTotalPrice(), request.getApprovalAmount(), paymentKey);
-        Order updated = orderPaymentResultService.apply(
+        return orderPaymentResultService.apply(
                 orderId, result, "mock payment approved", "mock payment failed");
-        return OrderQueryResponse.from(updated);
     }
 
     public OrderQueryResponse failMockPayment(User user, Long orderId, MockPaymentFailRequest request) {
@@ -138,9 +137,8 @@ public class OrderService {
                 : "mock payment failed";
 
         PaymentResultResponse result = paymentClient.fail(orderId, order.getTotalPrice(), reason);
-        Order updated = orderPaymentResultService.apply(
+        return orderPaymentResultService.apply(
                 orderId, result, "mock payment approved", "mock payment failed");
-        return OrderQueryResponse.from(updated);
     }
 
     public OrderQueryResponse cancelMockPayment(User user, Long orderId, MockPaymentCancelRequest request) {
@@ -155,8 +153,7 @@ public class OrderService {
 
         PaymentStatusResponse payment = paymentClient.refund(
                 orderId, request.getSagaId(), request.getCancelReason());
-        Order updated = orderRefundResultService.apply(orderId, payment, request.getCancelReason());
-        return OrderQueryResponse.from(updated);
+        return orderRefundResultService.apply(orderId, payment, request.getCancelReason());
     }
 
     @Transactional

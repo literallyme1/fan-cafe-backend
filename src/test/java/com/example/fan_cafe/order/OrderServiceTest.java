@@ -137,7 +137,7 @@ class OrderServiceTest {
                 BigDecimal.valueOf(20000), "idem-001")).thenReturn(result);
         when(orderPaymentResultService.apply(
                 10L, result, "mock payment approved", "mock payment failed"))
-                .thenReturn(paidOrder);
+                .thenReturn(OrderQueryResponse.from(paidOrder));
 
         MockPaymentApproveRequest request = new MockPaymentApproveRequest();
         ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
@@ -158,10 +158,10 @@ class OrderServiceTest {
                 10L, PaymentResultStatus.FAILED, null, "mock payment failed", null);
         when(paymentClient.fail(10L, BigDecimal.valueOf(20000), "mock payment failed"))
                 .thenReturn(result);
+        paymentPendingOrder.markPaymentFailed();
         when(orderPaymentResultService.apply(
                 10L, result, "mock payment approved", "mock payment failed"))
-                .thenReturn(paymentPendingOrder);
-        paymentPendingOrder.markPaymentFailed();
+                .thenReturn(OrderQueryResponse.from(paymentPendingOrder));
 
         OrderQueryResponse response = orderService.failMockPayment(user, 10L, new MockPaymentFailRequest());
 
@@ -179,7 +179,8 @@ class OrderServiceTest {
                 "pay-1", null, "REFUND:" + sagaId, "고객 변심", null);
         when(paymentClient.refund(10L, sagaId, "고객 변심")).thenReturn(payment);
         paidOrder.markRefunded();
-        when(orderRefundResultService.apply(10L, payment, "고객 변심")).thenReturn(paidOrder);
+        when(orderRefundResultService.apply(10L, payment, "고객 변심"))
+                .thenReturn(OrderQueryResponse.from(paidOrder));
 
         MockPaymentCancelRequest request = new MockPaymentCancelRequest();
         ReflectionTestUtils.setField(request, "cancelReason", "고객 변심");
