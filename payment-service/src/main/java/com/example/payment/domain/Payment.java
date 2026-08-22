@@ -45,6 +45,15 @@ public class Payment {
     @Column(name = "failure_reason", length = 500)
     private String failureReason;
 
+    @Column(name = "refund_idempotency_key", unique = true, length = 150)
+    private String refundIdempotencyKey;
+
+    @Column(name = "refund_reason", length = 500)
+    private String refundReason;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -90,6 +99,17 @@ public class Payment {
         this.failureReason = reason;
     }
 
+    public boolean isRefundedWith(String idempotencyKey) {
+        return status == PaymentStatus.REFUNDED && idempotencyKey.equals(refundIdempotencyKey);
+    }
+
+    public void refund(String idempotencyKey, String reason) {
+        this.status = PaymentStatus.REFUNDED;
+        this.refundIdempotencyKey = idempotencyKey;
+        this.refundReason = reason;
+        this.refundedAt = LocalDateTime.now();
+    }
+
     public Long getOrderId() {
         return orderId;
     }
@@ -104,5 +124,25 @@ public class Payment {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public BigDecimal getExpectedAmount() {
+        return expectedAmount;
+    }
+
+    public BigDecimal getApprovedAmount() {
+        return approvedAmount;
+    }
+
+    public String getRefundIdempotencyKey() {
+        return refundIdempotencyKey;
+    }
+
+    public String getRefundReason() {
+        return refundReason;
+    }
+
+    public LocalDateTime getRefundedAt() {
+        return refundedAt;
     }
 }

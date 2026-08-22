@@ -8,6 +8,7 @@ import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,13 +32,13 @@ public class OrderPaymentCommandService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public Order applyPaymentApproved(Long orderId, String historyReason) {
+    public OrderQueryResponse applyPaymentApproved(Long orderId, String historyReason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
         if (lockedOrder.getStatus() == Status.PAID) {
             log.info("[PAYMENT] - 이미 반영된 승인 결과 무시 (orderId={})", orderId);
-            return lockedOrder;
+            return OrderQueryResponse.from(lockedOrder);
         }
         if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
@@ -52,16 +53,16 @@ public class OrderPaymentCommandService {
         log.info("[OUTBOX] - 결제 승인 후 이벤트 저장 (orderId={}, eventStatus={})",
                 lockedOrder.getId(), orderPaidOutbox.getStatus());
 
-        return lockedOrder;
+        return OrderQueryResponse.from(lockedOrder);
     }
 
     @Transactional
-    public Order applyPaymentFailed(Long orderId, String reason) {
+    public OrderQueryResponse applyPaymentFailed(Long orderId, String reason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
         if (lockedOrder.getStatus() == Status.PAYMENT_FAILED) {
-            return lockedOrder;
+            return OrderQueryResponse.from(lockedOrder);
         }
         if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
@@ -76,43 +77,7 @@ public class OrderPaymentCommandService {
         recordStatusHistory(lockedOrder, from, Status.PAYMENT_FAILED, resolvedReason);
         log.info("[PAYMENT] - 결제 실패 결과 반영 (orderId={})", lockedOrder.getId());
 
-        return lockedOrder;
-    }
-
-    @Transactional
-    public Order cancelPayment(Order order, String cancelReason, String idempotencyKey) {
-        Long orderId = order.getId();
-
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new CustomException(OrderErrorCode.CANCEL_IDEMPOTENCY_KEY_REQUIRED);
-        }
-        String key = idempotencyKey.trim();
-
-        if (order.isRefundedWithIdempotencyKey(key)) {
-            log.info("[MOCK-PAYMENT] - 중복 취소/환불 요청 무시 (orderId={}, key={})", orderId, key);
-            return order;
-        }
-        if (order.isTerminalRefundOrCancel()) {
-            throw new CustomException(OrderErrorCode.ORDER_ALREADY_REFUNDED);
-        }
-        if (order.getStatus() != Status.PAID) {
-            throw new CustomException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
-        }
-
-        String resolvedReason = cancelReason != null && !cancelReason.isBlank()
-                ? cancelReason.trim()
-                : "mock payment refund";
-
-        Status from = order.getStatus();
-        order.markRefunded(key);
-        recordStatusHistory(order, from, Status.REFUNDED, resolvedReason);
-
-        OutboxEvent refundOutbox = persistOutboxWithEventId(
-                OutboxEvent.init("ORDER", order.getId(), buildPaymentRefundedPayload(order, resolvedReason, key)));
-        log.info("[OUTBOX] - Mock 취소/환불 후 이벤트 저장 (orderId={}, eventStatus={})",
-                order.getId(), refundOutbox.getStatus());
-
-        return order;
+        return OrderQueryResponse.from(lockedOrder);
     }
 
     private void recordStatusHistory(Order order, Status from, Status to, String reason) {
@@ -124,27 +89,6 @@ public class OrderPaymentCommandService {
         outboxEventRepository.flush();
         saved.assignEventIdFromPrimaryKey();
         return outboxEventRepository.save(saved);
-    }
-
-    private String buildPaymentRefundedPayload(Order order, String cancelReason, String idempotencyKey) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("eventType", "PAYMENT_REFUNDED");
-        payload.put("orderId", order.getId());
-        payload.put("userId", order.getUser().getId());
-        payload.put("status", order.getStatus().name());
-        payload.put("totalPrice", order.getTotalPrice());
-        payload.put("cancelReason", cancelReason);
-        payload.put("idempotencyKey", idempotencyKey);
-        payload.put("items", order.getOrderItems().stream().map(i -> Map.of(
-                "productId", i.getProductId(),
-                "quantity", i.getQuantity()
-        )).toList());
-
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
-        }
     }
 
     private String buildOrderPaidPayload(Order order) {

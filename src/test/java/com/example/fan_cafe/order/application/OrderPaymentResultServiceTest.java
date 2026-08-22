@@ -1,8 +1,8 @@
 package com.example.fan_cafe.order.application;
 
 import com.example.fan_cafe.global.exception.CustomException;
-import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import org.junit.jupiter.api.Test;
@@ -23,8 +23,8 @@ class OrderPaymentResultServiceTest {
     void approvedResult_appliesOrderPaid() {
         PaymentResultResponse result = new PaymentResultResponse(
                 10L, PaymentResultStatus.APPROVED, "key", null, null);
-        Order order = mock(Order.class);
-        when(commandService.applyPaymentApproved(10L, "approved")).thenReturn(order);
+        OrderQueryResponse response = mock(OrderQueryResponse.class);
+        when(commandService.applyPaymentApproved(10L, "approved")).thenReturn(response);
 
         resultService.apply(10L, result, "approved", "failed");
 
@@ -38,7 +38,7 @@ class OrderPaymentResultServiceTest {
                 10L, PaymentResultStatus.FAILED, null,
                 "approval amount mismatch", "PAYMENT_AMOUNT_MISMATCH");
         when(commandService.applyPaymentFailed(10L, "approval amount mismatch"))
-                .thenReturn(mock(Order.class));
+                .thenReturn(mock(OrderQueryResponse.class));
 
         assertThatThrownBy(() -> resultService.apply(10L, result, "approved", "failed"))
                 .isInstanceOf(CustomException.class)

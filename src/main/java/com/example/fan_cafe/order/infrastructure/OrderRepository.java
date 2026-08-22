@@ -44,9 +44,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            select distinct o
+            select o
             from Order o
-            left join fetch o.orderItems oi
             where o.id = :orderId
               and o.deletedAt is null
             """)

@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
+    private static final UUID REFUND_SAGA_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentCreationService paymentCreationService;
     @InjectMocks private PaymentService paymentService;
@@ -108,5 +110,70 @@ class PaymentServiceTest {
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APPROVED);
         assertThat(result.paymentKey()).isEqualTo("pay-1");
+    }
+
+    @Test
+    void getStatus_returnsStoredPaymentState() {
+        Payment payment = approvedPayment();
+        when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.getStatus(10L);
+
+        assertThat(result.status()).isEqualTo(PaymentStatus.APPROVED);
+        assertThat(result.approvedAmount()).isEqualByComparingTo("20000");
+    }
+
+    @Test
+    void refund_transitionsApprovedPaymentAndGeneratesIdempotencyKey() {
+        Payment payment = approvedPayment();
+        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.refund(10L, REFUND_SAGA_ID, " customer request ");
+
+        assertThat(result.status()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(result.refundIdempotencyKey()).isEqualTo("REFUND:" + REFUND_SAGA_ID);
+        assertThat(result.refundReason()).isEqualTo("customer request");
+        assertThat(result.refundedAt()).isNotNull();
+    }
+
+    @Test
+    void duplicateRefundWithSameSagaId_returnsOriginalResult() {
+        Payment payment = approvedPayment();
+        payment.refund("REFUND:" + REFUND_SAGA_ID, "first request");
+        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.refund(10L, REFUND_SAGA_ID, "retry");
+
+        assertThat(result.status()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(result.refundReason()).isEqualTo("first request");
+    }
+
+    @Test
+    void refundWithDifferentSagaId_isRejectedAfterRefund() {
+        Payment payment = approvedPayment();
+        payment.refund("REFUND:" + REFUND_SAGA_ID, "first request");
+        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.refund(10L, UUID.randomUUID(), "different request"))
+                .isInstanceOf(PaymentException.class)
+                .extracting(exception -> ((PaymentException) exception).getErrorCode())
+                .isEqualTo(PaymentErrorCode.PAYMENT_ALREADY_REFUNDED);
+    }
+
+    @Test
+    void refund_isRejectedUnlessPaymentIsApproved() {
+        Payment payment = Payment.pending(10L, BigDecimal.valueOf(20000));
+        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.refund(10L, REFUND_SAGA_ID, "too early"))
+                .isInstanceOf(PaymentException.class)
+                .extracting(exception -> ((PaymentException) exception).getErrorCode())
+                .isEqualTo(PaymentErrorCode.INVALID_PAYMENT_STATE);
+    }
+
+    private Payment approvedPayment() {
+        Payment payment = Payment.pending(10L, BigDecimal.valueOf(20000));
+        payment.approve(BigDecimal.valueOf(20000), "pay-1");
+        return payment;
     }
 }

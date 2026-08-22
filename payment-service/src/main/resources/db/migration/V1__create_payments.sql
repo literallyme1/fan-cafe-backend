@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE payments (
     id BIGINT NOT NULL AUTO_INCREMENT,
     order_id BIGINT NOT NULL,
     status VARCHAR(30) NOT NULL,

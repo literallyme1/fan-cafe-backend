@@ -6,11 +6,13 @@ import com.example.payment.exception.PaymentErrorCode;
 import com.example.payment.exception.PaymentException;
 import com.example.payment.infrastructure.PaymentRepository;
 import com.example.payment.interfaces.dto.PaymentResultResponse;
+import com.example.payment.interfaces.dto.PaymentStatusResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -76,6 +78,37 @@ public class PaymentService {
         return PaymentResultResponse.from(payment);
     }
 
+    @Transactional(readOnly = true)
+    public PaymentStatusResponse getStatus(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+        return PaymentStatusResponse.from(payment);
+    }
+
+    @Transactional
+    public PaymentStatusResponse refund(Long orderId, UUID sagaId, String reason) {
+        if (sagaId == null) {
+            throw new PaymentException(PaymentErrorCode.REFUND_SAGA_ID_REQUIRED);
+        }
+
+        Payment payment = paymentRepository.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+        String idempotencyKey = "REFUND:" + sagaId;
+
+        if (payment.getStatus() == PaymentStatus.REFUNDED) {
+            if (payment.isRefundedWith(idempotencyKey)) {
+                return PaymentStatusResponse.from(payment);
+            }
+            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_REFUNDED);
+        }
+        if (payment.getStatus() != PaymentStatus.APPROVED) {
+            throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATE);
+        }
+
+        payment.refund(idempotencyKey, resolveRefundReason(reason));
+        return PaymentStatusResponse.from(payment);
+    }
+
     private Payment findOrCreate(Long orderId, BigDecimal expectedAmount) {
         if (paymentRepository.findByOrderId(orderId).isEmpty()) {
             try {
@@ -105,5 +138,9 @@ public class PaymentService {
 
     private String resolveReason(String reason) {
         return reason == null || reason.isBlank() ? DEFAULT_FAILURE_REASON : reason.trim();
+    }
+
+    private String resolveRefundReason(String reason) {
+        return reason == null || reason.isBlank() ? "payment refund" : reason.trim();
     }
 }

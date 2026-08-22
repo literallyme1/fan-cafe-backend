@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,6 +68,40 @@ class PaymentConcurrencyIntegrationTest {
                         assertThat(result.paymentKey()).isEqualTo(PAYMENT_KEY);
                     });
             assertThat(paymentRepository.count()).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentRefundsWithSameSagaId_performSingleStateTransition() throws Exception {
+        paymentService.approve(ORDER_ID, AMOUNT, AMOUNT, PAYMENT_KEY);
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        int requestCount = 6;
+        ExecutorService executor = Executors.newFixedThreadPool(requestCount);
+        CountDownLatch ready = new CountDownLatch(requestCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<com.example.payment.interfaces.dto.PaymentStatusResponse>> futures = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < requestCount; i++) {
+                futures.add(executor.submit(() -> {
+                    ready.countDown();
+                    start.await(10, TimeUnit.SECONDS);
+                    return paymentService.refund(ORDER_ID, sagaId, "customer request");
+                }));
+            }
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<com.example.payment.interfaces.dto.PaymentStatusResponse> future : futures) {
+                assertThat(future.get(20, TimeUnit.SECONDS).refundIdempotencyKey())
+                        .isEqualTo("REFUND:" + sagaId);
+            }
+
+            var payment = paymentRepository.findByOrderId(ORDER_ID).orElseThrow();
+            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+            assertThat(payment.getRefundIdempotencyKey()).isEqualTo("REFUND:" + sagaId);
         } finally {
             executor.shutdownNow();
         }

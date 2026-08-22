@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Component
 public class PaymentClient {
@@ -38,6 +39,20 @@ public class PaymentClient {
                 .retrieve().body(PaymentResultResponse.class));
     }
 
+    public PaymentStatusResponse getStatus(Long orderId) {
+        return executeStatus(() -> restClient.get()
+                .uri("/internal/payments/{orderId}", orderId)
+                .retrieve().body(PaymentStatusResponse.class));
+    }
+
+    public PaymentStatusResponse refund(Long orderId, UUID sagaId, String reason) {
+        return executeStatus(() -> restClient.post()
+                .uri("/internal/payments/{orderId}/refund", orderId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new PaymentRefundCommand(sagaId, reason))
+                .retrieve().body(PaymentStatusResponse.class));
+    }
+
     public PaymentResultResponse forwardWebhook(
             String rawBody, String timestamp, String signature, BigDecimal expectedAmount
     ) {
@@ -63,6 +78,18 @@ public class PaymentClient {
         }
     }
 
+    private PaymentStatusResponse executeStatus(PaymentStatusCall call) {
+        try {
+            PaymentStatusResponse result = call.execute();
+            if (result == null) throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+            return result;
+        } catch (RestClientResponseException exception) {
+            throw mapRemoteError(exception);
+        } catch (RestClientException exception) {
+            throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
+        }
+    }
+
     private CustomException mapRemoteError(RestClientResponseException exception) {
         try {
             PaymentErrorResponse error = objectMapper.readValue(
@@ -72,6 +99,7 @@ public class PaymentClient {
             }
             return new CustomException(switch (error.code()) {
                 case "P001" -> OrderErrorCode.PAYMENT_KEY_REQUIRED;
+                case "P003" -> OrderErrorCode.PAYMENT_NOT_FOUND;
                 case "P004", "P006" -> OrderErrorCode.INVALID_PAYMENT_STATE;
                 case "P005" -> OrderErrorCode.ORDER_ALREADY_PAID;
                 case "P010" -> OrderErrorCode.WEBHOOK_SIGNATURE_INVALID;
@@ -79,6 +107,8 @@ public class PaymentClient {
                 case "P012" -> OrderErrorCode.WEBHOOK_TIMESTAMP_EXPIRED;
                 case "P013", "P016" -> OrderErrorCode.INVALID_WEBHOOK_EVENT_TYPE;
                 case "P014" -> OrderErrorCode.WEBHOOK_APPROVAL_AMOUNT_REQUIRED;
+                case "P018" -> OrderErrorCode.CANCEL_IDEMPOTENCY_KEY_REQUIRED;
+                case "P019" -> OrderErrorCode.ORDER_ALREADY_REFUNDED;
                 default -> OrderErrorCode.PAYMENT_SERVICE_ERROR;
             });
         } catch (JsonProcessingException parseFailure) {
@@ -88,4 +118,7 @@ public class PaymentClient {
 
     @FunctionalInterface
     private interface PaymentCall { PaymentResultResponse execute(); }
+
+    @FunctionalInterface
+    private interface PaymentStatusCall { PaymentStatusResponse execute(); }
 }

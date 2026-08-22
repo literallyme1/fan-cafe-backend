@@ -36,11 +36,11 @@ public class MockPgWebhookService {
 
         PaymentResultResponse result = paymentClient.forwardWebhook(
                 rawBody, timestamp, signature, order.getTotalPrice());
-        Order updated = orderPaymentResultService.apply(
+        OrderQueryResponse updated = orderPaymentResultService.apply(
                 order.getId(), result, "mock pg webhook approved", "mock pg webhook payment failed");
         log.info("[MOCK-PG-WEBHOOK] - Payment 결과 반영 (orderId={}, status={})",
-                updated.getId(), updated.getStatus());
-        return OrderQueryResponse.from(updated);
+                updated.getOrderId(), updated.getStatus());
+        return updated;
     }
 
     private MockPgWebhookPayload parsePayload(String rawBody) {
