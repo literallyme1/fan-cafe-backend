@@ -14,7 +14,8 @@ public enum PaymentErrorCode {
     INVALID_WEBHOOK_EVENT_TYPE("P013", HttpStatus.BAD_REQUEST, "webhook event type is not supported"),
     WEBHOOK_APPROVAL_AMOUNT_REQUIRED("P014", HttpStatus.BAD_REQUEST, "approvalAmount is required for approval webhook"),
     WEBHOOK_ORDER_ID_REQUIRED("P015", HttpStatus.BAD_REQUEST, "orderId is required for webhook"),
-    INVALID_WEBHOOK_BODY("P016", HttpStatus.BAD_REQUEST, "webhook body is invalid");
+    INVALID_WEBHOOK_BODY("P016", HttpStatus.BAD_REQUEST, "webhook body is invalid"),
+    PAYMENT_CREATION_FAILED("P017", HttpStatus.INTERNAL_SERVER_ERROR, "payment could not be created");
 
     private final String code;
     private final HttpStatus status;

@@ -6,6 +6,7 @@ import com.example.payment.exception.PaymentErrorCode;
 import com.example.payment.exception.PaymentException;
 import com.example.payment.infrastructure.PaymentRepository;
 import com.example.payment.interfaces.dto.PaymentResultResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +16,14 @@ import java.math.BigDecimal;
 public class PaymentService {
     private static final String DEFAULT_FAILURE_REASON = "mock payment failed";
     private final PaymentRepository paymentRepository;
+    private final PaymentCreationService paymentCreationService;
 
-    public PaymentService(PaymentRepository paymentRepository) {
+    public PaymentService(
+            PaymentRepository paymentRepository,
+            PaymentCreationService paymentCreationService
+    ) {
         this.paymentRepository = paymentRepository;
+        this.paymentCreationService = paymentCreationService;
     }
 
     @Transactional
@@ -71,8 +77,15 @@ public class PaymentService {
     }
 
     private Payment findOrCreate(Long orderId, BigDecimal expectedAmount) {
+        if (paymentRepository.findByOrderId(orderId).isEmpty()) {
+            try {
+                paymentCreationService.createPending(orderId, expectedAmount);
+            } catch (DataIntegrityViolationException duplicateInsert) {
+                // 동일 orderId의 동시 최초 요청이 먼저 생성했다. 아래 잠금 조회로 기존 결과를 사용한다.
+            }
+        }
         return paymentRepository.findByOrderIdForUpdate(orderId)
-                .orElseGet(() -> paymentRepository.save(Payment.pending(orderId, expectedAmount)));
+                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_CREATION_FAILED));
     }
 
     private void verifyExpectedAmount(Payment payment, BigDecimal expectedAmount) {
