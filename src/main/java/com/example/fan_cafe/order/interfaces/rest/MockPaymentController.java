@@ -65,7 +65,7 @@ public class MockPaymentController {
     @Operation(summary = "결제 환불", description = "결제 완료 주문을 환불하고 재고와 Outbox 이벤트를 반영함.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "환불 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "멱등 키 오류"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "sagaId 또는 환불 상태 오류"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "주문 없음"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "환불 불가 상태")
     })

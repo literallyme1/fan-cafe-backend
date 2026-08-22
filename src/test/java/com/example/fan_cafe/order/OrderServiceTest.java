@@ -7,6 +7,7 @@ import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.application.OrderPaymentCommandService;
 import com.example.fan_cafe.order.application.OrderPaymentResultService;
+import com.example.fan_cafe.order.application.OrderRefundResultService;
 import com.example.fan_cafe.order.application.OrderService;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
@@ -21,6 +22,7 @@ import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
+import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
@@ -41,6 +43,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,6 +70,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderPaymentResultService orderPaymentResultService;
+
+    @Mock
+    private OrderRefundResultService orderRefundResultService;
 
     @Mock
     private PaymentClient paymentClient;
@@ -164,33 +170,26 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Mock 취소/환불 API는 재고 복구 후 OrderPaymentCommandService에 위임한다.")
+    @DisplayName("Mock 취소/환불 API는 Payment 환불 후 Order 결과 반영을 위임한다.")
     void cancelMockPayment_shouldDelegateToCommandService() {
-        Merchandise merchandise = Merchandise.builder()
-                .id(100L)
-                .name("응원봉")
-                .description("응원봉")
-                .price(10000L)
-                .salePrice(9000L)
-                .stock(0)
-                .status(Status.SOLD_OUT)
-                .category(Category.CLOTHES)
-                .build();
-
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
-        when(merchandiseRepository.findMerchandiseWithPessimisticLock(100L)).thenReturn(Optional.of(merchandise));
-        paidOrder.markRefunded("cancel-1");
-        when(orderPaymentCommandService.cancelPayment(paidOrder, "고객 변심", "cancel-1"))
-                .thenReturn(paidOrder);
+        PaymentStatusResponse payment = new PaymentStatusResponse(
+                10L, PaymentResultStatus.REFUNDED, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000),
+                "pay-1", null, "REFUND:" + sagaId, "고객 변심", null);
+        when(paymentClient.refund(10L, sagaId, "고객 변심")).thenReturn(payment);
+        paidOrder.markRefunded();
+        when(orderRefundResultService.apply(10L, payment, "고객 변심")).thenReturn(paidOrder);
 
         MockPaymentCancelRequest request = new MockPaymentCancelRequest();
         ReflectionTestUtils.setField(request, "cancelReason", "고객 변심");
-        ReflectionTestUtils.setField(request, "idempotencyKey", "cancel-1");
+        ReflectionTestUtils.setField(request, "sagaId", sagaId);
 
         OrderQueryResponse response = orderService.cancelMockPayment(user, 10L, request);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.REFUNDED);
-        verify(orderPaymentCommandService).cancelPayment(paidOrder, "고객 변심", "cancel-1");
+        verify(paymentClient).refund(10L, sagaId, "고객 변심");
+        verify(orderRefundResultService).apply(10L, payment, "고객 변심");
     }
 
     @Test

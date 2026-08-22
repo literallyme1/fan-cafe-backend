@@ -12,6 +12,8 @@ import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
+import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
+import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.PaymentPendingFixture;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.SignedWebhook;
@@ -40,6 +42,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,7 +60,7 @@ import static org.mockito.Mockito.when;
 class OrderPaymentConsistencyIntegrationTest {
 
     private static final String PAYMENT_KEY = "pay-idem-integration-001";
-    private static final String REFUND_KEY = "refund-idem-integration-001";
+    private static final UUID REFUND_SAGA_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
     @Autowired
     private MockPgWebhookService mockPgWebhookService;
@@ -73,6 +76,9 @@ class OrderPaymentConsistencyIntegrationTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private MerchandiseRepository merchandiseRepository;
 
     @Autowired
     private OrderIntegrationTestSupport fixtures;
@@ -108,6 +114,14 @@ class OrderPaymentConsistencyIntegrationTest {
                     }
                     return new PaymentResultResponse(orderId, PaymentResultStatus.APPROVED,
                             PAYMENT_KEY, null, null);
+                });
+        when(paymentClient.refund(anyLong(), any(UUID.class), anyString()))
+                .thenAnswer(invocation -> {
+                    Long orderId = invocation.getArgument(0);
+                    UUID sagaId = invocation.getArgument(1);
+                    return new PaymentStatusResponse(
+                            orderId, PaymentResultStatus.REFUNDED, null, null, PAYMENT_KEY, null,
+                            "REFUND:" + sagaId, invocation.getArgument(2), null);
                 });
     }
 
@@ -254,7 +268,7 @@ class OrderPaymentConsistencyIntegrationTest {
 
         MockPaymentCancelRequest cancelRequest = new MockPaymentCancelRequest();
         ReflectionTestUtils.setField(cancelRequest, "cancelReason", "고객 변심");
-        ReflectionTestUtils.setField(cancelRequest, "idempotencyKey", REFUND_KEY);
+        ReflectionTestUtils.setField(cancelRequest, "sagaId", REFUND_SAGA_ID);
 
         orderService.cancelMockPayment(fixture.user(), fixture.order().getId(), cancelRequest);
         orderService.cancelMockPayment(fixture.user(), fixture.order().getId(), cancelRequest);
@@ -271,6 +285,8 @@ class OrderPaymentConsistencyIntegrationTest {
         assertThat(outboxEvents).hasSize(2);
         assertThat(outboxEvents.stream().filter(e -> e.getPayload().contains("ORDER_PAID")).count()).isEqualTo(1);
         assertThat(outboxEvents.stream().filter(e -> e.getPayload().contains("PAYMENT_REFUNDED")).count()).isEqualTo(1);
+        assertThat(merchandiseRepository.findById(fixture.merchandise().getId()).orElseThrow().getStock())
+                .isEqualTo(100);
     }
 
     // --- 3차: 동시성 ---
@@ -323,6 +339,56 @@ class OrderPaymentConsistencyIntegrationTest {
         assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(1);
         assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
         assertThat(successCount.get()).isGreaterThanOrEqualTo(1);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("[3차] concurrentRefundRequest_restoresStockAndPersistsHistoryAndOutboxOnlyOnce")
+    void concurrentRefundRequest_appliesOrderResultOnlyOnce() throws InterruptedException {
+        PaymentPendingFixture fixture = trackFixture(fixtures.createPaymentPendingOrder());
+        approveOrder(fixture);
+        MockPaymentCancelRequest request = new MockPaymentCancelRequest();
+        ReflectionTestUtils.setField(request, "cancelReason", "고객 변심");
+        ReflectionTestUtils.setField(request, "sagaId", REFUND_SAGA_ID);
+
+        int threadCount = 8;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger();
+
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await(10, TimeUnit.SECONDS);
+                        orderService.cancelMockPayment(fixture.user(), fixture.order().getId(), request);
+                        successCount.incrementAndGet();
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+
+        entityManager.clear();
+        Long orderId = fixture.order().getId();
+        assertThat(successCount.get()).isEqualTo(threadCount);
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus()).isEqualTo(Status.REFUNDED);
+        assertThat(merchandiseRepository.findById(fixture.merchandise().getId()).orElseThrow().getStock())
+                .isEqualTo(100);
+        assertThat(orderStatusHistoryRepository.countByOrder_Id(orderId)).isEqualTo(2);
+        assertThat(outboxEventRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(2);
     }
 
     private PaymentPendingFixture trackFixture(PaymentPendingFixture fixture) {

@@ -20,6 +20,7 @@ import com.example.fan_cafe.order.interfaces.dto.OrderCreateResponse;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
+import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.User;
@@ -48,6 +49,7 @@ public class OrderService {
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final OrderPaymentCommandService orderPaymentCommandService;
     private final OrderPaymentResultService orderPaymentResultService;
+    private final OrderRefundResultService orderRefundResultService;
     private final PaymentClient paymentClient;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
@@ -141,20 +143,19 @@ public class OrderService {
         return OrderQueryResponse.from(updated);
     }
 
-    @Transactional
     public OrderQueryResponse cancelMockPayment(User user, Long orderId, MockPaymentCancelRequest request) {
         getOrderer(user);
 
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        restoreStock(order);
+        if (order.getStatus() != Status.PAID && order.getStatus() != Status.REFUNDED) {
+            throw new CustomException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
+        }
 
-        Order updated = orderPaymentCommandService.cancelPayment(
-                order,
-                request.getCancelReason(),
-                request.getIdempotencyKey()
-        );
+        PaymentStatusResponse payment = paymentClient.refund(
+                orderId, request.getSagaId(), request.getCancelReason());
+        Order updated = orderRefundResultService.apply(orderId, payment, request.getCancelReason());
         return OrderQueryResponse.from(updated);
     }
 

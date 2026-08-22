@@ -101,7 +101,6 @@ BEGIN
             user_id,
             total_price,
             status,
-            refund_idempotency_key,
             created_at,
             updated_at
         ) VALUES (
@@ -109,7 +108,6 @@ BEGIN
             v_user_id,
             unit_price * item_quantity,
             'PAYMENT_PENDING',
-            NULL,
             NOW(),
             NOW()
         );

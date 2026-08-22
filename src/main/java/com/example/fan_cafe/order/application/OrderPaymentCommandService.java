@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,7 @@ public class OrderPaymentCommandService {
     public Order applyPaymentApproved(Long orderId, String historyReason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        Hibernate.initialize(lockedOrder.getOrderItems());
 
         if (lockedOrder.getStatus() == Status.PAID) {
             log.info("[PAYMENT] - 이미 반영된 승인 결과 무시 (orderId={})", orderId);
@@ -59,6 +61,7 @@ public class OrderPaymentCommandService {
     public Order applyPaymentFailed(Long orderId, String reason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        Hibernate.initialize(lockedOrder.getOrderItems());
 
         if (lockedOrder.getStatus() == Status.PAYMENT_FAILED) {
             return lockedOrder;
@@ -79,42 +82,6 @@ public class OrderPaymentCommandService {
         return lockedOrder;
     }
 
-    @Transactional
-    public Order cancelPayment(Order order, String cancelReason, String idempotencyKey) {
-        Long orderId = order.getId();
-
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new CustomException(OrderErrorCode.CANCEL_IDEMPOTENCY_KEY_REQUIRED);
-        }
-        String key = idempotencyKey.trim();
-
-        if (order.isRefundedWithIdempotencyKey(key)) {
-            log.info("[MOCK-PAYMENT] - 중복 취소/환불 요청 무시 (orderId={}, key={})", orderId, key);
-            return order;
-        }
-        if (order.isTerminalRefundOrCancel()) {
-            throw new CustomException(OrderErrorCode.ORDER_ALREADY_REFUNDED);
-        }
-        if (order.getStatus() != Status.PAID) {
-            throw new CustomException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
-        }
-
-        String resolvedReason = cancelReason != null && !cancelReason.isBlank()
-                ? cancelReason.trim()
-                : "mock payment refund";
-
-        Status from = order.getStatus();
-        order.markRefunded(key);
-        recordStatusHistory(order, from, Status.REFUNDED, resolvedReason);
-
-        OutboxEvent refundOutbox = persistOutboxWithEventId(
-                OutboxEvent.init("ORDER", order.getId(), buildPaymentRefundedPayload(order, resolvedReason, key)));
-        log.info("[OUTBOX] - Mock 취소/환불 후 이벤트 저장 (orderId={}, eventStatus={})",
-                order.getId(), refundOutbox.getStatus());
-
-        return order;
-    }
-
     private void recordStatusHistory(Order order, Status from, Status to, String reason) {
         orderStatusHistoryRepository.save(OrderStatusHistory.of(order, from, to, reason));
     }
@@ -124,27 +91,6 @@ public class OrderPaymentCommandService {
         outboxEventRepository.flush();
         saved.assignEventIdFromPrimaryKey();
         return outboxEventRepository.save(saved);
-    }
-
-    private String buildPaymentRefundedPayload(Order order, String cancelReason, String idempotencyKey) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("eventType", "PAYMENT_REFUNDED");
-        payload.put("orderId", order.getId());
-        payload.put("userId", order.getUser().getId());
-        payload.put("status", order.getStatus().name());
-        payload.put("totalPrice", order.getTotalPrice());
-        payload.put("cancelReason", cancelReason);
-        payload.put("idempotencyKey", idempotencyKey);
-        payload.put("items", order.getOrderItems().stream().map(i -> Map.of(
-                "productId", i.getProductId(),
-                "quantity", i.getQuantity()
-        )).toList());
-
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
-        }
     }
 
     private String buildOrderPaidPayload(Order order) {
