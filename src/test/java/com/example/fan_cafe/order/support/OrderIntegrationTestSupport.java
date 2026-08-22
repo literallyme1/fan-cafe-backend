@@ -5,26 +5,29 @@ import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.application.OrderService;
-import com.example.fan_cafe.order.config.MockPgProperties;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateResponse;
-import com.example.fan_cafe.order.payment.MockPgWebhookSignatureVerifier;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import java.util.HexFormat;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Order 결제/환불 통합 테스트용 픽스처·웹훅 서명 헬퍼.
@@ -50,8 +53,8 @@ public class OrderIntegrationTestSupport {
     @Autowired
     private OutboxEventRepository outboxEventRepository;
 
-    @Autowired
-    private MockPgProperties mockPgProperties;
+    @Value("${mock.pg.webhook-secret}")
+    private String webhookSecret;
 
     public record PaymentPendingFixture(User user, Merchandise merchandise, Order order, BigDecimal totalPrice) {
     }
@@ -69,21 +72,13 @@ public class OrderIntegrationTestSupport {
 
     public SignedWebhook sign(String rawBody) {
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
-        String signature = MockPgWebhookSignatureVerifier.signForTest(
-                mockPgProperties.getWebhookSecret(),
-                timestamp,
-                rawBody
-        );
+        String signature = signForTest(webhookSecret, timestamp, rawBody);
         return new SignedWebhook(rawBody, timestamp, signature);
     }
 
     public SignedWebhook signedWebhookWithTimestamp(String rawBody, long epochSeconds) {
         String timestamp = String.valueOf(epochSeconds);
-        String signature = MockPgWebhookSignatureVerifier.signForTest(
-                mockPgProperties.getWebhookSecret(),
-                timestamp,
-                rawBody
-        );
+        String signature = signForTest(webhookSecret, timestamp, rawBody);
         return new SignedWebhook(rawBody, timestamp, signature);
     }
 
@@ -131,5 +126,16 @@ public class OrderIntegrationTestSupport {
     }
 
     public record SignedWebhook(String rawBody, String timestamp, String signature) {
+    }
+
+    private String signForTest(String secret, String timestamp, String rawBody) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return HexFormat.of().formatHex(mac.doFinal(
+                    (timestamp + "." + rawBody).getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }

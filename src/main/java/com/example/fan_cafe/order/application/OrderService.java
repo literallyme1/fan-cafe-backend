@@ -18,6 +18,8 @@ import com.example.fan_cafe.order.interfaces.dto.MockPaymentFailRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderCreateResponse;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
+import com.example.fan_cafe.order.payment.client.PaymentClient;
+import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.User;
@@ -45,6 +47,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final OrderPaymentCommandService orderPaymentCommandService;
+    private final OrderPaymentResultService orderPaymentResultService;
+    private final PaymentClient paymentClient;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
@@ -104,7 +108,6 @@ public class OrderService {
         return OrderCreateResponse.from(saved);
     }
 
-    @Transactional
     public OrderQueryResponse approveMockPayment(User user, Long orderId, MockPaymentApproveRequest request) {
         getOrderer(user);
         String paymentKey = request.resolvePaymentKey();
@@ -115,16 +118,13 @@ public class OrderService {
         Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        Order updated = orderPaymentCommandService.approvePaymentWithPessimisticLock(
-                order,
-                request.getApprovalAmount(),
-                paymentKey,
-                "mock payment approved"
-        );
+        PaymentResultResponse result = paymentClient.approve(
+                orderId, order.getTotalPrice(), request.getApprovalAmount(), paymentKey);
+        Order updated = orderPaymentResultService.apply(
+                orderId, result, "mock payment approved", "mock payment failed");
         return OrderQueryResponse.from(updated);
     }
 
-    @Transactional
     public OrderQueryResponse failMockPayment(User user, Long orderId, MockPaymentFailRequest request) {
         getOrderer(user);
 
@@ -135,7 +135,9 @@ public class OrderService {
                 ? request.getReason().trim()
                 : "mock payment failed";
 
-        Order updated = orderPaymentCommandService.failPayment(order, reason);
+        PaymentResultResponse result = paymentClient.fail(orderId, order.getTotalPrice(), reason);
+        Order updated = orderPaymentResultService.apply(
+                orderId, result, "mock payment approved", "mock payment failed");
         return OrderQueryResponse.from(updated);
     }
 

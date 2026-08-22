@@ -141,7 +141,6 @@ BEGIN
             user_id,
             total_price,
             status,
-            approved_payment_key,
             refund_idempotency_key,
             created_at,
             updated_at
@@ -150,7 +149,6 @@ BEGIN
             v_user_id,
             unit_price * item_quantity,
             'PAYMENT_PENDING',
-            NULL,
             NULL,
             NOW(),
             NOW()

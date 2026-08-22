@@ -14,6 +14,7 @@ services:
 
     environment:
       SPRING_PROFILES_ACTIVE: dev
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8081
       JWT_PRIVATE_KEY_PATH: file:/run/secrets/jwt/private_key.pem
       JWT_PUBLIC_KEY_PATH: file:/run/secrets/jwt/public_key.pem
       FIREBASE_SERVICE_ACCOUNT_PATH: file:/run/secrets/firebase/service-account.json
@@ -24,6 +25,7 @@ services:
 
     depends_on:
       - db
+      - payment-service
       - redis
       - rabbitmq
 
@@ -41,6 +43,34 @@ services:
     ports:
       - "3307:3306"
 
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    image: fan-cafe-payment-service
+    container_name: fan-cafe-payment-service
+    ports:
+      - "8081:8081"
+    environment:
+      PAYMENT_DB_URL: jdbc:mysql://payment-db:3306/payment_db?allowPublicKeyRetrieval=true&useSSL=false
+      PAYMENT_DB_USERNAME: root
+      PAYMENT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MOCK_PG_WEBHOOK_SECRET: ${MOCK_PG_WEBHOOK_SECRET}
+    depends_on:
+      - payment-db
+    restart: unless-stopped
+
+  payment-db:
+    image: mysql:8.0
+    container_name: fan-cafe-payment-db
+    environment:
+      MYSQL_DATABASE: payment_db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - payment-db-data:/var/lib/mysql
+    ports:
+      - "3308:3306"
+
   redis:
     image: redis:7
     container_name: fan-cafe-redis
@@ -56,3 +86,4 @@ services:
 
 volumes:
   db-data:
+  payment-db-data:

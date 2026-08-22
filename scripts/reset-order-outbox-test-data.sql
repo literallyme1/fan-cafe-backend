@@ -10,8 +10,7 @@
 --   - 연관 order_items, order_status_history, outbox_events
 --   - 부하 테스트 전용 user / merchandise (다른 데이터와 겹치지 않는 fixture)
 --
--- 참고: 별도 payments 테이블은 없으며, 결제 키는 orders.approved_payment_key 컬럼에 저장됩니다.
---       주문 삭제 시 payment 관련 컬럼도 함께 제거됩니다.
+-- 참고: Payment 데이터는 별도 payment_db에 있으므로 Payment 테스트 데이터는 별도로 초기화합니다.
 --
 -- 수동 초기화용 (Spring 기동 시 seed 프로시저가 자동 reset 포함)
 -- Spring test profile + load-test.seed.payment-pending-orders.enabled=true 이면 별도 실행 불필요
@@ -40,7 +39,7 @@ WHERE order_id BETWEEN @order_id_start AND @order_id_end;
 DELETE FROM order_items
 WHERE order_id BETWEEN @order_id_start AND @order_id_end;
 
--- (4) 주문 (approved_payment_key / refund_idempotency_key 포함)
+-- (4) 주문
 DELETE FROM orders
 WHERE id BETWEEN @order_id_start AND @order_id_end;
 

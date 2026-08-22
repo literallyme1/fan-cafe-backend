@@ -9,6 +9,9 @@ import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
+import com.example.fan_cafe.order.payment.client.PaymentClient;
+import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
+import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.PaymentPendingFixture;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.SignedWebhook;
@@ -16,11 +19,13 @@ import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
@@ -35,9 +40,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Order 결제/환불 정합성 통합 테스트.
@@ -72,7 +80,36 @@ class OrderPaymentConsistencyIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    @MockBean
+    private PaymentClient paymentClient;
+
     private final List<PaymentPendingFixture> fixturesToCleanup = new ArrayList<>();
+
+    @BeforeEach
+    void stubPaymentBoundary() {
+        when(paymentClient.forwardWebhook(anyString(), anyString(), anyString(), any(BigDecimal.class)))
+                .thenAnswer(invocation -> {
+                    String rawBody = invocation.getArgument(0);
+                    String timestamp = invocation.getArgument(1);
+                    String signature = invocation.getArgument(2);
+                    if ("invalid-signature".equals(signature)) {
+                        throw new CustomException(OrderErrorCode.WEBHOOK_SIGNATURE_INVALID);
+                    }
+                    if (Math.abs(Instant.now().getEpochSecond() - Long.parseLong(timestamp)) > 300) {
+                        throw new CustomException(OrderErrorCode.WEBHOOK_TIMESTAMP_EXPIRED);
+                    }
+                    var payload = new ObjectMapper().readTree(rawBody);
+                    long orderId = payload.get("orderId").asLong();
+                    BigDecimal approvalAmount = payload.get("approvalAmount").decimalValue();
+                    BigDecimal expectedAmount = invocation.getArgument(3);
+                    if (expectedAmount.compareTo(approvalAmount) != 0) {
+                        return new PaymentResultResponse(orderId, PaymentResultStatus.FAILED,
+                                null, "approval amount mismatch", "PAYMENT_AMOUNT_MISMATCH");
+                    }
+                    return new PaymentResultResponse(orderId, PaymentResultStatus.APPROVED,
+                            PAYMENT_KEY, null, null);
+                });
+    }
 
     @AfterEach
     void tearDown() {
@@ -94,7 +131,6 @@ class OrderPaymentConsistencyIntegrationTest {
 
         Order reloaded = orderRepository.findById(fixture.order().getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(Status.PAID);
-        assertThat(reloaded.getApprovedPaymentKey()).isEqualTo(PAYMENT_KEY);
     }
 
     @Test

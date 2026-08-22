@@ -15,10 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,40 +30,21 @@ public class OrderPaymentCommandService {
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = CustomException.class)
-    public Order approvePaymentWithPessimisticLock(
-            Order order,
-            BigDecimal approvalAmount,
-            String paymentKey,
-            String historyReason
-    ) {
-        Long orderId = order.getId();
+    @Transactional
+    public Order applyPaymentApproved(Long orderId, String historyReason) {
         Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        if (lockedOrder.isPaidWithPaymentKey(paymentKey)) {
-            log.info("[MOCK-PAYMENT] - 중복 승인 요청 무시 (orderId={}, key={})", orderId, paymentKey);
-            return lockedOrder;
-        }
         if (lockedOrder.getStatus() == Status.PAID) {
-            throw new CustomException(OrderErrorCode.ORDER_ALREADY_PAID);
+            log.info("[PAYMENT] - 이미 반영된 승인 결과 무시 (orderId={})", orderId);
+            return lockedOrder;
         }
         if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         }
 
-        if (lockedOrder.getTotalPrice().compareTo(approvalAmount) != 0) {
-            Status from = lockedOrder.getStatus();
-            lockedOrder.markPaymentFailed();
-            recordStatusHistory(lockedOrder, from, Status.PAYMENT_FAILED, "approval amount mismatch");
-            orderRepository.save(lockedOrder);
-            log.warn("[MOCK-PAYMENT] - 금액 불일치 (orderId={}, expected={}, actual={})",
-                    orderId, lockedOrder.getTotalPrice(), approvalAmount);
-            throw new CustomException(OrderErrorCode.PAYMENT_AMOUNT_MISMATCH);
-        }
-
         Status from = lockedOrder.getStatus();
-        lockedOrder.markPaid(paymentKey);
+        lockedOrder.markPaid();
         recordStatusHistory(lockedOrder, from, Status.PAID, historyReason);
 
         OutboxEvent orderPaidOutbox = persistOutboxWithEventId(
@@ -77,11 +56,14 @@ public class OrderPaymentCommandService {
     }
 
     @Transactional
-    public Order failPayment(Order order, String reason) {
-        if (order.getStatus() == Status.PAYMENT_FAILED) {
-            return order;
+    public Order applyPaymentFailed(Long orderId, String reason) {
+        Order lockedOrder = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (lockedOrder.getStatus() == Status.PAYMENT_FAILED) {
+            return lockedOrder;
         }
-        if (order.getStatus() != Status.PAYMENT_PENDING) {
+        if (lockedOrder.getStatus() != Status.PAYMENT_PENDING) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         }
 
@@ -89,13 +71,12 @@ public class OrderPaymentCommandService {
                 ? reason.trim()
                 : "mock payment failed";
 
-        Status from = order.getStatus();
-        order.markPaymentFailed();
-        recordStatusHistory(order, from, Status.PAYMENT_FAILED, resolvedReason);
-        orderRepository.save(order);
-        log.info("[MOCK-PAYMENT] - 결제 실패 처리 (orderId={})", order.getId());
+        Status from = lockedOrder.getStatus();
+        lockedOrder.markPaymentFailed();
+        recordStatusHistory(lockedOrder, from, Status.PAYMENT_FAILED, resolvedReason);
+        log.info("[PAYMENT] - 결제 실패 결과 반영 (orderId={})", lockedOrder.getId());
 
-        return order;
+        return lockedOrder;
     }
 
     @Transactional

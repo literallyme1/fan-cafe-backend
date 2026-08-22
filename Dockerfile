@@ -6,6 +6,7 @@ COPY gradlew .
 RUN chmod +x gradlew
 COPY gradle gradle
 COPY build.gradle settings.gradle ./
+COPY payment-service/build.gradle payment-service/build.gradle
 RUN ./gradlew dependencies --no-daemon
 
 COPY src src

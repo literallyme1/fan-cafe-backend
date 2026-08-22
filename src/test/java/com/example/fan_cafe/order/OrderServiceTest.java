@@ -6,6 +6,7 @@ import com.example.fan_cafe.merchandise.domain.Merchandise;
 import com.example.fan_cafe.merchandise.domain.Status;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.application.OrderPaymentCommandService;
+import com.example.fan_cafe.order.application.OrderPaymentResultService;
 import com.example.fan_cafe.order.application.OrderService;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
@@ -17,6 +18,9 @@ import com.example.fan_cafe.order.interfaces.dto.MockPaymentApproveRequest;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentCancelRequest;
 import com.example.fan_cafe.order.interfaces.dto.MockPaymentFailRequest;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
+import com.example.fan_cafe.order.payment.client.PaymentClient;
+import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
+import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.example.fan_cafe.user.domain.Role;
@@ -62,6 +66,12 @@ class OrderServiceTest {
     private OrderPaymentCommandService orderPaymentCommandService;
 
     @Mock
+    private OrderPaymentResultService orderPaymentResultService;
+
+    @Mock
+    private PaymentClient paymentClient;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
@@ -86,7 +96,7 @@ class OrderServiceTest {
         paidOrder = Order.paymentPending(user, BigDecimal.valueOf(20000));
         ReflectionTestUtils.setField(paidOrder, "id", 10L);
         paidOrder.addItem(OrderItem.snapshot(100L, "응원봉", BigDecimal.valueOf(10000), 2));
-        paidOrder.markPaid("pay-key-1");
+        paidOrder.markPaid();
 
         when(userRepository.findByIdAndDeletedAtIsNull(user.getId())).thenReturn(Optional.of(user));
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> {
@@ -112,16 +122,16 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Mock 결제 승인 API는 OrderPaymentCommandService에 위임한다.")
+    @DisplayName("Mock 결제 승인 API는 Payment 호출 후 결과 반영을 위임한다.")
     void approveMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-        paidOrder.markPaid("idem-001");
-        when(orderPaymentCommandService.approvePaymentWithPessimisticLock(
-                paymentPendingOrder,
-                BigDecimal.valueOf(20000),
-                "idem-001",
-                "mock payment approved"
-        )).thenReturn(paidOrder);
+        PaymentResultResponse result = new PaymentResultResponse(
+                10L, PaymentResultStatus.APPROVED, "idem-001", null, null);
+        when(paymentClient.approve(10L, BigDecimal.valueOf(20000),
+                BigDecimal.valueOf(20000), "idem-001")).thenReturn(result);
+        when(orderPaymentResultService.apply(
+                10L, result, "mock payment approved", "mock payment failed"))
+                .thenReturn(paidOrder);
 
         MockPaymentApproveRequest request = new MockPaymentApproveRequest();
         ReflectionTestUtils.setField(request, "approvalAmount", BigDecimal.valueOf(20000));
@@ -130,26 +140,27 @@ class OrderServiceTest {
         OrderQueryResponse response = orderService.approveMockPayment(user, 10L, request);
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAID);
-        verify(orderPaymentCommandService).approvePaymentWithPessimisticLock(
-                paymentPendingOrder,
-                BigDecimal.valueOf(20000),
-                "idem-001",
-                "mock payment approved"
-        );
+        verify(paymentClient).approve(10L, BigDecimal.valueOf(20000),
+                BigDecimal.valueOf(20000), "idem-001");
     }
 
     @Test
-    @DisplayName("Mock 결제 실패 API는 OrderPaymentCommandService에 위임한다.")
+    @DisplayName("Mock 결제 실패 API는 Payment 호출 후 결과 반영을 위임한다.")
     void failMockPayment_shouldDelegateToCommandService() {
         when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
-        paymentPendingOrder.markPaymentFailed();
-        when(orderPaymentCommandService.failPayment(paymentPendingOrder, "mock payment failed"))
+        PaymentResultResponse result = new PaymentResultResponse(
+                10L, PaymentResultStatus.FAILED, null, "mock payment failed", null);
+        when(paymentClient.fail(10L, BigDecimal.valueOf(20000), "mock payment failed"))
+                .thenReturn(result);
+        when(orderPaymentResultService.apply(
+                10L, result, "mock payment approved", "mock payment failed"))
                 .thenReturn(paymentPendingOrder);
+        paymentPendingOrder.markPaymentFailed();
 
         OrderQueryResponse response = orderService.failMockPayment(user, 10L, new MockPaymentFailRequest());
 
         assertThat(response.getStatus()).isEqualTo(com.example.fan_cafe.order.domain.Status.PAYMENT_FAILED);
-        verify(orderPaymentCommandService).failPayment(paymentPendingOrder, "mock payment failed");
+        verify(paymentClient).fail(10L, BigDecimal.valueOf(20000), "mock payment failed");
     }
 
     @Test
