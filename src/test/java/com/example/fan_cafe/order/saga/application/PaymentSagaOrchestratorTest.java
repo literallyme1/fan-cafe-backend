@@ -144,7 +144,7 @@ class PaymentSagaOrchestratorTest {
         when(sagaTransactionService.transition(sagaId, SagaStatus.PAYMENT_PENDING)).thenReturn(pending);
         when(paymentClient.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
                 .thenThrow(timeout);
-        when(sagaTransactionService.markPaymentUnknown(sagaId)).thenReturn(unknown);
+        when(sagaTransactionService.markPaymentUnknown(eq(sagaId), anyString())).thenReturn(unknown);
         when(paymentClient.getStatus(10L)).thenThrow(notFound);
 
         assertThatThrownBy(() -> orchestrator.approve(
@@ -153,7 +153,7 @@ class PaymentSagaOrchestratorTest {
 
         InOrder order = inOrder(sagaTransactionService, paymentClient);
         order.verify(paymentClient).approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1");
-        order.verify(sagaTransactionService).markPaymentUnknown(sagaId);
+        order.verify(sagaTransactionService).markPaymentUnknown(eq(sagaId), anyString());
         order.verify(paymentClient).getStatus(10L);
         verifyNoInteractions(compensationService, paymentFailureService, completionService);
     }

@@ -4,6 +4,8 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.saga.exception.SagaErrorCode;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -125,5 +127,60 @@ class PaymentSagaStateMachineTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
+    }
+
+    @Test
+    void recoveryTargets_canTransitionToManualReconciliation() {
+        SagaInstance unknownSaga = SagaInstance.started(10L);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_UNKNOWN);
+        stateMachine.transition(unknownSaga, SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(unknownSaga.getStatus()).isEqualTo(SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(unknownSaga.getCurrentStep()).isEqualTo(SagaStep.MANUAL_RECONCILIATION);
+
+        SagaInstance compensatingSaga = SagaInstance.started(11L);
+        stateMachine.transition(compensatingSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(compensatingSaga, SagaStatus.PAYMENT_COMPLETED);
+        stateMachine.transition(compensatingSaga, SagaStatus.COMPENSATING);
+        stateMachine.transition(compensatingSaga, SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(compensatingSaga.getStatus()).isEqualTo(SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(compensatingSaga.getCurrentStep()).isEqualTo(SagaStep.MANUAL_RECONCILIATION);
+    }
+
+    @Test
+    void reconciliationRequired_isTerminalForAutomaticFsm() {
+        SagaInstance saga = SagaInstance.started(10L);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
+        stateMachine.transition(saga, SagaStatus.RECONCILIATION_REQUIRED);
+
+        assertThatThrownBy(() -> stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
+        assertThat(SagaStatus.RECONCILIATION_REQUIRED.isAtOrAfter(SagaStatus.PAYMENT_PENDING))
+                .isFalse();
+    }
+
+    @Test
+    void initialRecoveryScheduleDoesNotIncreaseRetryCount() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 23, 12, 0);
+
+        SagaInstance unknownSaga = SagaInstance.started(10L);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_UNKNOWN);
+        unknownSaga.schedulePaymentUnknownRecovery(now.plusSeconds(10), "approval outcome unknown");
+        assertThat(unknownSaga.getNextRetryAt()).isEqualTo(now.plusSeconds(10));
+        assertThat(unknownSaga.getRetryCount()).isZero();
+        assertThat(unknownSaga.getLastError()).isEqualTo("approval outcome unknown");
+
+        SagaInstance compensatingSaga = SagaInstance.started(11L);
+        stateMachine.transition(compensatingSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(compensatingSaga, SagaStatus.PAYMENT_COMPLETED);
+        stateMachine.transition(compensatingSaga, SagaStatus.COMPENSATING);
+        compensatingSaga.scheduleInitialRefundResultDeadline(now.plusMinutes(1));
+        assertThat(compensatingSaga.getNextRetryAt()).isEqualTo(now.plusMinutes(1));
+        assertThat(compensatingSaga.getRetryCount()).isZero();
+        assertThat(compensatingSaga.getLastError()).isNull();
     }
 }

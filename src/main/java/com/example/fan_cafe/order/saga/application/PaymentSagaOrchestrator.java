@@ -45,9 +45,17 @@ public class PaymentSagaOrchestrator {
             case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
             case CANCELLED -> paymentFailureService.fail(
                     saga.sagaId(), orderId, FAILED_REASON);
-            case COMPENSATING, COMPENSATED ->
+            case COMPENSATING, COMPENSATED, RECONCILIATION_REQUIRED ->
                     throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         };
+    }
+
+    public OrderQueryResponse recoverPaymentUnknown(UUID sagaId, Long orderId) {
+        return resolveUnknownPayment(
+                new SagaSnapshot(
+                        sagaId, orderId, SagaStatus.PAYMENT_UNKNOWN,
+                        com.example.fan_cafe.order.saga.domain.SagaStep.PAYMENT_STATUS_CHECK),
+                orderId);
     }
 
     private OrderQueryResponse approvePending(
@@ -61,7 +69,8 @@ public class PaymentSagaOrchestrator {
         try {
             payment = paymentClient.approve(orderId, expectedAmount, approvalAmount, paymentKey);
         } catch (PaymentOutcomeUnknownException unknown) {
-            SagaSnapshot current = sagaTransactionService.markPaymentUnknown(saga.sagaId());
+            SagaSnapshot current = sagaTransactionService.markPaymentUnknown(
+                    saga.sagaId(), summarizeUnknown(unknown));
             return continueAfterUnknown(current, orderId, unknown);
         }
 
@@ -91,7 +100,8 @@ public class PaymentSagaOrchestrator {
             case PAYMENT_UNKNOWN -> resolveUnknownPayment(saga, orderId);
             case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
             case CANCELLED -> paymentFailureService.fail(saga.sagaId(), orderId, FAILED_REASON);
-            case STARTED, PAYMENT_PENDING, COMPENSATING, COMPENSATED -> throw originalFailure;
+            case STARTED, PAYMENT_PENDING, COMPENSATING, COMPENSATED,
+                    RECONCILIATION_REQUIRED -> throw originalFailure;
         };
     }
 
@@ -120,6 +130,10 @@ public class PaymentSagaOrchestrator {
         if (!expectedOrderId.equals(actualOrderId)) {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
+    }
+
+    private String summarizeUnknown(PaymentOutcomeUnknownException unknown) {
+        return unknown.getClass().getSimpleName() + ": " + unknown.getErrorMessage();
     }
 
     private OrderQueryResponse completeOrder(UUID sagaId, Long orderId) {

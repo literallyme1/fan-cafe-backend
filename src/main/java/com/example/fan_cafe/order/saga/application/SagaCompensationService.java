@@ -20,6 +20,7 @@ import com.example.fan_cafe.order.saga.exception.SagaErrorCode;
 import com.example.fan_cafe.order.saga.infrastructure.SagaInstanceRepository;
 import com.example.fan_cafe.order.saga.messaging.PaymentRefundedResult;
 import com.example.fan_cafe.order.saga.messaging.RefundPaymentCommand;
+import com.example.fan_cafe.order.saga.recovery.SagaRecoveryProperties;
 import com.example.fan_cafe.outbox.domain.OutboxEvent;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +47,8 @@ public class SagaCompensationService {
     private final PaymentSagaStateMachine stateMachine;
     private final OutboxEventRepository outboxEventRepository;
     private final ObjectMapper objectMapper;
+    private final SagaRecoveryProperties recoveryProperties;
+    private final Clock clock;
 
     @Transactional
     public void start(UUID sagaId, Long orderId, String reason) {
@@ -58,6 +63,8 @@ public class SagaCompensationService {
 
         RefundPaymentCommand command = RefundPaymentCommand.of(sagaId, orderId, reason);
         stateMachine.transition(saga, SagaStatus.COMPENSATING);
+        saga.scheduleInitialRefundResultDeadline(
+                LocalDateTime.now(clock).plus(recoveryProperties.getRefundResultTimeout()));
         persistOutbox(OutboxEvent.init(
                 AGGREGATE_TYPE, orderId, serialize(command)));
     }
