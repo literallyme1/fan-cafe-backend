@@ -1,0 +1,23 @@
+services:
+  app:
+    environment:
+      SPRING_PROFILES_ACTIVE: experiment
+      DB_URL: jdbc:mysql://db:3306/fan_cafe?allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      PAYMENT_SERVICE_BASE_URL: http://payment-service:8081
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+      SAGA_RECOVERY_CONCURRENCY: ${SAGA_RECOVERY_CONCURRENCY:-1}
+      SAGA_RECOVERY_ENABLED: ${SAGA_RECOVERY_ENABLED:-true}
+
+  payment-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: experiment
+      PAYMENT_DB_URL: jdbc:mysql://payment-db:3306/payment_db?allowPublicKeyRetrieval=true&useSSL=false
+      PAYMENT_DB_USERNAME: root
+      PAYMENT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_ENABLED: ${EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_ENABLED:-true}
+      EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_PERCENT: ${EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_PERCENT:-20}
+      EXPERIMENT_PAYMENT_APPROVAL_RESPONSE_DELAY: ${EXPERIMENT_PAYMENT_APPROVAL_RESPONSE_DELAY:-5s}

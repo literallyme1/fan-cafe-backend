@@ -4,8 +4,6 @@ import com.example.fan_cafe.order.saga.application.PaymentSagaOrchestrator;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -13,16 +11,11 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-        name = "saga.recovery.enabled",
-        havingValue = "true",
-        matchIfMissing = true)
 public class SagaRecoveryWorker {
     private final SagaRecoveryTransactionService recoveryTransactionService;
     private final PaymentSagaOrchestrator paymentSagaOrchestrator;
     private final SagaRecoveryProperties properties;
 
-    @Scheduled(fixedDelayString = "${saga.recovery.fixed-delay:5s}")
     public void recoverDueSagas() {
         for (int processed = 0; processed < properties.getBatchSize(); processed++) {
             Optional<SagaRecoveryClaim> claimed = recoveryTransactionService.claimNext();
