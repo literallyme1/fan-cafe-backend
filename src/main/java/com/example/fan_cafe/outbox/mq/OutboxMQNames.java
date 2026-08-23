@@ -7,6 +7,9 @@ public final class OutboxMQNames {
     public static final String OUTBOX_EXCHANGE = "outbox.exchange";
     public static final String OUTBOX_ROUTING_KEY = "outbox.event";
     public static final String OUTBOX_QUEUE = "outbox.queue";
+    public static final String PAYMENT_REFUND_COMMAND_ROUTING_KEY = "payment.refund.command";
+    public static final String PAYMENT_REFUND_RESULT_ROUTING_KEY = "payment.refund.result";
+    public static final String PAYMENT_REFUND_RESULT_QUEUE = "payment.refund.result.order.queue";
 
     /**
      * 일시 오류 시 대기시간을 단계적으로 늘리기 위한 retry 전용 큐들이다.

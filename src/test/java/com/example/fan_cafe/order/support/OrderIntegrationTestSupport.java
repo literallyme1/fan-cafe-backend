@@ -125,6 +125,7 @@ public class OrderIntegrationTestSupport {
         sagaInstanceRepository.deleteByOrderId(orderId);
         orderStatusHistoryRepository.deleteByOrder_Id(orderId);
         outboxEventRepository.deleteByAggregateTypeAndAggregateId("ORDER", orderId);
+        outboxEventRepository.deleteByAggregateTypeAndAggregateId("PAYMENT_SAGA", orderId);
         orderRepository.deleteById(orderId);
         merchandiseRepository.deleteById(fixture.merchandise().getId());
         userRepository.deleteById(fixture.user().getId());

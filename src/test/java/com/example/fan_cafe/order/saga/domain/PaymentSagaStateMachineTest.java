@@ -39,4 +39,32 @@ class PaymentSagaStateMachineTest {
 
         assertThat(saga.getStatus()).isEqualTo(SagaStatus.STARTED);
     }
+
+    @Test
+    void compensationPath_transitionsInAllowedOrder() {
+        SagaInstance saga = SagaInstance.started(10L);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
+
+        stateMachine.transition(saga, SagaStatus.COMPENSATING);
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPENSATING);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.PAYMENT_REFUND);
+
+        stateMachine.transition(saga, SagaStatus.COMPENSATED);
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPENSATED);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.DONE);
+    }
+
+    @Test
+    void compensationReverseTransition_isRejected() {
+        SagaInstance saga = SagaInstance.started(10L);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
+        stateMachine.transition(saga, SagaStatus.COMPENSATING);
+
+        assertThatThrownBy(() -> stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
+    }
 }

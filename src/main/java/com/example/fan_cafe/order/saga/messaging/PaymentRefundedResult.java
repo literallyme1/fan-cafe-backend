@@ -9,7 +9,8 @@ public record PaymentRefundedResult(
         UUID sagaId,
         Long orderId,
         PaymentResultStatus status,
-        String refundIdempotencyKey
+        String refundIdempotencyKey,
+        String refundReason
 ) {
     public static final String EVENT_TYPE = "PAYMENT_REFUNDED";
 }

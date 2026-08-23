@@ -20,6 +20,8 @@ import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_RETRY_30S_ROUT
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_RETRY_5S_QUEUE;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_RETRY_5S_ROUTING_KEY;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_ROUTING_KEY;
+import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_REFUND_RESULT_QUEUE;
+import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_REFUND_RESULT_ROUTING_KEY;
 
 @Configuration
 public class OutboxMQConfig {
@@ -43,6 +45,21 @@ public class OutboxMQConfig {
                 .bind(outboxQueue)
                 .to(outboxExchange)
                 .with(OUTBOX_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue paymentRefundResultQueue() {
+        return QueueBuilder.durable(PAYMENT_REFUND_RESULT_QUEUE).build();
+    }
+
+    @Bean
+    public Binding paymentRefundResultBinding(
+            @Qualifier("paymentRefundResultQueue") Queue paymentRefundResultQueue,
+            @Qualifier("outboxExchange") DirectExchange outboxExchange
+    ) {
+        return BindingBuilder.bind(paymentRefundResultQueue)
+                .to(outboxExchange)
+                .with(PAYMENT_REFUND_RESULT_ROUTING_KEY);
     }
 
     @Bean
