@@ -3,9 +3,11 @@ package com.example.fan_cafe.order.saga.domain;
 public enum SagaStatus {
     STARTED,
     PAYMENT_PENDING,
+    PAYMENT_UNKNOWN,
     PAYMENT_COMPLETED,
     COMPENSATING,
     COMPLETED,
+    CANCELLED,
     COMPENSATED;
 
     public boolean isAtOrAfter(SagaStatus milestone) {
@@ -19,7 +21,7 @@ public enum SagaStatus {
                     || this == COMPLETED;
             case PAYMENT_COMPLETED -> this == PAYMENT_COMPLETED || this == COMPLETED;
             case COMPLETED -> this == COMPLETED;
-            case COMPENSATING, COMPENSATED -> this == milestone;
+            case PAYMENT_UNKNOWN, COMPENSATING, CANCELLED, COMPENSATED -> this == milestone;
         };
     }
 }

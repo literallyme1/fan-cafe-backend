@@ -67,4 +67,63 @@ class PaymentSagaStateMachineTest {
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
     }
+
+    @Test
+    void unknownPaymentPath_transitionsThroughExplicitStates() {
+        SagaInstance saga = SagaInstance.started(10L);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+
+        stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.PAYMENT_UNKNOWN);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.PAYMENT_STATUS_CHECK);
+
+        stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.PAYMENT_COMPLETED);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.ORDER_COMPLETION);
+    }
+
+    @Test
+    void definitivePaymentFailure_canCancelPendingOrUnknownSaga() {
+        SagaInstance pendingSaga = SagaInstance.started(10L);
+        stateMachine.transition(pendingSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(pendingSaga, SagaStatus.CANCELLED);
+        assertThat(pendingSaga.getStatus()).isEqualTo(SagaStatus.CANCELLED);
+        assertThat(pendingSaga.getCurrentStep()).isEqualTo(SagaStep.DONE);
+
+        SagaInstance unknownSaga = SagaInstance.started(11L);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_UNKNOWN);
+        stateMachine.transition(unknownSaga, SagaStatus.CANCELLED);
+        assertThat(unknownSaga.getStatus()).isEqualTo(SagaStatus.CANCELLED);
+        assertThat(unknownSaga.getCurrentStep()).isEqualTo(SagaStep.DONE);
+    }
+
+    @Test
+    void branchStates_areNotTreatedAsLinearPaymentPendingMilestones() {
+        assertThat(SagaStatus.PAYMENT_UNKNOWN.isAtOrAfter(SagaStatus.PAYMENT_PENDING)).isFalse();
+        assertThat(SagaStatus.CANCELLED.isAtOrAfter(SagaStatus.PAYMENT_PENDING)).isFalse();
+        assertThat(SagaStatus.PAYMENT_UNKNOWN.isAtOrAfter(SagaStatus.PAYMENT_UNKNOWN)).isTrue();
+        assertThat(SagaStatus.CANCELLED.isAtOrAfter(SagaStatus.CANCELLED)).isTrue();
+    }
+
+    @Test
+    void unknownAndCancelledDoNotAllowUnspecifiedTransitions() {
+        SagaInstance unknownSaga = SagaInstance.started(10L);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_UNKNOWN);
+
+        assertThatThrownBy(() -> stateMachine.transition(unknownSaga, SagaStatus.PAYMENT_PENDING))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
+
+        SagaInstance cancelledSaga = SagaInstance.started(11L);
+        stateMachine.transition(cancelledSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(cancelledSaga, SagaStatus.CANCELLED);
+
+        assertThatThrownBy(() -> stateMachine.transition(cancelledSaga, SagaStatus.PAYMENT_COMPLETED))
+                .isInstanceOf(CustomException.class)
+                .extracting(exception -> ((CustomException) exception).getErrorCode())
+                .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);
+    }
 }

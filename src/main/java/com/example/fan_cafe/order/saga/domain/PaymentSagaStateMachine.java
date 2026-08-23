@@ -19,6 +19,18 @@ public class PaymentSagaStateMachine {
         if (current == SagaStatus.PAYMENT_PENDING && target == SagaStatus.PAYMENT_COMPLETED) {
             return SagaStep.ORDER_COMPLETION;
         }
+        if (current == SagaStatus.PAYMENT_PENDING && target == SagaStatus.PAYMENT_UNKNOWN) {
+            return SagaStep.PAYMENT_STATUS_CHECK;
+        }
+        if (current == SagaStatus.PAYMENT_PENDING && target == SagaStatus.CANCELLED) {
+            return SagaStep.DONE;
+        }
+        if (current == SagaStatus.PAYMENT_UNKNOWN && target == SagaStatus.PAYMENT_COMPLETED) {
+            return SagaStep.ORDER_COMPLETION;
+        }
+        if (current == SagaStatus.PAYMENT_UNKNOWN && target == SagaStatus.CANCELLED) {
+            return SagaStep.DONE;
+        }
         if (current == SagaStatus.PAYMENT_COMPLETED && target == SagaStatus.COMPLETED) {
             return SagaStep.DONE;
         }
