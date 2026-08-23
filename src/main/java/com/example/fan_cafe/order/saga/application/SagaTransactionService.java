@@ -42,6 +42,21 @@ public class SagaTransactionService {
     }
 
     @Transactional
+    public SagaSnapshot markPaymentUnknown(UUID sagaId) {
+        SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+        switch (saga.getStatus()) {
+            case PAYMENT_PENDING -> stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
+            case PAYMENT_UNKNOWN, PAYMENT_COMPLETED, COMPLETED,
+                    COMPENSATING, COMPENSATED, CANCELLED -> {
+                // 동시 요청이 이미 분기 또는 후속 상태를 확정했다. 역전이하지 않는다.
+            }
+            case STARTED -> throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
+        }
+        return SagaSnapshot.from(saga);
+    }
+
+    @Transactional
     public SagaSnapshot advanceToMilestone(UUID sagaId, SagaStatus milestone) {
         SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
                 .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
