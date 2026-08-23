@@ -79,8 +79,15 @@ public class SagaInstance {
     }
 
     void changeState(SagaStatus status, SagaStep currentStep) {
+        SagaStatus previousStatus = this.status;
         this.status = status;
         this.currentStep = currentStep;
+        if (isRecoveryTarget(previousStatus)
+                && !isRecoveryTarget(status)
+                && status != SagaStatus.RECONCILIATION_REQUIRED) {
+            this.nextRetryAt = null;
+            this.lastError = null;
+        }
     }
 
     public void schedulePaymentUnknownRecovery(LocalDateTime firstRecoveryAt, String errorSummary) {
@@ -100,10 +107,32 @@ public class SagaInstance {
     }
 
     public void claimRecoveryUntil(LocalDateTime claimLeaseUntil) {
-        if (status != SagaStatus.PAYMENT_UNKNOWN && status != SagaStatus.COMPENSATING) {
+        if (!isRecoveryTarget(status)) {
             throw new IllegalStateException("Only an unfinished Saga can be claimed for recovery");
         }
         this.nextRetryAt = requireRecoveryTime(claimLeaseUntil);
+    }
+
+    public boolean hasClaim(SagaStatus claimedStatus, LocalDateTime claimedUntil) {
+        return status == claimedStatus && claimedUntil != null && claimedUntil.equals(nextRetryAt);
+    }
+
+    public void recordRecoveryFailure(int failureCount, LocalDateTime retryAt, String errorSummary) {
+        if (!isRecoveryTarget(status)) {
+            throw new IllegalStateException("Recovery failure requires an unfinished Saga");
+        }
+        this.retryCount = failureCount;
+        this.nextRetryAt = requireRecoveryTime(retryAt);
+        this.lastError = errorSummary;
+    }
+
+    public void recordReconciliationFailure(int failureCount, String errorSummary) {
+        if (status != SagaStatus.RECONCILIATION_REQUIRED) {
+            throw new IllegalStateException("Reconciliation metadata requires terminal Saga status");
+        }
+        this.retryCount = failureCount;
+        this.nextRetryAt = null;
+        this.lastError = errorSummary;
     }
 
     private LocalDateTime requireRecoveryTime(LocalDateTime recoveryTime) {
@@ -111,5 +140,9 @@ public class SagaInstance {
             throw new IllegalArgumentException("Recovery time is required");
         }
         return recoveryTime;
+    }
+
+    private boolean isRecoveryTarget(SagaStatus sagaStatus) {
+        return sagaStatus == SagaStatus.PAYMENT_UNKNOWN || sagaStatus == SagaStatus.COMPENSATING;
     }
 }

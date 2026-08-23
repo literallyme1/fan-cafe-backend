@@ -22,21 +22,28 @@ public class SlackWebhookClient {
     //slack 알림 전송
     public void send(NotificationEvent event) {
 
+        try {
+            sendOrThrow(event);
+        } catch (RuntimeException e) {
+            log.error("[Slack Notification Failed] title={}", event.getTitle(), e);
+        }
+    }
+
+    /**
+     * Outbox consumer가 broker retry/DLQ 정책을 적용할 수 있도록 전송 실패를 호출자에게 전달한다.
+     */
+    public void sendOrThrow(NotificationEvent event) {
+
         //1. slack 비활성 환경에서는 아무것도 x
         if(!slackProperties.isEnabled()) {
             return;
         }
 
-        try{
-            webClient.post()
-                    .uri(slackProperties.getUrl())
-                    .bodyValue(SlackMessageFormatter.format(event)) //json payload
-                    .retrieve() //요청 실행
-                    .bodyToMono(Void.class) //응답 바디 필요 x
-                    .block();
-
-        }catch (Exception e){ //예외는 로그만
-            log.error("[Slack Notification Failed] title={}", event.getTitle(), e);
-        }
+        webClient.post()
+                .uri(slackProperties.getUrl())
+                .bodyValue(SlackMessageFormatter.format(event)) //json payload
+                .retrieve() //요청 실행
+                .bodyToMono(Void.class) //응답 바디 필요 x
+                .block();
     }
 }

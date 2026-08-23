@@ -1,12 +1,14 @@
 package com.example.fan_cafe.outbox.application;
 
 import com.example.fan_cafe.notification.application.NotificationDispatcher;
+import com.example.fan_cafe.order.saga.recovery.SagaReconciliationAlertHandler;
 import com.example.fan_cafe.outbox.domain.ProcessedEvent;
 import com.example.fan_cafe.outbox.exception.DuplicateProcessedEventException;
 import com.example.fan_cafe.outbox.infrastructure.ProcessedEventRedisCache;
 import com.example.fan_cafe.outbox.infrastructure.ProcessedEventRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,14 +23,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class OutboxNotificationDeliverService {
 
     private final NotificationDispatcher dispatcher;
+    private final SagaReconciliationAlertHandler sagaReconciliationAlertHandler;
     private final ObjectMapper objectMapper;
     private final ProcessedEventRepository processedEventRepository;
     private final ProcessedEventRedisCache processedEventRedisCache;
 
     @Transactional
     public void deliverAndRecordProcessedEvent(String payload, String eventId, String consumerType) {
-        Long receiverId = extractReceiverId(payload);
-        dispatcher.dispatch(receiverId, payload);
+        if (!sagaReconciliationAlertHandler.handleIfSupported(payload)) {
+            Long receiverId = extractReceiverId(payload);
+            dispatcher.dispatch(receiverId, payload);
+        }
 
         try {
             processedEventRepository.saveAndFlush(ProcessedEvent.record(eventId, consumerType));
@@ -62,7 +67,7 @@ public class OutboxNotificationDeliverService {
             if (node.hasNonNull("userId")) {
                 return node.get("userId").asLong();
             }
-        } catch (Exception ignored) {
+        } catch (JsonProcessingException ignored) {
         }
         throw new IllegalArgumentException("Receiver id not found in payload");
     }

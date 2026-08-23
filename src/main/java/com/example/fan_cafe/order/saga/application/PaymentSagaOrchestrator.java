@@ -50,6 +50,14 @@ public class PaymentSagaOrchestrator {
         };
     }
 
+    public OrderQueryResponse recoverPaymentUnknown(UUID sagaId, Long orderId) {
+        return resolveUnknownPayment(
+                new SagaSnapshot(
+                        sagaId, orderId, SagaStatus.PAYMENT_UNKNOWN,
+                        com.example.fan_cafe.order.saga.domain.SagaStep.PAYMENT_STATUS_CHECK),
+                orderId);
+    }
+
     private OrderQueryResponse approvePending(
             SagaSnapshot saga,
             Long orderId,
@@ -61,7 +69,8 @@ public class PaymentSagaOrchestrator {
         try {
             payment = paymentClient.approve(orderId, expectedAmount, approvalAmount, paymentKey);
         } catch (PaymentOutcomeUnknownException unknown) {
-            SagaSnapshot current = sagaTransactionService.markPaymentUnknown(saga.sagaId());
+            SagaSnapshot current = sagaTransactionService.markPaymentUnknown(
+                    saga.sagaId(), summarizeUnknown(unknown));
             return continueAfterUnknown(current, orderId, unknown);
         }
 
@@ -121,6 +130,10 @@ public class PaymentSagaOrchestrator {
         if (!expectedOrderId.equals(actualOrderId)) {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
+    }
+
+    private String summarizeUnknown(PaymentOutcomeUnknownException unknown) {
+        return unknown.getClass().getSimpleName() + ": " + unknown.getErrorMessage();
     }
 
     private OrderQueryResponse completeOrder(UUID sagaId, Long orderId) {
