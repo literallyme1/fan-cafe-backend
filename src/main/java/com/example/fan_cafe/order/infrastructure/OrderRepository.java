@@ -23,6 +23,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     Optional<Order> findByIdAndUserIdWithItems(@Param("orderId") Long orderId, @Param("userId") Long userId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select o
+            from Order o
+            where o.id = :orderId
+              and o.user.id = :userId
+              and o.deletedAt is null
+            """)
+    Optional<Order> findByIdAndUserIdForUpdate(
+            @Param("orderId") Long orderId,
+            @Param("userId") Long userId);
+
     @Query("""
             select distinct o
             from Order o

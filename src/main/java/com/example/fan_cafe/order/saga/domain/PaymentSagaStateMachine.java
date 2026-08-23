@@ -31,6 +31,9 @@ public class PaymentSagaStateMachine {
         if (current == SagaStatus.PAYMENT_UNKNOWN && target == SagaStatus.CANCELLED) {
             return SagaStep.DONE;
         }
+        if (current == SagaStatus.PAYMENT_UNKNOWN && target == SagaStatus.COMPENSATING) {
+            return SagaStep.PAYMENT_REFUND;
+        }
         if (current == SagaStatus.PAYMENT_COMPLETED && target == SagaStatus.COMPLETED) {
             return SagaStep.DONE;
         }

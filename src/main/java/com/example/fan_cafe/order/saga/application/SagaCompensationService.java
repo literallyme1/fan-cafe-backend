@@ -12,6 +12,7 @@ import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
+import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.saga.domain.PaymentSagaStateMachine;
 import com.example.fan_cafe.order.saga.domain.SagaInstance;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -61,12 +63,30 @@ public class SagaCompensationService {
             return;
         }
 
-        RefundPaymentCommand command = RefundPaymentCommand.of(sagaId, orderId, reason);
-        stateMachine.transition(saga, SagaStatus.COMPENSATING);
-        saga.scheduleInitialRefundResultDeadline(
-                LocalDateTime.now(clock).plus(recoveryProperties.getRefundResultTimeout()));
-        persistOutbox(OutboxEvent.init(
-                AGGREGATE_TYPE, orderId, serialize(command)));
+        startCompensation(saga, orderId, reason);
+    }
+
+    @Transactional
+    public Optional<OrderQueryResponse> startLateSuccessIfOrderCannotComplete(
+            UUID sagaId,
+            Long orderId
+    ) {
+        Order order = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        SagaInstance saga = findSagaForUpdate(sagaId);
+        validateOrder(saga, orderId);
+
+        if (order.getStatus() == Status.PAYMENT_PENDING || order.getStatus() == Status.PAID) {
+            return Optional.empty();
+        }
+        if (order.getStatus() != Status.CANCELLED) {
+            throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
+        }
+        if (saga.getStatus() != SagaStatus.COMPENSATING
+                && saga.getStatus() != SagaStatus.COMPENSATED) {
+            startCompensation(saga, orderId, "late payment approval after order cancellation");
+        }
+        return Optional.of(OrderQueryResponse.from(order));
     }
 
     @Transactional
@@ -81,11 +101,14 @@ public class SagaCompensationService {
         if (saga.getStatus() == SagaStatus.COMPENSATED && order.getStatus() == Status.REFUNDED) {
             return;
         }
-        if (order.getStatus() != Status.PAYMENT_PENDING) {
+        if (order.getStatus() != Status.PAYMENT_PENDING
+                && order.getStatus() != Status.CANCELLED) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         }
 
-        restoreStock(order);
+        if (order.getStatus() == Status.PAYMENT_PENDING) {
+            restoreStock(order);
+        }
         Status from = order.getStatus();
         order.markCompensatedRefunded();
         orderStatusHistoryRepository.save(OrderStatusHistory.of(
@@ -93,6 +116,15 @@ public class SagaCompensationService {
         persistOutbox(OutboxEvent.init(
                 "ORDER", order.getId(), buildPaymentRefundedPayload(order, result)));
         stateMachine.transition(saga, SagaStatus.COMPENSATED);
+    }
+
+    private void startCompensation(SagaInstance saga, Long orderId, String reason) {
+        RefundPaymentCommand command = RefundPaymentCommand.of(saga.getSagaId(), orderId, reason);
+        stateMachine.transition(saga, SagaStatus.COMPENSATING);
+        saga.scheduleInitialRefundResultDeadline(
+                LocalDateTime.now(clock).plus(recoveryProperties.getRefundResultTimeout()));
+        persistOutbox(OutboxEvent.init(
+                AGGREGATE_TYPE, orderId, serialize(command)));
     }
 
     private SagaInstance findSagaForUpdate(UUID sagaId) {

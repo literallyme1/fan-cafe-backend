@@ -160,8 +160,9 @@ public class OrderService {
     public OrderQueryResponse cancel(User user, Long orderId) {
         getOrderer(user);
 
-        Order order = orderRepository.findByIdAndUserIdWithItems(orderId, user.getId())
+        Order order = orderRepository.findByIdAndUserIdForUpdate(orderId, user.getId())
                 .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        order.getOrderItems().size();
 
         if (!order.cancellable()) {
             throw new CustomException(OrderErrorCode.ORDER_NOT_CANCELLABLE);

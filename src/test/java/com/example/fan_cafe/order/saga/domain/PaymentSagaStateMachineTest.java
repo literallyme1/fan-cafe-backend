@@ -85,6 +85,18 @@ class PaymentSagaStateMachineTest {
     }
 
     @Test
+    void lateApprovedPaymentCanCompensateUnknownSagaWithoutReverseTransition() {
+        SagaInstance saga = SagaInstance.started(10L);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
+
+        stateMachine.transition(saga, SagaStatus.COMPENSATING);
+
+        assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPENSATING);
+        assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.PAYMENT_REFUND);
+    }
+
+    @Test
     void definitivePaymentFailure_canCancelPendingOrUnknownSaga() {
         SagaInstance pendingSaga = SagaInstance.started(10L);
         stateMachine.transition(pendingSaga, SagaStatus.PAYMENT_PENDING);

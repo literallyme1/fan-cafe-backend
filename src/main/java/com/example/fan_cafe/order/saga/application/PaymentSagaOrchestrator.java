@@ -114,6 +114,11 @@ public class PaymentSagaOrchestrator {
 
         return switch (payment.status()) {
             case APPROVED -> {
+                var compensation = compensationService.startLateSuccessIfOrderCannotComplete(
+                        saga.sagaId(), orderId);
+                if (compensation.isPresent()) {
+                    yield compensation.get();
+                }
                 sagaTransactionService.advanceToMilestone(
                         saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
                 yield completeOrder(saga.sagaId(), orderId);
