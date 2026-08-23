@@ -93,6 +93,26 @@ class PaymentClientTest {
     }
 
     @Test
+    void emptyApprovalResponse_isClassifiedAsUnknownOutcome() {
+        assertUnknownApprovalResponse("{}");
+    }
+
+    @Test
+    void nullApprovalStatus_isClassifiedAsUnknownOutcome() {
+        assertUnknownApprovalResponse("{\"orderId\":10,\"status\":null}");
+    }
+
+    @Test
+    void wrongApprovalOrderId_isClassifiedAsUnknownOutcome() {
+        assertUnknownApprovalResponse("{\"orderId\":11,\"status\":\"APPROVED\"}");
+    }
+
+    @Test
+    void unexpectedApprovalStatus_isClassifiedAsUnknownOutcome() {
+        assertUnknownApprovalResponse("{\"orderId\":10,\"status\":\"PENDING\"}");
+    }
+
+    @Test
     void approvalReadTimeout_isClassifiedAsUnknownOutcome() throws Exception {
         HttpServer delayedServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         delayedServer.createContext("/internal/payments/10/approve", exchange -> {
@@ -164,5 +184,16 @@ class PaymentClientTest {
 
     private void approve() {
         paymentClient.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "key-1");
+    }
+
+    private void assertUnknownApprovalResponse(String body) {
+        server.expect(requestTo("http://payment-service/internal/payments/10/approve"))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(this::approve)
+                .isInstanceOf(PaymentOutcomeUnknownException.class)
+                .extracting(exception -> ((PaymentOutcomeUnknownException) exception).getErrorCode())
+                .isEqualTo(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+        server.verify();
     }
 }

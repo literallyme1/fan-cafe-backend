@@ -26,17 +26,17 @@ public class PaymentClient {
     }
 
     public PaymentResultResponse approve(Long orderId, BigDecimal expected, BigDecimal approved, String key) {
-        return executeApproval(() -> restClient.post()
+        return executeApproval(orderId, () -> restClient.post()
                 .uri("/internal/payments/{orderId}/approve", orderId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new PaymentApproveCommand(expected, approved, key))
                 .retrieve().body(PaymentResultResponse.class));
     }
 
-    private PaymentResultResponse executeApproval(PaymentCall call) {
+    private PaymentResultResponse executeApproval(Long expectedOrderId, PaymentCall call) {
         try {
             PaymentResultResponse result = call.execute();
-            if (result == null) {
+            if (!isConclusiveApprovalResult(expectedOrderId, result)) {
                 throw new PaymentOutcomeUnknownException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
             }
             return result;
@@ -54,6 +54,14 @@ public class PaymentClient {
                     : OrderErrorCode.PAYMENT_SERVICE_ERROR;
             throw new PaymentOutcomeUnknownException(errorCode);
         }
+    }
+
+    private boolean isConclusiveApprovalResult(Long expectedOrderId, PaymentResultResponse result) {
+        if (result == null || result.orderId() == null || !result.orderId().equals(expectedOrderId)) {
+            return false;
+        }
+        return result.status() == PaymentResultStatus.APPROVED
+                || result.status() == PaymentResultStatus.FAILED;
     }
 
     private boolean hasIoCause(Throwable failure) {
