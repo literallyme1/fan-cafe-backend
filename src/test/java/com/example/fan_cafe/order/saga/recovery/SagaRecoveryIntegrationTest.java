@@ -274,6 +274,50 @@ class SagaRecoveryIntegrationTest {
     }
 
     @Test
+    void nanosecondClockClaimUsesPersistedMicrosecondFenceAndAcceptsCurrentWorkerResult() {
+        now.set(Instant.parse("2026-08-23T00:00:00.123456789Z"));
+        PaymentPendingFixture fixture = fixture();
+        SagaSnapshot unknown = makeUnknownDue(fixture);
+
+        SagaRecoveryClaim claim = recoveryTransactionService.claimNext().orElseThrow();
+        SagaInstance persisted = sagaRepository.findById(unknown.sagaId()).orElseThrow();
+
+        assertThat(claim.claimedUntil().getNano() % 1_000).isZero();
+        assertThat(persisted.getNextRetryAt()).isEqualTo(claim.claimedUntil());
+
+        SagaRecoveryUpdateOutcome outcome = recoveryTransactionService.recordPaymentUnknownFailure(
+                claim, new CustomException(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE));
+
+        assertThat(outcome).isEqualTo(SagaRecoveryUpdateOutcome.RETRY_SCHEDULED);
+        assertThat(sagaRepository.findById(unknown.sagaId()).orElseThrow().getRetryCount()).isEqualTo(1);
+    }
+
+    @Test
+    void expiredClaimRejectsLateWorkerAndAcceptsReclaimingWorker() {
+        now.set(Instant.parse("2026-08-23T00:00:00.987654321Z"));
+        PaymentPendingFixture fixture = fixture();
+        SagaSnapshot unknown = makeUnknownDue(fixture);
+
+        SagaRecoveryClaim workerA = recoveryTransactionService.claimNext().orElseThrow();
+        advanceSeconds(31);
+        SagaRecoveryClaim workerB = recoveryTransactionService.claimNext().orElseThrow();
+
+        assertThat(workerB.claimedUntil()).isNotEqualTo(workerA.claimedUntil());
+        assertThat(sagaRepository.findById(unknown.sagaId()).orElseThrow().getNextRetryAt())
+                .isEqualTo(workerB.claimedUntil());
+
+        SagaRecoveryUpdateOutcome lateA = recoveryTransactionService.recordPaymentUnknownFailure(
+                workerA, new CustomException(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE));
+        assertThat(lateA).isEqualTo(SagaRecoveryUpdateOutcome.STALE_CLAIM);
+        assertThat(sagaRepository.findById(unknown.sagaId()).orElseThrow().getRetryCount()).isZero();
+
+        SagaRecoveryUpdateOutcome currentB = recoveryTransactionService.recordPaymentUnknownFailure(
+                workerB, new CustomException(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE));
+        assertThat(currentB).isEqualTo(SagaRecoveryUpdateOutcome.RETRY_SCHEDULED);
+        assertThat(sagaRepository.findById(unknown.sagaId()).orElseThrow().getRetryCount()).isEqualTo(1);
+    }
+
+    @Test
     void secondFailureStillSchedulesRetryInsteadOfReconciling() {
         PaymentPendingFixture fixture = fixture();
         SagaSnapshot unknown = makeUnknownDue(fixture);

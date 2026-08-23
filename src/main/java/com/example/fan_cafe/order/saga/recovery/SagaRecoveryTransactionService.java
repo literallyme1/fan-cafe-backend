@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 @Service
@@ -39,9 +40,10 @@ public class SagaRecoveryTransactionService {
         LocalDateTime now = LocalDateTime.now(clock);
         return sagaRepository.findNextDueRecoveryForUpdateSkipLocked(now)
                 .map(saga -> {
-                    LocalDateTime claimedUntil = now.plus(properties.getClaimLease());
+                    LocalDateTime claimedUntil = now.plus(properties.getClaimLease())
+                            .truncatedTo(ChronoUnit.MICROS);
                     saga.claimRecoveryUntil(claimedUntil);
-                    return SagaRecoveryClaim.from(saga, claimedUntil);
+                    return SagaRecoveryClaim.from(saga);
                 });
     }
 

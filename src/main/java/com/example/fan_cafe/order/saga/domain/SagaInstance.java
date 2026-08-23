@@ -18,6 +18,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -110,7 +111,7 @@ public class SagaInstance {
         if (!isRecoveryTarget(status)) {
             throw new IllegalStateException("Only an unfinished Saga can be claimed for recovery");
         }
-        this.nextRetryAt = requireRecoveryTime(claimLeaseUntil);
+        this.nextRetryAt = requireRecoveryTime(claimLeaseUntil).truncatedTo(ChronoUnit.MICROS);
     }
 
     public boolean hasClaim(SagaStatus claimedStatus, LocalDateTime claimedUntil) {

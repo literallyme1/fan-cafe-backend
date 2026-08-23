@@ -13,9 +13,9 @@ public record SagaRecoveryClaim(
         int retryCount,
         LocalDateTime claimedUntil
 ) {
-    static SagaRecoveryClaim from(SagaInstance saga, LocalDateTime claimedUntil) {
+    static SagaRecoveryClaim from(SagaInstance saga) {
         return new SagaRecoveryClaim(
                 saga.getSagaId(), saga.getOrderId(), saga.getStatus(),
-                saga.getRetryCount(), claimedUntil);
+                saga.getRetryCount(), saga.getNextRetryAt());
     }
 }
