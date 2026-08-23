@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -169,6 +170,8 @@ class PaymentSagaOrchestratorTest {
 
         when(sagaTransactionService.start(10L)).thenReturn(unknown);
         when(paymentClient.getStatus(10L)).thenReturn(approved);
+        when(compensationService.startLateSuccessIfOrderCannotComplete(sagaId, 10L))
+                .thenReturn(Optional.empty());
         when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED))
                 .thenReturn(paymentCompleted);
         when(completionService.complete(sagaId, 10L, "mock payment approved")).thenReturn(completed);
@@ -177,11 +180,31 @@ class PaymentSagaOrchestratorTest {
                 .isSameAs(completed);
 
         verify(paymentClient, never()).approve(anyLong(), any(), any(), anyString());
-        InOrder order = inOrder(paymentClient, sagaTransactionService, completionService);
+        InOrder order = inOrder(
+                paymentClient, compensationService, sagaTransactionService, completionService);
         order.verify(paymentClient).getStatus(10L);
+        order.verify(compensationService).startLateSuccessIfOrderCannotComplete(sagaId, 10L);
         order.verify(sagaTransactionService)
                 .advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
         order.verify(completionService).complete(sagaId, 10L, "mock payment approved");
+    }
+
+    @Test
+    void lateApprovedUnknownSagaWithCancelledOrderStartsCompensationWithoutCompletion() {
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        SagaSnapshot unknown = snapshot(sagaId, SagaStatus.PAYMENT_UNKNOWN, SagaStep.PAYMENT_STATUS_CHECK);
+        OrderQueryResponse cancelled = mock(OrderQueryResponse.class);
+        when(sagaTransactionService.start(10L)).thenReturn(unknown);
+        when(paymentClient.getStatus(10L)).thenReturn(paymentStatus(PaymentResultStatus.APPROVED));
+        when(compensationService.startLateSuccessIfOrderCannotComplete(sagaId, 10L))
+                .thenReturn(Optional.of(cancelled));
+
+        assertThat(orchestrator.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
+                .isSameAs(cancelled);
+
+        verify(sagaTransactionService, never())
+                .advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
+        verifyNoInteractions(completionService);
     }
 
     @Test
