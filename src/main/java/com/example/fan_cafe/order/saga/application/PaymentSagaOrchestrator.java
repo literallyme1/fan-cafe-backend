@@ -45,7 +45,7 @@ public class PaymentSagaOrchestrator {
             case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
             case CANCELLED -> paymentFailureService.fail(
                     saga.sagaId(), orderId, FAILED_REASON);
-            case COMPENSATING, COMPENSATED ->
+            case COMPENSATING, COMPENSATED, RECONCILIATION_REQUIRED ->
                     throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         };
     }
@@ -91,7 +91,8 @@ public class PaymentSagaOrchestrator {
             case PAYMENT_UNKNOWN -> resolveUnknownPayment(saga, orderId);
             case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
             case CANCELLED -> paymentFailureService.fail(saga.sagaId(), orderId, FAILED_REASON);
-            case STARTED, PAYMENT_PENDING, COMPENSATING, COMPENSATED -> throw originalFailure;
+            case STARTED, PAYMENT_PENDING, COMPENSATING, COMPENSATED,
+                    RECONCILIATION_REQUIRED -> throw originalFailure;
         };
     }
 

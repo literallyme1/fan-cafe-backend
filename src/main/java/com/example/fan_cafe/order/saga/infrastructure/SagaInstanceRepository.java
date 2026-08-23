@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,4 +20,16 @@ public interface SagaInstanceRepository extends JpaRepository<SagaInstance, UUID
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SagaInstance s where s.sagaId = :sagaId")
     Optional<SagaInstance> findBySagaIdForUpdate(@Param("sagaId") UUID sagaId);
+
+    @Query(value = """
+            SELECT *
+            FROM saga_instance
+            WHERE status IN ('PAYMENT_UNKNOWN', 'COMPENSATING')
+              AND next_retry_at <= :now
+            ORDER BY next_retry_at, saga_id
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    Optional<SagaInstance> findNextDueRecoveryForUpdateSkipLocked(
+            @Param("now") LocalDateTime now);
 }

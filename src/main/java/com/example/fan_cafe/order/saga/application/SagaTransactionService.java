@@ -48,7 +48,7 @@ public class SagaTransactionService {
         switch (saga.getStatus()) {
             case PAYMENT_PENDING -> stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
             case PAYMENT_UNKNOWN, PAYMENT_COMPLETED, COMPLETED,
-                    COMPENSATING, COMPENSATED, CANCELLED -> {
+                    COMPENSATING, COMPENSATED, CANCELLED, RECONCILIATION_REQUIRED -> {
                 // 동시 요청이 이미 분기 또는 후속 상태를 확정했다. 역전이하지 않는다.
             }
             case STARTED -> throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);

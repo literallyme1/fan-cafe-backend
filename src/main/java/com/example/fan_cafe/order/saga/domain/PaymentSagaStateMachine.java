@@ -40,6 +40,10 @@ public class PaymentSagaStateMachine {
         if (current == SagaStatus.COMPENSATING && target == SagaStatus.COMPENSATED) {
             return SagaStep.DONE;
         }
+        if ((current == SagaStatus.PAYMENT_UNKNOWN || current == SagaStatus.COMPENSATING)
+                && target == SagaStatus.RECONCILIATION_REQUIRED) {
+            return SagaStep.MANUAL_RECONCILIATION;
+        }
         throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
     }
 }

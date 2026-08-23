@@ -8,7 +8,8 @@ public enum SagaStatus {
     COMPENSATING,
     COMPLETED,
     CANCELLED,
-    COMPENSATED;
+    COMPENSATED,
+    RECONCILIATION_REQUIRED;
 
     public boolean isAtOrAfter(SagaStatus milestone) {
         return switch (milestone) {
@@ -21,7 +22,8 @@ public enum SagaStatus {
                     || this == COMPLETED;
             case PAYMENT_COMPLETED -> this == PAYMENT_COMPLETED || this == COMPLETED;
             case COMPLETED -> this == COMPLETED;
-            case PAYMENT_UNKNOWN, COMPENSATING, CANCELLED, COMPENSATED -> this == milestone;
+            case PAYMENT_UNKNOWN, COMPENSATING, CANCELLED, COMPENSATED,
+                    RECONCILIATION_REQUIRED -> this == milestone;
         };
     }
 }

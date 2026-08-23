@@ -82,4 +82,34 @@ public class SagaInstance {
         this.status = status;
         this.currentStep = currentStep;
     }
+
+    public void schedulePaymentUnknownRecovery(LocalDateTime firstRecoveryAt, String errorSummary) {
+        if (status != SagaStatus.PAYMENT_UNKNOWN) {
+            throw new IllegalStateException("Payment recovery can only be scheduled for PAYMENT_UNKNOWN");
+        }
+        this.nextRetryAt = requireRecoveryTime(firstRecoveryAt);
+        this.lastError = errorSummary;
+    }
+
+    public void scheduleInitialRefundResultDeadline(LocalDateTime refundResultDeadline) {
+        if (status != SagaStatus.COMPENSATING) {
+            throw new IllegalStateException("Refund result deadline can only be set for COMPENSATING");
+        }
+        this.nextRetryAt = requireRecoveryTime(refundResultDeadline);
+        this.lastError = null;
+    }
+
+    public void claimRecoveryUntil(LocalDateTime claimLeaseUntil) {
+        if (status != SagaStatus.PAYMENT_UNKNOWN && status != SagaStatus.COMPENSATING) {
+            throw new IllegalStateException("Only an unfinished Saga can be claimed for recovery");
+        }
+        this.nextRetryAt = requireRecoveryTime(claimLeaseUntil);
+    }
+
+    private LocalDateTime requireRecoveryTime(LocalDateTime recoveryTime) {
+        if (recoveryTime == null) {
+            throw new IllegalArgumentException("Recovery time is required");
+        }
+        return recoveryTime;
+    }
 }
