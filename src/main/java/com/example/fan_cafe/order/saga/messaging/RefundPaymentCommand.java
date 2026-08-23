@@ -7,7 +7,8 @@ public record RefundPaymentCommand(
         UUID sagaId,
         Long orderId,
         String reason,
-        String idempotencyKey
+        String idempotencyKey,
+        String eventId
 ) {
     public static final String EVENT_TYPE = "REFUND_PAYMENT";
 
@@ -17,7 +18,8 @@ public record RefundPaymentCommand(
                 sagaId,
                 orderId,
                 reason,
-                "REFUND:" + sagaId
+                "REFUND:" + sagaId,
+                null
         );
     }
 }

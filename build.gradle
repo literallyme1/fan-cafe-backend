@@ -45,6 +45,7 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation files(project(':payment-service').layout.buildDirectory.dir('classes/java/main'))
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
@@ -125,4 +126,8 @@ tasks.named('test') {
 				?: 'ci'
 		systemProperty 'spring.profiles.active', ciProfile
 	}
+}
+
+tasks.named('compileTestJava') {
+	dependsOn ':payment-service:compileJava'
 }
