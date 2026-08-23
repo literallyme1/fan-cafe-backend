@@ -149,6 +149,19 @@ class PaymentServiceTest {
     }
 
     @Test
+    void repeatedRefundDeliveryPerformsRefundMutationOnlyOnce() {
+        Payment payment = approvedPayment();
+        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+
+        var first = paymentService.refund(10L, REFUND_SAGA_ID, "first delivery");
+        var duplicate = paymentService.refund(10L, REFUND_SAGA_ID, "duplicate delivery");
+
+        assertThat(duplicate.refundedAt()).isEqualTo(first.refundedAt());
+        assertThat(duplicate.refundReason()).isEqualTo("first delivery");
+        assertThat(duplicate.refundIdempotencyKey()).isEqualTo("REFUND:" + REFUND_SAGA_ID);
+    }
+
+    @Test
     void refundWithDifferentSagaId_isRejectedAfterRefund() {
         Payment payment = approvedPayment();
         payment.refund("REFUND:" + REFUND_SAGA_ID, "first request");

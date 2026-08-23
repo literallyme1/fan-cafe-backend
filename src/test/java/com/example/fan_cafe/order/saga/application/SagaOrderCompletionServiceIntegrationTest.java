@@ -5,6 +5,7 @@ import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import com.example.fan_cafe.order.saga.infrastructure.SagaInstanceRepository;
+import com.example.fan_cafe.order.saga.exception.OrderCompletionFailedException;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport;
 import com.example.fan_cafe.order.support.OrderIntegrationTestSupport.PaymentPendingFixture;
 import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
@@ -71,8 +72,8 @@ class SagaOrderCompletionServiceIntegrationTest {
 
         assertThatThrownBy(() -> completionService.complete(
                 saga.sagaId(), orderId, "mock payment approved"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("forced completion transition failure");
+                .isInstanceOf(OrderCompletionFailedException.class)
+                .hasCauseInstanceOf(IllegalStateException.class);
 
         entityManager.clear();
         assertThat(orderRepository.findById(orderId).orElseThrow().getStatus())

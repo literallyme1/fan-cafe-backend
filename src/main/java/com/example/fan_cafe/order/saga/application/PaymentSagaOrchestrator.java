@@ -8,10 +8,12 @@ import com.example.fan_cafe.order.payment.client.PaymentClient;
 import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
+import com.example.fan_cafe.order.saga.exception.OrderCompletionFailedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,7 @@ public class PaymentSagaOrchestrator {
 
     private final SagaTransactionService sagaTransactionService;
     private final SagaOrderCompletionService completionService;
+    private final SagaCompensationService compensationService;
     private final PaymentClient paymentClient;
     private final OrderPaymentResultService orderPaymentResultService;
 
@@ -33,7 +36,7 @@ public class PaymentSagaOrchestrator {
         SagaSnapshot saga = sagaTransactionService.start(orderId);
         saga = sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_PENDING);
         if (saga.status().isAtOrAfter(SagaStatus.PAYMENT_COMPLETED)) {
-            return completionService.complete(saga.sagaId(), orderId, APPROVED_REASON);
+            return completeOrder(saga.sagaId(), orderId);
         }
 
         PaymentResultResponse payment = paymentClient.approve(
@@ -46,6 +49,15 @@ public class PaymentSagaOrchestrator {
         }
 
         sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
-        return completionService.complete(saga.sagaId(), orderId, APPROVED_REASON);
+        return completeOrder(saga.sagaId(), orderId);
+    }
+
+    private OrderQueryResponse completeOrder(UUID sagaId, Long orderId) {
+        try {
+            return completionService.complete(sagaId, orderId, APPROVED_REASON);
+        } catch (OrderCompletionFailedException completionFailure) {
+            compensationService.start(sagaId, orderId, "order completion failed");
+            throw completionFailure;
+        }
     }
 }

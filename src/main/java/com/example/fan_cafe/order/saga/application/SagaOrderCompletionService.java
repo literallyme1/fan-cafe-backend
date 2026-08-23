@@ -3,6 +3,7 @@ package com.example.fan_cafe.order.saga.application;
 import com.example.fan_cafe.order.application.OrderPaymentCommandService;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
+import com.example.fan_cafe.order.saga.exception.OrderCompletionFailedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,12 @@ public class SagaOrderCompletionService {
 
     @Transactional
     public OrderQueryResponse complete(UUID sagaId, Long orderId, String historyReason) {
-        OrderQueryResponse response = orderPaymentCommandService.applyPaymentApproved(orderId, historyReason);
-        sagaTransactionService.transition(sagaId, SagaStatus.COMPLETED);
-        return response;
+        try {
+            OrderQueryResponse response = orderPaymentCommandService.applyPaymentApproved(orderId, historyReason);
+            sagaTransactionService.transition(sagaId, SagaStatus.COMPLETED);
+            return response;
+        } catch (RuntimeException completionFailure) {
+            throw new OrderCompletionFailedException(completionFailure);
+        }
     }
 }

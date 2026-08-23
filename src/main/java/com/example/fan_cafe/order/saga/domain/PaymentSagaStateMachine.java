@@ -22,6 +22,12 @@ public class PaymentSagaStateMachine {
         if (current == SagaStatus.PAYMENT_COMPLETED && target == SagaStatus.COMPLETED) {
             return SagaStep.DONE;
         }
+        if (current == SagaStatus.PAYMENT_COMPLETED && target == SagaStatus.COMPENSATING) {
+            return SagaStep.PAYMENT_REFUND;
+        }
+        if (current == SagaStatus.COMPENSATING && target == SagaStatus.COMPENSATED) {
+            return SagaStep.DONE;
+        }
         throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
     }
 }

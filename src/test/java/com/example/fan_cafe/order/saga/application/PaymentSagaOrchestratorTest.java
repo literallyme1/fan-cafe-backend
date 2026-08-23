@@ -7,6 +7,7 @@ import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import com.example.fan_cafe.order.saga.domain.SagaStep;
+import com.example.fan_cafe.order.saga.exception.OrderCompletionFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -19,12 +20,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentSagaOrchestratorTest {
     @Mock private SagaTransactionService sagaTransactionService;
     @Mock private SagaOrderCompletionService completionService;
+    @Mock private SagaCompensationService compensationService;
     @Mock private PaymentClient paymentClient;
     @Mock private OrderPaymentResultService orderPaymentResultService;
     @InjectMocks private PaymentSagaOrchestrator orchestrator;
@@ -84,6 +87,48 @@ class PaymentSagaOrchestratorTest {
     @Test
     void orchestratorDoesNotDeclareTransactionBoundary() {
         assertThat(PaymentSagaOrchestrator.class.isAnnotationPresent(Transactional.class)).isFalse();
+    }
+
+    @Test
+    void orderCompletionFailureStartsCompensationAndRethrows() {
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        SagaSnapshot paymentCompleted = snapshot(
+                sagaId, SagaStatus.PAYMENT_COMPLETED, SagaStep.ORDER_COMPLETION);
+        OrderCompletionFailedException failure = new OrderCompletionFailedException(
+                new IllegalStateException("order completion failed"));
+
+        when(sagaTransactionService.start(10L)).thenReturn(paymentCompleted);
+        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_PENDING))
+                .thenReturn(paymentCompleted);
+        when(completionService.complete(sagaId, 10L, "mock payment approved"))
+                .thenThrow(failure);
+
+        assertThatThrownBy(() -> orchestrator.approve(
+                10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
+                .isSameAs(failure);
+
+        verify(compensationService).start(sagaId, 10L, "order completion failed");
+        verifyNoInteractions(paymentClient);
+    }
+
+    @Test
+    void paymentApprovalFailureDoesNotStartCompensation() {
+        UUID sagaId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        SagaSnapshot started = snapshot(sagaId, SagaStatus.STARTED, SagaStep.PAYMENT_APPROVAL);
+        SagaSnapshot pending = snapshot(sagaId, SagaStatus.PAYMENT_PENDING, SagaStep.PAYMENT_APPROVAL);
+        IllegalStateException paymentFailure = new IllegalStateException("payment boundary failed");
+
+        when(sagaTransactionService.start(10L)).thenReturn(started);
+        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_PENDING))
+                .thenReturn(pending);
+        when(paymentClient.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
+                .thenThrow(paymentFailure);
+
+        assertThatThrownBy(() -> orchestrator.approve(
+                10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
+                .isSameAs(paymentFailure);
+
+        verifyNoInteractions(compensationService, completionService);
     }
 
     private SagaSnapshot snapshot(UUID sagaId, SagaStatus status, SagaStep step) {
