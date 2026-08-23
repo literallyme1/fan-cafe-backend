@@ -2,6 +2,7 @@ package com.example.fan_cafe.order.saga.application;
 
 import com.example.fan_cafe.order.application.OrderService;
 import com.example.fan_cafe.order.domain.Status;
+import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.infrastructure.OrderStatusHistoryRepository;
 import com.example.fan_cafe.order.payment.client.PaymentClient;
@@ -33,6 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -137,6 +139,57 @@ class SagaLateSuccessIntegrationTest {
         }
 
         assertCompensatingWithSingleRefundCommand(unknown.sagaId());
+    }
+
+    @Test
+    void paymentCompletionHoldingOrderLockMakesCancellationObserveCommittedPaidState() throws Exception {
+        fixture = fixtures.createPaymentPendingOrder();
+        SagaSnapshot unknown = makeUnknown();
+        Long orderId = fixture.order().getId();
+        PaymentStatusResponse approved = approvedStatus();
+        when(paymentClient.getStatus(orderId)).thenReturn(approved);
+        CountDownLatch completionHoldingOrderLock = new CountDownLatch(1);
+        CountDownLatch allowCompletionCommit = new CountDownLatch(1);
+        CountDownLatch cancellationStarted = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            completionHoldingOrderLock.countDown();
+            assertThat(allowCompletionCommit.await(10, TimeUnit.SECONDS)).isTrue();
+            return invocation.callRealMethod();
+        }).when(sagaTransactionService)
+                .transition(eq(unknown.sagaId()), eq(SagaStatus.COMPLETED));
+
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var completion = executor.submit(
+                    () -> orchestrator.recoverPaymentUnknown(unknown.sagaId(), orderId));
+            assertThat(completionHoldingOrderLock.await(10, TimeUnit.SECONDS)).isTrue();
+
+            var cancellation = executor.submit(() -> {
+                cancellationStarted.countDown();
+                return orderService.cancel(fixture.user(), orderId);
+            });
+            assertThat(cancellationStarted.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThatThrownBy(() -> cancellation.get(500, TimeUnit.MILLISECONDS))
+                    .isInstanceOf(TimeoutException.class);
+
+            allowCompletionCommit.countDown();
+            assertThat(completion.get(10, TimeUnit.SECONDS).getStatus()).isEqualTo(Status.PAID);
+            assertThatThrownBy(() -> cancellation.get(10, TimeUnit.SECONDS))
+                    .isInstanceOf(ExecutionException.class)
+                    .hasCauseInstanceOf(CustomException.class);
+        } finally {
+            allowCompletionCommit.countDown();
+            executor.shutdownNow();
+        }
+
+        assertThat(approved.status()).isEqualTo(PaymentResultStatus.APPROVED);
+        assertThat(orderRepository.findById(orderId).orElseThrow().getStatus()).isEqualTo(Status.PAID);
+        assertThat(sagaRepository.findById(unknown.sagaId()).orElseThrow().getStatus())
+                .isEqualTo(SagaStatus.COMPLETED);
+        assertThat(historyRepository.countByOrder_Id(orderId)).isEqualTo(1);
+        assertThat(outboxRepository.countByAggregateTypeAndAggregateId("ORDER", orderId)).isEqualTo(1);
+        assertThat(merchandiseRepository.findById(fixture.merchandise().getId()).orElseThrow().getStock())
+                .isEqualTo(98);
     }
 
     @Test

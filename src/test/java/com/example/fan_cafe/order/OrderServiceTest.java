@@ -134,7 +134,8 @@ class OrderServiceTest {
     @Test
     @DisplayName("Mock 결제 승인 API는 Payment 호출 후 결과 반영을 위임한다.")
     void approveMockPayment_shouldDelegateToCommandService() {
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L))
+                .thenReturn(Optional.of(paymentPendingOrder));
         when(paymentSagaOrchestrator.approve(10L, BigDecimal.valueOf(20000),
                 BigDecimal.valueOf(20000), "idem-001"))
                 .thenReturn(OrderQueryResponse.from(paidOrder));
@@ -207,7 +208,8 @@ class OrderServiceTest {
                 .category(Category.CLOTHES)
                 .build();
 
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+        when(orderRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .thenReturn(Optional.of(paymentPendingOrder));
         when(merchandiseRepository.findMerchandiseWithPessimisticLock(100L)).thenReturn(Optional.of(merchandise));
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"eventType\":\"ORDER_CANCELLED\"}");
 
@@ -222,7 +224,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("PAID 주문은 cancel API로 취소할 수 없다.")
     void cancel_shouldThrowException_whenOrderAlreadyPaid() {
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paidOrder));
+        when(orderRepository.findByIdAndUserIdForUpdate(10L, 1L)).thenReturn(Optional.of(paidOrder));
 
         assertThatThrownBy(() -> orderService.cancel(user, 10L))
                 .isInstanceOf(CustomException.class)
@@ -233,7 +235,8 @@ class OrderServiceTest {
     @DisplayName("이미 취소된 주문은 취소할 수 없다.")
     void cancel_shouldThrowException_whenOrderNotCancellable() {
         ReflectionTestUtils.setField(paymentPendingOrder, "status", com.example.fan_cafe.order.domain.Status.CANCELLED);
-        when(orderRepository.findByIdAndUserIdWithItems(10L, 1L)).thenReturn(Optional.of(paymentPendingOrder));
+        when(orderRepository.findByIdAndUserIdForUpdate(10L, 1L))
+                .thenReturn(Optional.of(paymentPendingOrder));
 
         assertThatThrownBy(() -> orderService.cancel(user, 10L))
                 .isInstanceOf(CustomException.class)
