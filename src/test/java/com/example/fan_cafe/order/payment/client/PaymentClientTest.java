@@ -11,7 +11,10 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.UUID;
+import com.sun.net.httpserver.HttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -73,6 +76,56 @@ class PaymentClientTest {
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         server.verify();
+    }
+
+    @Test
+    void approvalServerError_isClassifiedAsUnknownOutcome() {
+        server.expect(requestTo("http://payment-service/internal/payments/10/approve"))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":\"P999\",\"message\":\"internal error\"}"));
+
+        assertThatThrownBy(this::approve)
+                .isInstanceOf(PaymentOutcomeUnknownException.class)
+                .extracting(exception -> ((PaymentOutcomeUnknownException) exception).getErrorCode())
+                .isEqualTo(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+        server.verify();
+    }
+
+    @Test
+    void approvalReadTimeout_isClassifiedAsUnknownOutcome() throws Exception {
+        HttpServer delayedServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        delayedServer.createContext("/internal/payments/10/approve", exchange -> {
+            try {
+                Thread.sleep(150);
+                byte[] response = "{\"orderId\":10,\"status\":\"APPROVED\"}".getBytes();
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(HttpStatus.OK.value(), response.length);
+                exchange.getResponseBody().write(response);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        delayedServer.start();
+
+        try {
+            PaymentClientProperties properties = new PaymentClientProperties();
+            properties.setBaseUrl("http://127.0.0.1:" + delayedServer.getAddress().getPort());
+            properties.setConnectTimeout(Duration.ofMillis(100));
+            properties.setReadTimeout(Duration.ofMillis(20));
+            RestClient timeoutClient = new PaymentClientConfig().paymentRestClient(properties);
+            PaymentClient client = new PaymentClient(timeoutClient, new ObjectMapper());
+
+            assertThatThrownBy(() -> client.approve(
+                    10L, BigDecimal.TEN, BigDecimal.TEN, "key-1"))
+                    .isInstanceOf(PaymentOutcomeUnknownException.class)
+                    .extracting(exception -> ((PaymentOutcomeUnknownException) exception).getErrorCode())
+                    .isEqualTo(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
+        } finally {
+            delayedServer.stop(0);
+        }
     }
 
     @Test

@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.ResourceAccessException;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -24,11 +26,45 @@ public class PaymentClient {
     }
 
     public PaymentResultResponse approve(Long orderId, BigDecimal expected, BigDecimal approved, String key) {
-        return execute(() -> restClient.post()
+        return executeApproval(() -> restClient.post()
                 .uri("/internal/payments/{orderId}/approve", orderId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new PaymentApproveCommand(expected, approved, key))
                 .retrieve().body(PaymentResultResponse.class));
+    }
+
+    private PaymentResultResponse executeApproval(PaymentCall call) {
+        try {
+            PaymentResultResponse result = call.execute();
+            if (result == null) {
+                throw new PaymentOutcomeUnknownException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+            }
+            return result;
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().is5xxServerError()
+                    || exception.getStatusCode().value() == 408) {
+                throw new PaymentOutcomeUnknownException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+            }
+            throw mapRemoteError(exception);
+        } catch (ResourceAccessException exception) {
+            throw new PaymentOutcomeUnknownException(OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE);
+        } catch (RestClientException exception) {
+            OrderErrorCode errorCode = hasIoCause(exception)
+                    ? OrderErrorCode.PAYMENT_SERVICE_UNAVAILABLE
+                    : OrderErrorCode.PAYMENT_SERVICE_ERROR;
+            throw new PaymentOutcomeUnknownException(errorCode);
+        }
+    }
+
+    private boolean hasIoCause(Throwable failure) {
+        Throwable cause = failure;
+        while (cause != null) {
+            if (cause instanceof IOException) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     public PaymentResultResponse fail(Long orderId, BigDecimal expected, String reason) {
