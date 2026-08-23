@@ -1,12 +1,14 @@
 DROP PROCEDURE IF EXISTS seed_saga_step8_payments;
 
+SET @seed_count = COALESCE(@seed_count, 4000);
+
 DELIMITER $$
 CREATE PROCEDURE seed_saga_step8_payments()
 BEGIN
     DECLARE sequence_no INT DEFAULT 0;
     DECLARE current_order_id BIGINT;
 
-    WHILE sequence_no < 4000 DO
+    WHILE sequence_no < @seed_count DO
         SET current_order_id = 8100001 + sequence_no;
         INSERT INTO payments (
             order_id, status, expected_amount, approved_amount, payment_key,
@@ -27,5 +29,5 @@ DROP PROCEDURE seed_saga_step8_payments;
 
 SELECT status, COUNT(*) AS seeded_payment_count
 FROM payments
-WHERE order_id BETWEEN 8100001 AND 8104000
+WHERE order_id BETWEEN 8100001 AND 8100000 + @seed_count
 GROUP BY status;

@@ -1,12 +1,30 @@
-SET @order_id_start = 8000001;
-SET @order_id_end = 8020000;
 SET @product_id = 8000001;
+SET @experiment_email = 'saga-step8@fan-cafe.test';
 
-DELETE FROM saga_instance WHERE order_id BETWEEN @order_id_start AND @order_id_end;
-DELETE FROM outbox_events WHERE aggregate_id BETWEEN @order_id_start AND @order_id_end;
-DELETE FROM order_status_history WHERE order_id BETWEEN @order_id_start AND @order_id_end;
-DELETE FROM order_items WHERE order_id BETWEEN @order_id_start AND @order_id_end;
-DELETE FROM orders WHERE id BETWEEN @order_id_start AND @order_id_end;
+CREATE TEMPORARY TABLE step8_experiment1_order_ids (
+    order_id BIGINT PRIMARY KEY
+);
+
+INSERT INTO step8_experiment1_order_ids (order_id)
+SELECT orders.id
+FROM orders
+JOIN users ON users.id = orders.user_id
+WHERE users.email = @experiment_email;
+
+SET @reset_order_count = (SELECT COUNT(*) FROM step8_experiment1_order_ids);
+
+DELETE FROM saga_instance
+WHERE order_id IN (SELECT order_id FROM step8_experiment1_order_ids);
+DELETE FROM outbox_events
+WHERE aggregate_id IN (SELECT order_id FROM step8_experiment1_order_ids);
+DELETE FROM order_status_history
+WHERE order_id IN (SELECT order_id FROM step8_experiment1_order_ids);
+DELETE FROM order_items
+WHERE order_id IN (SELECT order_id FROM step8_experiment1_order_ids);
+DELETE FROM orders
+WHERE id IN (SELECT order_id FROM step8_experiment1_order_ids);
+
+DROP TEMPORARY TABLE step8_experiment1_order_ids;
 
 INSERT INTO merchandises (
     id, name, description, price, sale_price, stock, status, image_url, category,
@@ -18,9 +36,7 @@ INSERT INTO merchandises (
 ON DUPLICATE KEY UPDATE
     stock = VALUES(stock), status = 'SALE', deleted_at = NULL, updated_at = NOW(6);
 
-ALTER TABLE orders AUTO_INCREMENT = 8000001;
-
-SELECT @order_id_start AS order_id_start,
-       @order_id_end AS order_id_end,
+SELECT @experiment_email AS experiment_email,
        @product_id AS product_id,
+       @reset_order_count AS reset_order_count,
        20000 AS expected_order_count;

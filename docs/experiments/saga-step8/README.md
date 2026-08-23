@@ -11,16 +11,19 @@ PowerShell 기준 명령이다. 프로젝트 루트에서 실행한다.
 docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d db payment-db redis rabbitmq
 
 Get-Content -Raw docs/db/step8-add-saga-observability.sql |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 ```
 
-Migration은 기존 `saga_instance`에 한 번만 적용한다. Order 애플리케이션은 experiment profile에서
-`ddl-auto=validate`를 사용하므로 migration 적용 후 시작해야 한다.
+Migration은 기존 `saga_instance`에 적용하며, 이미 컬럼이 있는 경우에도 안전하게 재실행할 수 있다.
+Order 애플리케이션은 experiment profile에서 `ddl-auto=validate`를 사용하므로 migration 적용 후
+시작해야 한다. Step 1~7 스키마가 없는 빈 DB를 생성하는 migration은 이 harness의 범위가 아니다.
 
 ## 실험 1: Payment Partial Success 수렴
 
-고정 범위는 Order ID `8000001..8020000`, 상품 ID는 `8000001`이다. 전용 DB에 이 범위보다
-높은 기존 Order가 없어야 reset 후 동일 ID가 재사용되어 동일한 20% 대상이 선택된다.
+상품 ID는 `8000001`이다. 주문은 실험 전용 사용자(`saga-step8@fan-cafe.test`)로 식별하며,
+Payment 데이터는 `STEP8-PARTIAL-*` payment key로 식별한다. 따라서 다른 실험이 더 높은 Order ID를
+사용한 뒤에도 reset/result SQL이 실제 실험 주문을 놓치지 않는다. 장애 대상은 실제 생성된 orderId의
+hash로 결정되므로 같은 100개 연속 ID 구간마다 20개가 선택된다.
 
 ### 1. Reset
 
@@ -28,10 +31,10 @@ Migration은 기존 `saga_instance`에 한 번만 적용한다. Order 애플리�
 docker compose stop app payment-service
 
 Get-Content -Raw docs/experiments/saga-step8/experiment1-reset-order.sql |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 
 Get-Content -Raw docs/experiments/saga-step8/experiment1-reset-payment.sql |
-  docker compose exec -T payment-db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD payment_db
+  docker compose exec -T payment-db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" payment_db'
 ```
 
 ### 2. 서비스 시작
@@ -65,7 +68,7 @@ k6 run -e VUS=50 -e BASE_URL=http://localhost:8080 k6/saga-partial-success.js
 
 ```powershell
 Get-Content -Raw docs/experiments/saga-step8/experiment1-result.sql |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 ```
 
 결과 SQL은 UNKNOWN 발생 수, 미수렴 수, 최종 상태, 자동 수렴률, 개별 convergence time과
@@ -91,14 +94,14 @@ Response delay는 승인 POST에만 적용되지만, 실험 2에서는 기능 �
 docker compose stop app payment-service
 
 Get-Content -Raw docs/experiments/saga-step8/experiment2-reset-order.sql |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 Get-Content -Raw docs/experiments/saga-step8/experiment2-reset-payment.sql |
-  docker compose exec -T payment-db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD payment_db
+  docker compose exec -T payment-db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" payment_db'
 
 Get-Content -Raw docs/experiments/saga-step8/experiment2-seed-order.sql |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 Get-Content -Raw docs/experiments/saga-step8/experiment2-seed-payment.sql |
-  docker compose exec -T payment-db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD payment_db
+  docker compose exec -T payment-db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" payment_db'
 ```
 
 ### 2. Payment 시작 및 BEFORE snapshot
@@ -110,9 +113,10 @@ $env:EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_ENABLED = "false"
 docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d payment-service
 
 $runId = "concurrency-1-run-1"
+$env:SAGA_RECOVERY_EXPERIMENT_RUN_ID = $runId
 $beforeSql = "SET @run_id='$runId'; SET @snapshot_phase='BEFORE';`n" +
   (Get-Content -Raw docs/experiments/saga-step8/mysql-lock-snapshot.sql)
-$beforeSql | docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+$beforeSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 ```
 
 ### 3. 지정 concurrency로 Order 시작
@@ -121,6 +125,7 @@ $beforeSql | docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD f
 
 ```powershell
 $env:SAGA_RECOVERY_CONCURRENCY = "1"
+$env:SAGA_RECOVERY_EXPERIMENT_RUN_ID = $runId
 docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d app
 ```
 
@@ -131,7 +136,7 @@ experiment 전용 coordinator가 지정한 수의 고정 worker lane을 만들�
 
 ```powershell
 "SELECT status, COUNT(*) FROM saga_instance WHERE order_id BETWEEN 8100001 AND 8104000 GROUP BY status;" |
-  docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 ```
 
 ### 4. AFTER snapshot과 delta
@@ -141,15 +146,17 @@ experiment 전용 coordinator가 지정한 수의 고정 worker lane을 만들�
 ```powershell
 $afterSql = "SET @run_id='$runId'; SET @snapshot_phase='AFTER';`n" +
   (Get-Content -Raw docs/experiments/saga-step8/mysql-lock-snapshot.sql)
-$afterSql | docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+$afterSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 
 $resultSql = "SET @run_id='$runId';`n" +
   (Get-Content -Raw docs/experiments/saga-step8/experiment2-result.sql)
-$resultSql | docker compose exec -T db mysql -uroot -p$env:MYSQL_ROOT_PASSWORD fan_cafe
+$resultSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
 ```
 
-delta 결과에는 시작/종료 시각, 처리 Saga 수, 전체 초, Sagas/sec, InnoDB row lock waits와
-row lock wait time 차이 및 평균 wait가 포함된다. MySQL status 값은 전역 누적 counter이므로
+처리시간은 최초 성공 claim 시각부터 대상 Saga의 `MAX(resolved_at)`까지 계산한다. BEFORE/AFTER
+`captured_at`은 InnoDB lock counter delta에만 사용한다. 결과에는 처리 Saga 수, 순수 Recovery 처리시간,
+Sagas/sec, InnoDB row lock waits와 row lock wait time 차이 및 평균 wait가 포함된다.
+MySQL status 값은 전역 누적 counter이므로
 같은 서버의 다른 workload가 없어야 비교가 유효하다.
 
 동일 순서를 concurrency `1/2/4/8/10`에 반복한다. Before용 비교 구현이나 `FOR UPDATE`

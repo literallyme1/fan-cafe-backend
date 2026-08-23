@@ -6,23 +6,40 @@ CREATE TABLE IF NOT EXISTS saga_experiment_snapshot (
     run_id VARCHAR(100) NOT NULL,
     snapshot_phase VARCHAR(10) NOT NULL,
     captured_at DATETIME(6) NOT NULL,
+    worker_started_at DATETIME(6) NULL,
     innodb_row_lock_waits BIGINT UNSIGNED NOT NULL,
     innodb_row_lock_time_ms BIGINT UNSIGNED NOT NULL,
     completed_saga_count BIGINT UNSIGNED NOT NULL,
     PRIMARY KEY (run_id, snapshot_phase)
 );
 
+SET @add_worker_started_at = IF(
+    EXISTS(
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'saga_experiment_snapshot'
+          AND column_name = 'worker_started_at'
+    ),
+    'SELECT 1',
+    'ALTER TABLE saga_experiment_snapshot ADD COLUMN worker_started_at DATETIME(6) NULL AFTER captured_at'
+);
+PREPARE step8_worker_started_at FROM @add_worker_started_at;
+EXECUTE step8_worker_started_at;
+DEALLOCATE PREPARE step8_worker_started_at;
+
 DELETE FROM saga_experiment_snapshot
 WHERE run_id = @run_id AND snapshot_phase = @snapshot_phase;
 
 INSERT INTO saga_experiment_snapshot (
-    run_id, snapshot_phase, captured_at,
+    run_id, snapshot_phase, captured_at, worker_started_at,
     innodb_row_lock_waits, innodb_row_lock_time_ms, completed_saga_count
 )
 SELECT
     @run_id,
     @snapshot_phase,
     NOW(6),
+    NULL,
     COALESCE(MAX(CASE WHEN VARIABLE_NAME = 'INNODB_ROW_LOCK_WAITS'
         THEN CAST(VARIABLE_VALUE AS UNSIGNED) END), 0),
     COALESCE(MAX(CASE WHEN VARIABLE_NAME = 'INNODB_ROW_LOCK_TIME'

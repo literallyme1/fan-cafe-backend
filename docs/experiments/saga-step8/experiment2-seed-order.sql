@@ -1,5 +1,7 @@
 DROP PROCEDURE IF EXISTS seed_saga_step8_recovery;
 
+SET @seed_count = COALESCE(@seed_count, 4000);
+
 DELIMITER $$
 CREATE PROCEDURE seed_saga_step8_recovery()
 BEGIN
@@ -30,7 +32,7 @@ BEGIN
     ON DUPLICATE KEY UPDATE
         stock = VALUES(stock), status = 'SALE', deleted_at = NULL, updated_at = NOW(6);
 
-    WHILE sequence_no < 4000 DO
+    WHILE sequence_no < @seed_count DO
         SET current_order_id = 8100001 + sequence_no;
 
         INSERT INTO orders (
@@ -69,5 +71,5 @@ DROP PROCEDURE seed_saga_step8_recovery;
 
 SELECT status, COUNT(*) AS seeded_saga_count
 FROM saga_instance
-WHERE order_id BETWEEN 8100001 AND 8104000
+WHERE order_id BETWEEN 8100001 AND 8100000 + @seed_count
 GROUP BY status;

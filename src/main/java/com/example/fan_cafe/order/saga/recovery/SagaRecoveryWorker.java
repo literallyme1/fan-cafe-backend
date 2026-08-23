@@ -2,19 +2,41 @@ package com.example.fan_cafe.order.saga.recovery;
 
 import com.example.fan_cafe.order.saga.application.PaymentSagaOrchestrator;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class SagaRecoveryWorker {
     private final SagaRecoveryTransactionService recoveryTransactionService;
     private final PaymentSagaOrchestrator paymentSagaOrchestrator;
     private final SagaRecoveryProperties properties;
+    private final List<SagaRecoveryClaimObserver> claimObservers;
+
+    @Autowired
+    public SagaRecoveryWorker(
+            SagaRecoveryTransactionService recoveryTransactionService,
+            PaymentSagaOrchestrator paymentSagaOrchestrator,
+            SagaRecoveryProperties properties,
+            List<SagaRecoveryClaimObserver> claimObservers
+    ) {
+        this.recoveryTransactionService = recoveryTransactionService;
+        this.paymentSagaOrchestrator = paymentSagaOrchestrator;
+        this.properties = properties;
+        this.claimObservers = claimObservers;
+    }
+
+    SagaRecoveryWorker(
+            SagaRecoveryTransactionService recoveryTransactionService,
+            PaymentSagaOrchestrator paymentSagaOrchestrator,
+            SagaRecoveryProperties properties
+    ) {
+        this(recoveryTransactionService, paymentSagaOrchestrator, properties, List.of());
+    }
 
     public void recoverDueSagas() {
         for (int processed = 0; processed < properties.getBatchSize(); processed++) {
@@ -22,6 +44,7 @@ public class SagaRecoveryWorker {
             if (claimed.isEmpty()) {
                 return;
             }
+            claimObservers.forEach(observer -> observer.claimSucceeded(claimed.get()));
             process(claimed.get());
         }
     }
