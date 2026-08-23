@@ -4,9 +4,22 @@ public enum SagaStatus {
     STARTED,
     PAYMENT_PENDING,
     PAYMENT_COMPLETED,
-    COMPLETED;
+    COMPENSATING,
+    COMPLETED,
+    COMPENSATED;
 
     public boolean isAtOrAfter(SagaStatus milestone) {
-        return ordinal() >= milestone.ordinal();
+        return switch (milestone) {
+            case STARTED -> this == STARTED
+                    || this == PAYMENT_PENDING
+                    || this == PAYMENT_COMPLETED
+                    || this == COMPLETED;
+            case PAYMENT_PENDING -> this == PAYMENT_PENDING
+                    || this == PAYMENT_COMPLETED
+                    || this == COMPLETED;
+            case PAYMENT_COMPLETED -> this == PAYMENT_COMPLETED || this == COMPLETED;
+            case COMPLETED -> this == COMPLETED;
+            case COMPENSATING, COMPENSATED -> this == milestone;
+        };
     }
 }

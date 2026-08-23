@@ -87,6 +87,11 @@ public class Order extends BaseTimeEntity {
         this.status = Status.REFUNDED;
     }
 
+    /** 결제 승인 후 주문 완료 실패에 대한 보상 환불을 종결한다. */
+    public void markCompensatedRefunded() {
+        this.status = Status.REFUNDED;
+    }
+
     // 외부에서 리스트를 직접 수정하지 못하도록 읽기 전용 뷰만 반환한다.
     public List<OrderItem> getOrderItems() {
         return Collections.unmodifiableList(orderItems);
