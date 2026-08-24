@@ -2,6 +2,8 @@ package com.example.fan_cafe.order.saga.recovery;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Profile;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +19,16 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 class SagaRecoveryExperimentCoordinatorTest {
+
+    @Test
+    void claimTransactionUsesReadCommittedForConcurrentSkipLockedWorkers() throws Exception {
+        Transactional transactional = SagaRecoveryTransactionService.class
+                .getMethod("claimNext")
+                .getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.isolation()).isEqualTo(Isolation.READ_COMMITTED);
+    }
 
     @Test
     void configuredConcurrencyCreatesThatManySimultaneousRecoveryLanes() throws Exception {

@@ -1,5 +1,7 @@
 SET @product_id = 8000001;
 SET @experiment_email = 'saga-step8@fan-cafe.test';
+SET @order_id_start = 8200001;
+SET @expected_order_count = 20000;
 
 CREATE TEMPORARY TABLE step8_experiment1_order_ids (
     order_id BIGINT PRIMARY KEY
@@ -26,6 +28,9 @@ WHERE id IN (SELECT order_id FROM step8_experiment1_order_ids);
 
 DROP TEMPORARY TABLE step8_experiment1_order_ids;
 
+ALTER TABLE orders AUTO_INCREMENT = 8200001;
+SET SESSION information_schema_stats_expiry = 0;
+
 INSERT INTO merchandises (
     id, name, description, price, sale_price, stock, status, image_url, category,
     created_at, updated_at, deleted_at
@@ -39,4 +44,9 @@ ON DUPLICATE KEY UPDATE
 SELECT @experiment_email AS experiment_email,
        @product_id AS product_id,
        @reset_order_count AS reset_order_count,
-       20000 AS expected_order_count;
+       @order_id_start AS order_id_start,
+       @order_id_start + @expected_order_count - 1 AS order_id_end,
+       (SELECT AUTO_INCREMENT
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders') AS actual_next_order_id,
+       @expected_order_count AS expected_order_count;

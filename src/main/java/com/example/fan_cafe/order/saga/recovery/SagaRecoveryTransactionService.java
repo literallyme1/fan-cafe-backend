@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -35,7 +36,7 @@ public class SagaRecoveryTransactionService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Optional<SagaRecoveryClaim> claimNext() {
         LocalDateTime now = LocalDateTime.now(clock);
         return sagaRepository.findNextDueRecoveryForUpdateSkipLocked(now)

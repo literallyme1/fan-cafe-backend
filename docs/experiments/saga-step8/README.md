@@ -20,10 +20,12 @@ Order 애플리케이션은 experiment profile에서 `ddl-auto=validate`를 사�
 
 ## 실험 1: Payment Partial Success 수렴
 
-상품 ID는 `8000001`이다. 주문은 실험 전용 사용자(`saga-step8@fan-cafe.test`)로 식별하며,
-Payment 데이터는 `STEP8-PARTIAL-*` payment key로 식별한다. 따라서 다른 실험이 더 높은 Order ID를
-사용한 뒤에도 reset/result SQL이 실제 실험 주문을 놓치지 않는다. 장애 대상은 실제 생성된 orderId의
-hash로 결정되므로 같은 100개 연속 ID 구간마다 20개가 선택된다.
+상품 ID는 `8000001`, 고정 Order ID 범위는 `8200001..8220000`이다. 주문은 실험 전용
+사용자(`saga-step8@fan-cafe.test`)로도 식별하며, Payment 데이터는 `STEP8-PARTIAL-*` payment key로
+식별한다. reset SQL은 실험 1 주문을 제거한 뒤 `orders` AUTO_INCREMENT를 `8200001`로 되돌리고
+실제 다음 ID도 출력한다. result SQL은 사용자와 고정 ID 범위를 함께 적용해 현재 실행만 집계한다.
+장애 대상은 orderId의 결정론적 multiplicative hash로 정하므로 같은 100개 연속 ID 구간마다 정확히
+20개가 선택되면서 연속 20건 burst는 만들지 않는다.
 
 ### 1. Reset
 
@@ -52,6 +54,8 @@ docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d paym
 
 Order의 Payment read timeout은 experiment profile에서 2초다. Payment는 APPROVED 트랜잭션을
 commit한 뒤 선택된 승인 응답만 5초 지연한다.
+experiment profile의 access token 유효기간은 기본 2시간이므로 15분을 넘는 본 실험에서도 setup에서
+발급한 토큰이 중간에 만료되지 않는다.
 
 ### 3. k6
 
@@ -131,6 +135,8 @@ docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d app
 
 experiment 전용 coordinator가 지정한 수의 고정 worker lane을 만들고, 각 lane이 기존
 `claimNext()`를 동시에 호출한다. 기본 production scheduler는 experiment profile에서 생성되지 않는다.
+claim의 짧은 로컬 트랜잭션은 MySQL `READ_COMMITTED`에서 기존 `FOR UPDATE SKIP LOCKED`와 lease를
+사용한다. 이는 due range의 불필요한 gap lock을 유지하지 않으면서 동일 Saga 중복 claim을 방지한다.
 
 완료 여부는 다음처럼 확인한다.
 

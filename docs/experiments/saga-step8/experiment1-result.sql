@@ -1,10 +1,13 @@
 SET @experiment_email = 'saga-step8@fan-cafe.test';
+SET @order_id_start = 8200001;
+SET @order_id_end = 8220000;
 
 SELECT COUNT(*) AS payment_unknown_count
 FROM saga_instance saga
 JOIN orders customer_order ON customer_order.id = saga.order_id
 JOIN users experiment_user ON experiment_user.id = customer_order.user_id
 WHERE experiment_user.email = @experiment_email
+  AND customer_order.id BETWEEN @order_id_start AND @order_id_end
   AND payment_unknown_at IS NOT NULL;
 
 SELECT COUNT(*) AS unresolved_saga_count
@@ -12,6 +15,7 @@ FROM saga_instance saga
 JOIN orders customer_order ON customer_order.id = saga.order_id
 JOIN users experiment_user ON experiment_user.id = customer_order.user_id
 WHERE experiment_user.email = @experiment_email
+  AND customer_order.id BETWEEN @order_id_start AND @order_id_end
   AND payment_unknown_at IS NOT NULL
   AND resolved_at IS NULL;
 
@@ -20,6 +24,7 @@ FROM saga_instance saga
 JOIN orders customer_order ON customer_order.id = saga.order_id
 JOIN users experiment_user ON experiment_user.id = customer_order.user_id
 WHERE experiment_user.email = @experiment_email
+  AND customer_order.id BETWEEN @order_id_start AND @order_id_end
 GROUP BY saga.status
 ORDER BY saga.status;
 
@@ -32,6 +37,7 @@ FROM saga_instance saga
 JOIN orders customer_order ON customer_order.id = saga.order_id
 JOIN users experiment_user ON experiment_user.id = customer_order.user_id
 WHERE experiment_user.email = @experiment_email
+  AND customer_order.id BETWEEN @order_id_start AND @order_id_end
   AND payment_unknown_at IS NOT NULL;
 
 WITH convergence AS (
@@ -46,6 +52,7 @@ WITH convergence AS (
     JOIN orders customer_order ON customer_order.id = saga.order_id
     JOIN users experiment_user ON experiment_user.id = customer_order.user_id
     WHERE experiment_user.email = @experiment_email
+      AND customer_order.id BETWEEN @order_id_start AND @order_id_end
       AND saga.payment_unknown_at IS NOT NULL
       AND saga.resolved_at IS NOT NULL
       AND saga.status IN ('COMPLETED', 'CANCELLED', 'COMPENSATED')
@@ -69,5 +76,6 @@ FROM saga_instance saga
 JOIN orders customer_order ON customer_order.id = saga.order_id
 JOIN users experiment_user ON experiment_user.id = customer_order.user_id
 WHERE experiment_user.email = @experiment_email
+  AND customer_order.id BETWEEN @order_id_start AND @order_id_end
   AND saga.payment_unknown_at IS NOT NULL
 ORDER BY saga.order_id;

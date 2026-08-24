@@ -15,6 +15,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 @RestControllerAdvice
 public class PaymentApprovalResponseDelayAdvice implements ResponseBodyAdvice<PaymentResultResponse> {
     private static final String APPROVAL_PATH_SUFFIX = "/approve";
+    private static final int HASH_BUCKETS = 100;
+    private static final int HASH_MULTIPLIER = 37;
     private final PaymentApprovalExperimentProperties properties;
 
     public PaymentApprovalResponseDelayAdvice(PaymentApprovalExperimentProperties properties) {
@@ -50,8 +52,13 @@ public class PaymentApprovalResponseDelayAdvice implements ResponseBodyAdvice<Pa
                 && body != null
                 && body.orderId() != null
                 && body.status() == PaymentStatus.APPROVED
-                && Math.floorMod(Long.hashCode(body.orderId()), 100)
+                && deterministicBucket(body.orderId())
                 < properties.getPartialSuccessPercent();
+    }
+
+    private int deterministicBucket(long orderId) {
+        int orderBucket = Math.floorMod(orderId, HASH_BUCKETS);
+        return Math.floorMod(orderBucket * HASH_MULTIPLIER, HASH_BUCKETS);
     }
 
     private void delayResponse() {

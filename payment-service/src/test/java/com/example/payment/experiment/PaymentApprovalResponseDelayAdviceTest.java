@@ -26,6 +26,10 @@ class PaymentApprovalResponseDelayAdviceTest {
 
         assertThat(selected).hasSize(20);
         assertThat(repeatedSelection).isEqualTo(selected);
+        for (int index = 1; index < selected.size(); index++) {
+            assertThat(selected.get(index) - selected.get(index - 1)).isGreaterThan(1L);
+            assertThat(selected.get(index) - selected.get(index - 1)).isLessThanOrEqualTo(8L);
+        }
     }
 
     @Test
