@@ -4,13 +4,20 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.saga.exception.SagaErrorCode;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PaymentSagaStateMachineTest {
-    private final PaymentSagaStateMachine stateMachine = new PaymentSagaStateMachine();
+    private static final Instant TRANSITION_TIME = Instant.parse("2026-08-23T03:00:00.123456789Z");
+    private static final LocalDateTime EXPECTED_TRANSITION_TIME =
+            LocalDateTime.ofInstant(TRANSITION_TIME, ZoneOffset.UTC).withNano(123_456_000);
+    private final PaymentSagaStateMachine stateMachine = new PaymentSagaStateMachine(
+            Clock.fixed(TRANSITION_TIME, ZoneOffset.UTC));
 
     @Test
     void happyPath_transitionsInAllowedOrder() {
@@ -24,10 +31,12 @@ class PaymentSagaStateMachineTest {
         stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
         assertThat(saga.getStatus()).isEqualTo(SagaStatus.PAYMENT_COMPLETED);
         assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.ORDER_COMPLETION);
+        assertThat(saga.getResolvedAt()).isNull();
 
         stateMachine.transition(saga, SagaStatus.COMPLETED);
         assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPLETED);
         assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.DONE);
+        assertThat(saga.getResolvedAt()).isEqualTo(EXPECTED_TRANSITION_TIME);
     }
 
     @Test
@@ -89,11 +98,14 @@ class PaymentSagaStateMachineTest {
         SagaInstance saga = SagaInstance.started(10L);
         stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
         stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
+        assertThat(saga.getPaymentUnknownAt()).isEqualTo(EXPECTED_TRANSITION_TIME);
 
         stateMachine.transition(saga, SagaStatus.COMPENSATING);
 
         assertThat(saga.getStatus()).isEqualTo(SagaStatus.COMPENSATING);
         assertThat(saga.getCurrentStep()).isEqualTo(SagaStep.PAYMENT_REFUND);
+        assertThat(saga.getPaymentUnknownAt()).isEqualTo(EXPECTED_TRANSITION_TIME);
+        assertThat(saga.getResolvedAt()).isNull();
     }
 
     @Test

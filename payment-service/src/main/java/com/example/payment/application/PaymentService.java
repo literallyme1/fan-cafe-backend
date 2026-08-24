@@ -19,16 +19,18 @@ public class PaymentService {
     private static final String DEFAULT_FAILURE_REASON = "mock payment failed";
     private final PaymentRepository paymentRepository;
     private final PaymentCreationService paymentCreationService;
+    private final PaymentApprovalService paymentApprovalService;
 
     public PaymentService(
             PaymentRepository paymentRepository,
-            PaymentCreationService paymentCreationService
+            PaymentCreationService paymentCreationService,
+            PaymentApprovalService paymentApprovalService
     ) {
         this.paymentRepository = paymentRepository;
         this.paymentCreationService = paymentCreationService;
+        this.paymentApprovalService = paymentApprovalService;
     }
 
-    @Transactional
     public PaymentResultResponse approve(
             Long orderId,
             BigDecimal expectedAmount,
@@ -36,27 +38,9 @@ public class PaymentService {
             String paymentKey
     ) {
         validateApproval(expectedAmount, approvalAmount, paymentKey);
-        String normalizedKey = paymentKey.trim();
-        Payment payment = findOrCreate(orderId, expectedAmount);
-        verifyExpectedAmount(payment, expectedAmount);
-
-        if (payment.getStatus() == PaymentStatus.APPROVED) {
-            if (payment.isApprovedWith(normalizedKey)) {
-                return PaymentResultResponse.from(payment);
-            }
-            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_APPROVED);
-        }
-        if (payment.getStatus() != PaymentStatus.PENDING) {
-            throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATE);
-        }
-
-        if (expectedAmount.compareTo(approvalAmount) != 0) {
-            payment.fail("approval amount mismatch");
-            return PaymentResultResponse.amountMismatch(payment);
-        }
-
-        payment.approve(approvalAmount, normalizedKey);
-        return PaymentResultResponse.from(payment);
+        ensurePaymentExists(orderId, expectedAmount);
+        return paymentApprovalService.approve(
+                orderId, expectedAmount, approvalAmount, paymentKey.trim());
     }
 
     @Transactional
@@ -110,6 +94,12 @@ public class PaymentService {
     }
 
     private Payment findOrCreate(Long orderId, BigDecimal expectedAmount) {
+        ensurePaymentExists(orderId, expectedAmount);
+        return paymentRepository.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_CREATION_FAILED));
+    }
+
+    private void ensurePaymentExists(Long orderId, BigDecimal expectedAmount) {
         if (paymentRepository.findByOrderId(orderId).isEmpty()) {
             try {
                 paymentCreationService.createPending(orderId, expectedAmount);
@@ -117,8 +107,6 @@ public class PaymentService {
                 // 동일 orderId의 동시 최초 요청이 먼저 생성했다. 아래 잠금 조회로 기존 결과를 사용한다.
             }
         }
-        return paymentRepository.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_CREATION_FAILED));
     }
 
     private void verifyExpectedAmount(Payment payment, BigDecimal expectedAmount) {

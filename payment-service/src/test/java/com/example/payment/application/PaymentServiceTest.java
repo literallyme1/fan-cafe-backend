@@ -26,13 +26,19 @@ class PaymentServiceTest {
     private static final UUID REFUND_SAGA_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     @Mock private PaymentRepository paymentRepository;
     @Mock private PaymentCreationService paymentCreationService;
+    @Mock private PaymentApprovalService paymentApprovalService;
     @InjectMocks private PaymentService paymentService;
 
     @Test
     void approve_persistsApprovedPayment() {
         Payment payment = Payment.pending(10L, new BigDecimal("20000.00"));
         when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.empty());
-        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+        when(paymentApprovalService.approve(
+                10L, new BigDecimal("20000.00"), new BigDecimal("20000.00"), "pay-1"))
+                .thenAnswer(invocation -> {
+                    payment.approve(new BigDecimal("20000.00"), "pay-1");
+                    return com.example.payment.interfaces.dto.PaymentResultResponse.from(payment);
+                });
 
         var result = paymentService.approve(
                 10L, new BigDecimal("20000.00"), new BigDecimal("20000.00"), "pay-1");
@@ -47,7 +53,9 @@ class PaymentServiceTest {
         Payment payment = Payment.pending(10L, BigDecimal.valueOf(20000));
         payment.approve(BigDecimal.valueOf(20000), "pay-1");
         when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.of(payment));
-        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+        when(paymentApprovalService.approve(
+                10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-1"))
+                .thenReturn(com.example.payment.interfaces.dto.PaymentResultResponse.from(payment));
 
         var result = paymentService.approve(
                 10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-1");
@@ -60,7 +68,9 @@ class PaymentServiceTest {
     void approvalAmountMismatch_persistsFailedResult() {
         Payment payment = Payment.pending(10L, BigDecimal.valueOf(20000));
         when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.empty());
-        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+        payment.fail("approval amount mismatch");
+        when(paymentApprovalService.approve(10L, BigDecimal.valueOf(20000), BigDecimal.ONE, "pay-1"))
+                .thenReturn(com.example.payment.interfaces.dto.PaymentResultResponse.amountMismatch(payment));
 
         var result = paymentService.approve(
                 10L, BigDecimal.valueOf(20000), BigDecimal.ONE, "pay-1");
@@ -74,7 +84,9 @@ class PaymentServiceTest {
         Payment payment = Payment.pending(10L, BigDecimal.valueOf(20000));
         payment.approve(BigDecimal.valueOf(20000), "pay-1");
         when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.of(payment));
-        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(payment));
+        when(paymentApprovalService.approve(
+                10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-2"))
+                .thenThrow(new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_APPROVED));
 
         assertThatThrownBy(() -> paymentService.approve(
                 10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-2"))
@@ -103,13 +115,28 @@ class PaymentServiceTest {
         when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.empty());
         doThrow(new DataIntegrityViolationException("duplicate order_id"))
                 .when(paymentCreationService).createPending(10L, BigDecimal.valueOf(20000));
-        when(paymentRepository.findByOrderIdForUpdate(10L)).thenReturn(Optional.of(existing));
+        when(paymentApprovalService.approve(
+                10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-1"))
+                .thenReturn(com.example.payment.interfaces.dto.PaymentResultResponse.from(existing));
 
         var result = paymentService.approve(
                 10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-1");
 
         assertThat(result.status()).isEqualTo(PaymentStatus.APPROVED);
         assertThat(result.paymentKey()).isEqualTo("pay-1");
+    }
+
+    @Test
+    void nonDuplicateCreationFailure_isPropagatedWithoutApproval() {
+        when(paymentRepository.findByOrderId(10L)).thenReturn(Optional.empty());
+        IllegalStateException creationFailure = new IllegalStateException("database unavailable");
+        doThrow(creationFailure)
+                .when(paymentCreationService).createPending(10L, BigDecimal.valueOf(20000));
+
+        assertThatThrownBy(() -> paymentService.approve(
+                10L, BigDecimal.valueOf(20000), BigDecimal.valueOf(20000), "pay-1"))
+                .isSameAs(creationFailure);
+        verifyNoInteractions(paymentApprovalService);
     }
 
     @Test

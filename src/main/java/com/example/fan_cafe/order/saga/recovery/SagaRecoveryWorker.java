@@ -2,33 +2,49 @@ package com.example.fan_cafe.order.saga.recovery;
 
 import com.example.fan_cafe.order.saga.application.PaymentSagaOrchestrator;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
-@ConditionalOnProperty(
-        name = "saga.recovery.enabled",
-        havingValue = "true",
-        matchIfMissing = true)
 public class SagaRecoveryWorker {
     private final SagaRecoveryTransactionService recoveryTransactionService;
     private final PaymentSagaOrchestrator paymentSagaOrchestrator;
     private final SagaRecoveryProperties properties;
+    private final List<SagaRecoveryClaimObserver> claimObservers;
 
-    @Scheduled(fixedDelayString = "${saga.recovery.fixed-delay:5s}")
+    @Autowired
+    public SagaRecoveryWorker(
+            SagaRecoveryTransactionService recoveryTransactionService,
+            PaymentSagaOrchestrator paymentSagaOrchestrator,
+            SagaRecoveryProperties properties,
+            List<SagaRecoveryClaimObserver> claimObservers
+    ) {
+        this.recoveryTransactionService = recoveryTransactionService;
+        this.paymentSagaOrchestrator = paymentSagaOrchestrator;
+        this.properties = properties;
+        this.claimObservers = claimObservers;
+    }
+
+    SagaRecoveryWorker(
+            SagaRecoveryTransactionService recoveryTransactionService,
+            PaymentSagaOrchestrator paymentSagaOrchestrator,
+            SagaRecoveryProperties properties
+    ) {
+        this(recoveryTransactionService, paymentSagaOrchestrator, properties, List.of());
+    }
+
     public void recoverDueSagas() {
         for (int processed = 0; processed < properties.getBatchSize(); processed++) {
             Optional<SagaRecoveryClaim> claimed = recoveryTransactionService.claimNext();
             if (claimed.isEmpty()) {
                 return;
             }
+            claimObservers.forEach(observer -> observer.claimSucceeded(claimed.get()));
             process(claimed.get());
         }
     }

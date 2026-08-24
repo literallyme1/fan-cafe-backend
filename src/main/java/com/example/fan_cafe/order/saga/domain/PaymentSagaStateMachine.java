@@ -4,12 +4,24 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.saga.exception.SagaErrorCode;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+
 @Component
 public class PaymentSagaStateMachine {
+    private final Clock clock;
+
+    public PaymentSagaStateMachine(Clock clock) {
+        this.clock = clock;
+    }
 
     public void transition(SagaInstance saga, SagaStatus target) {
         SagaStep nextStep = resolveNextStep(saga.getStatus(), target);
-        saga.changeState(target, nextStep);
+        saga.changeState(
+                target,
+                nextStep,
+                LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS));
     }
 
     private SagaStep resolveNextStep(SagaStatus current, SagaStatus target) {

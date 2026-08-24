@@ -10,7 +10,7 @@ COPY payment-service/build.gradle payment-service/build.gradle
 RUN ./gradlew dependencies --no-daemon
 
 COPY src src
-RUN ./gradlew clean bootJar -x test --no-daemon
+RUN ./gradlew clean :bootJar -x test --no-daemon
 
 # ---------- Runtime Stage ----------
 FROM eclipse-temurin:21-jre-jammy

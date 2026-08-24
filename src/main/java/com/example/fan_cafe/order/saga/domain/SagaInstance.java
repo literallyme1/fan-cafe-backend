@@ -59,6 +59,12 @@ public class SagaInstance {
     @Column(name = "last_error", length = 1000)
     private String lastError;
 
+    @Column(name = "payment_unknown_at")
+    private LocalDateTime paymentUnknownAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -79,10 +85,18 @@ public class SagaInstance {
         return new SagaInstance(UUID.randomUUID(), orderId);
     }
 
-    void changeState(SagaStatus status, SagaStep currentStep) {
+    void changeState(SagaStatus status, SagaStep currentStep, LocalDateTime transitionedAt) {
         SagaStatus previousStatus = this.status;
         this.status = status;
         this.currentStep = currentStep;
+        if (previousStatus == SagaStatus.PAYMENT_PENDING
+                && status == SagaStatus.PAYMENT_UNKNOWN
+                && paymentUnknownAt == null) {
+            this.paymentUnknownAt = transitionedAt;
+        }
+        if (isTerminal(status) && resolvedAt == null) {
+            this.resolvedAt = transitionedAt;
+        }
         if (isRecoveryTarget(previousStatus)
                 && !isRecoveryTarget(status)
                 && status != SagaStatus.RECONCILIATION_REQUIRED) {
@@ -145,5 +159,12 @@ public class SagaInstance {
 
     private boolean isRecoveryTarget(SagaStatus sagaStatus) {
         return sagaStatus == SagaStatus.PAYMENT_UNKNOWN || sagaStatus == SagaStatus.COMPENSATING;
+    }
+
+    private boolean isTerminal(SagaStatus sagaStatus) {
+        return sagaStatus == SagaStatus.COMPLETED
+                || sagaStatus == SagaStatus.CANCELLED
+                || sagaStatus == SagaStatus.COMPENSATED
+                || sagaStatus == SagaStatus.RECONCILIATION_REQUIRED;
     }
 }
