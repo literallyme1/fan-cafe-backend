@@ -33,7 +33,10 @@ class SagaReconciliationAlertHandlerTest {
         verify(slackWebhookClient).sendOrThrow(event.capture());
         assertThat(event.getValue().getContext())
                 .containsEntry("sagaId", sagaId)
-                .containsEntry("retryCount", 3);
+                .containsEntry("currentStatus", SagaStatus.RECONCILIATION_REQUIRED)
+                .containsEntry("previousStatus", SagaStatus.PAYMENT_UNKNOWN)
+                .containsEntry("retryCount", 3)
+                .containsEntry("lastError", "timeout");
     }
 
     @Test

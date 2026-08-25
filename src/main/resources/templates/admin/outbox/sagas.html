@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Saga Reconciliation 관리</title>
+    <style>
+        body { font-family: sans-serif; padding: 24px; }
+        .top-links { margin-bottom: 12px; }
+        .top-links a { color: #2563eb; margin-right: 12px; }
+        .msg-ok { color: green; }
+        .msg-err { color: red; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; vertical-align: top; }
+        th { background: #f4f4f4; }
+        .btn { background: #2563eb; color: white; border: none; padding: 5px 9px; border-radius: 4px; cursor: pointer; margin: 2px; }
+        .btn.warn { background: #b45309; }
+        .mono { font-family: Consolas, monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+<div class="top-links">
+    <a href="/admin/dlq">DLQ 관리</a>
+    <a href="/admin/outbox-manual-retry">Outbox Manual Retry</a>
+    <a href="/admin/saga-reconciliation">Saga Reconciliation</a>
+</div>
+
+<h1>RECONCILIATION_REQUIRED Saga</h1>
+<p id="message"></p>
+<table>
+    <thead>
+    <tr>
+        <th>sagaId</th><th>orderId</th><th>status</th><th>retryCount</th>
+        <th>lastError</th><th>updatedAt</th><th>액션</th>
+    </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+</table>
+
+<script>
+    async function loadSagas(message) {
+        showMessage(message || '', false);
+        const result = await request('/api/admin/sagas/reconciliation-required');
+        const sagas = result.data || [];
+        document.getElementById('rows').innerHTML = sagas.length === 0
+            ? '<tr><td colspan="7">대상 Saga가 없습니다.</td></tr>'
+            : sagas.map(saga => `
+                <tr>
+                    <td class="mono">${escapeHtml(saga.sagaId)}</td>
+                    <td>${saga.orderId}</td>
+                    <td>${escapeHtml(saga.status)}</td>
+                    <td>${saga.retryCount}</td>
+                    <td title="${escapeHtml(saga.lastError || '-')}">${escapeHtml(shorten(saga.lastError || '-', 100))}</td>
+                    <td>${escapeHtml(saga.updatedAt || '-')}</td>
+                    <td>
+                        <button class="btn" onclick="act('${saga.sagaId}', 'RECHECK_PAYMENT_STATUS')">상태 재확인</button>
+                        <button class="btn" onclick="act('${saga.sagaId}', 'RESUME_FORWARD')">정방향 재처리</button>
+                        <button class="btn warn" onclick="act('${saga.sagaId}', 'COMPENSATE')">보상 처리</button>
+                    </td>
+                </tr>`).join('');
+    }
+
+    async function act(sagaId, action) {
+        try {
+            const result = await request(`/api/admin/sagas/${sagaId}/actions/${action}`, {method: 'POST'});
+            const payment = result.data && result.data.observedPaymentStatus
+                ? `, payment=${result.data.observedPaymentStatus}` : '';
+            await loadSagas(`sagaId=${sagaId}, action=${action}${payment}`);
+        } catch (error) {
+            showMessage(error.message, true);
+        }
+    }
+
+    async function request(url, options) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || '요청에 실패했습니다.');
+        return result;
+    }
+
+    function showMessage(message, error) {
+        const element = document.getElementById('message');
+        element.textContent = message;
+        element.className = error ? 'msg-err' : 'msg-ok';
+    }
+
+    function shorten(text, maxLength) {
+        return text.length <= maxLength ? text : text.substring(0, maxLength) + ' ...';
+    }
+
+    function escapeHtml(text) {
+        return String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
+
+    loadSagas().catch(error => showMessage(error.message, true));
+</script>
+</body>
+</html>

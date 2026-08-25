@@ -58,6 +58,10 @@ public class PaymentSagaOrchestrator {
                 orderId);
     }
 
+    public OrderQueryResponse resumePaymentCompleted(UUID sagaId, Long orderId) {
+        return completeOrder(sagaId, orderId);
+    }
+
     private OrderQueryResponse approvePending(
             SagaSnapshot saga,
             Long orderId,

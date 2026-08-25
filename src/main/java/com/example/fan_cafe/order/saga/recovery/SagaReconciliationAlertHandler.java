@@ -4,6 +4,7 @@ import com.example.fan_cafe.notification.adapter.SlackWebhookClient;
 import com.example.fan_cafe.notification.domain.NotificationEvent;
 import com.example.fan_cafe.notification.domain.NotificationLevel;
 import com.example.fan_cafe.notification.domain.NotificationOpsType;
+import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class SagaReconciliationAlertHandler {
                 Map.of(
                         "sagaId", alert.sagaId(),
                         "orderId", alert.orderId(),
+                        "currentStatus", SagaStatus.RECONCILIATION_REQUIRED,
                         "previousStatus", alert.previousStatus(),
                         "retryCount", alert.retryCount(),
                         "lastError", alert.lastError()
