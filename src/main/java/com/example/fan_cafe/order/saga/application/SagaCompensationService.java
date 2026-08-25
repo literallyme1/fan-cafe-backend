@@ -67,6 +67,31 @@ public class SagaCompensationService {
     }
 
     @Transactional
+    public void requestManual(UUID sagaId, Long orderId, String reason) {
+        SagaInstance saga = findSagaForUpdate(sagaId);
+        validateOrder(saga, orderId);
+
+        if (saga.getStatus() == SagaStatus.COMPENSATED) {
+            return;
+        }
+        if (saga.getStatus() == SagaStatus.COMPENSATING) {
+            LocalDateTime now = LocalDateTime.now(clock);
+            if (saga.getNextRetryAt() != null && saga.getNextRetryAt().isAfter(now)) {
+                return;
+            }
+            persistRefundCommand(saga, orderId, reason);
+            saga.scheduleInitialRefundResultDeadline(
+                    now.plus(recoveryProperties.getRefundResultTimeout()));
+            return;
+        }
+        if (saga.getStatus() != SagaStatus.PAYMENT_COMPLETED
+                && saga.getStatus() != SagaStatus.RECONCILIATION_REQUIRED) {
+            throw new CustomException(SagaErrorCode.INVALID_MANUAL_ACTION);
+        }
+        startCompensation(saga, orderId, reason);
+    }
+
+    @Transactional
     public Optional<OrderQueryResponse> startLateSuccessIfOrderCannotComplete(
             UUID sagaId,
             Long orderId
@@ -119,10 +144,14 @@ public class SagaCompensationService {
     }
 
     private void startCompensation(SagaInstance saga, Long orderId, String reason) {
-        RefundPaymentCommand command = RefundPaymentCommand.of(saga.getSagaId(), orderId, reason);
         stateMachine.transition(saga, SagaStatus.COMPENSATING);
         saga.scheduleInitialRefundResultDeadline(
                 LocalDateTime.now(clock).plus(recoveryProperties.getRefundResultTimeout()));
+        persistRefundCommand(saga, orderId, reason);
+    }
+
+    private void persistRefundCommand(SagaInstance saga, Long orderId, String reason) {
+        RefundPaymentCommand command = RefundPaymentCommand.of(saga.getSagaId(), orderId, reason);
         persistOutbox(OutboxEvent.init(
                 AGGREGATE_TYPE, orderId, serialize(command)));
     }

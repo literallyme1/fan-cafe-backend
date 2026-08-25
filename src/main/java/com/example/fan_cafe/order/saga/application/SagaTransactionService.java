@@ -80,4 +80,24 @@ public class SagaTransactionService {
         }
         return SagaSnapshot.from(saga);
     }
+
+    @Transactional(readOnly = true)
+    public SagaSnapshot get(UUID sagaId) {
+        return sagaRepository.findById(sagaId)
+                .map(SagaSnapshot::from)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+    }
+
+    @Transactional
+    public SagaSnapshot prepareManualForward(UUID sagaId) {
+        SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+        if (saga.getStatus() == SagaStatus.RECONCILIATION_REQUIRED) {
+            stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
+        } else if (saga.getStatus() != SagaStatus.PAYMENT_COMPLETED
+                && saga.getStatus() != SagaStatus.COMPLETED) {
+            throw new CustomException(SagaErrorCode.INVALID_MANUAL_ACTION);
+        }
+        return SagaSnapshot.from(saga);
+    }
 }

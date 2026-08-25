@@ -172,13 +172,22 @@ class PaymentSagaStateMachineTest {
     }
 
     @Test
-    void reconciliationRequired_isTerminalForAutomaticFsm() {
-        SagaInstance saga = SagaInstance.started(10L);
-        stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
-        stateMachine.transition(saga, SagaStatus.PAYMENT_UNKNOWN);
-        stateMachine.transition(saga, SagaStatus.RECONCILIATION_REQUIRED);
+    void reconciliationRequired_allowsOnlyExplicitManualRecoveryRoutes() {
+        SagaInstance forwardSaga = SagaInstance.started(10L);
+        stateMachine.transition(forwardSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(forwardSaga, SagaStatus.PAYMENT_UNKNOWN);
+        stateMachine.transition(forwardSaga, SagaStatus.RECONCILIATION_REQUIRED);
+        stateMachine.transition(forwardSaga, SagaStatus.PAYMENT_COMPLETED);
+        assertThat(forwardSaga.getCurrentStep()).isEqualTo(SagaStep.ORDER_COMPLETION);
 
-        assertThatThrownBy(() -> stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED))
+        SagaInstance compensationSaga = SagaInstance.started(11L);
+        stateMachine.transition(compensationSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(compensationSaga, SagaStatus.PAYMENT_UNKNOWN);
+        stateMachine.transition(compensationSaga, SagaStatus.RECONCILIATION_REQUIRED);
+        stateMachine.transition(compensationSaga, SagaStatus.COMPENSATING);
+        assertThat(compensationSaga.getCurrentStep()).isEqualTo(SagaStep.PAYMENT_REFUND);
+
+        assertThatThrownBy(() -> stateMachine.transition(compensationSaga, SagaStatus.COMPLETED))
                 .isInstanceOf(CustomException.class)
                 .extracting(exception -> ((CustomException) exception).getErrorCode())
                 .isEqualTo(SagaErrorCode.INVALID_SAGA_TRANSITION);

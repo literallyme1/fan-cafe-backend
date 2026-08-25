@@ -13,6 +13,7 @@ import com.example.fan_cafe.outbox.infrastructure.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SagaRecoveryTransactionService {
     private static final String AGGREGATE_TYPE = "PAYMENT_SAGA";
     private static final int MAX_ERROR_LENGTH = 1000;
@@ -114,6 +116,8 @@ public class SagaRecoveryTransactionService {
                 saga.getSagaId(), saga.getOrderId(), previousStatus, failureCount, errorSummary);
         persistOutbox(OutboxEvent.init(
                 AGGREGATE_TYPE, saga.getOrderId(), serialize(alert)));
+        log.error("[SAGA RECOVERY] reconciliation required sagaId={}, status={}, retryCount={}, lastError={}",
+                saga.getSagaId(), saga.getStatus(), failureCount, errorSummary);
         return SagaRecoveryUpdateOutcome.RECONCILIATION_REQUIRED;
     }
 

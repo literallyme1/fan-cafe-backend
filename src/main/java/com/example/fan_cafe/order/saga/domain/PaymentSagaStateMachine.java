@@ -59,6 +59,14 @@ public class PaymentSagaStateMachine {
                 && target == SagaStatus.RECONCILIATION_REQUIRED) {
             return SagaStep.MANUAL_RECONCILIATION;
         }
+        if (current == SagaStatus.RECONCILIATION_REQUIRED
+                && target == SagaStatus.PAYMENT_COMPLETED) {
+            return SagaStep.ORDER_COMPLETION;
+        }
+        if (current == SagaStatus.RECONCILIATION_REQUIRED
+                && target == SagaStatus.COMPENSATING) {
+            return SagaStep.PAYMENT_REFUND;
+        }
         throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
     }
 }
