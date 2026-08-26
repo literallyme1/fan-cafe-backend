@@ -39,6 +39,9 @@ public class Payment {
     @Column(name = "approved_amount", precision = 19, scale = 2)
     private BigDecimal approvedAmount;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
     @Column(name = "payment_key", unique = true, length = 100)
     private String paymentKey;
 
@@ -92,6 +95,9 @@ public class Payment {
         this.approvedAmount = amount;
         this.paymentKey = key;
         this.failureReason = null;
+        if (this.approvedAt == null) {
+            this.approvedAt = LocalDateTime.now();
+        }
     }
 
     public void fail(String reason) {
@@ -132,6 +138,10 @@ public class Payment {
 
     public BigDecimal getApprovedAmount() {
         return approvedAmount;
+    }
+
+    public LocalDateTime getApprovedAt() {
+        return approvedAt;
     }
 
     public String getRefundIdempotencyKey() {

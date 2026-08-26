@@ -8,10 +8,25 @@ public record PaymentStatusResponse(
         PaymentResultStatus status,
         BigDecimal expectedAmount,
         BigDecimal approvedAmount,
+        LocalDateTime approvedAt,
         String paymentKey,
         String failureReason,
         String refundIdempotencyKey,
         String refundReason,
         LocalDateTime refundedAt
 ) {
+    public PaymentStatusResponse(
+            Long orderId,
+            PaymentResultStatus status,
+            BigDecimal expectedAmount,
+            BigDecimal approvedAmount,
+            String paymentKey,
+            String failureReason,
+            String refundIdempotencyKey,
+            String refundReason,
+            LocalDateTime refundedAt
+    ) {
+        this(orderId, status, expectedAmount, approvedAmount, null, paymentKey,
+                failureReason, refundIdempotencyKey, refundReason, refundedAt);
+    }
 }

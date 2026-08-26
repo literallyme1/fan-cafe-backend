@@ -11,18 +11,35 @@ public record PaymentStatusResponse(
         PaymentStatus status,
         BigDecimal expectedAmount,
         BigDecimal approvedAmount,
+        LocalDateTime approvedAt,
         String paymentKey,
         String failureReason,
         String refundIdempotencyKey,
         String refundReason,
         LocalDateTime refundedAt
 ) {
+    public PaymentStatusResponse(
+            Long orderId,
+            PaymentStatus status,
+            BigDecimal expectedAmount,
+            BigDecimal approvedAmount,
+            String paymentKey,
+            String failureReason,
+            String refundIdempotencyKey,
+            String refundReason,
+            LocalDateTime refundedAt
+    ) {
+        this(orderId, status, expectedAmount, approvedAmount, null, paymentKey,
+                failureReason, refundIdempotencyKey, refundReason, refundedAt);
+    }
+
     public static PaymentStatusResponse from(Payment payment) {
         return new PaymentStatusResponse(
                 payment.getOrderId(),
                 payment.getStatus(),
                 payment.getExpectedAmount(),
                 payment.getApprovedAmount(),
+                payment.getApprovedAt(),
                 payment.getPaymentKey(),
                 payment.getFailureReason(),
                 payment.getRefundIdempotencyKey(),

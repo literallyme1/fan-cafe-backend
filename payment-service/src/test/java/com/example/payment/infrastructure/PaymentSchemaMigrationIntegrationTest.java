@@ -33,7 +33,7 @@ class PaymentSchemaMigrationIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @Test
-    void existingStepOneSchema_isMigratedBeforeHibernateValidation() {
+    void existingStepOneSchema_isMigratedThroughApprovedAtBeforeHibernateValidation() {
         Integer refundColumnCount = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
                 FROM information_schema.columns
@@ -41,6 +41,19 @@ class PaymentSchemaMigrationIntegrationTest {
                   AND column_name IN ('refund_idempotency_key', 'refund_reason', 'refunded_at')
                 """, Integer.class);
         assertThat(refundColumnCount).isEqualTo(3);
+
+        Integer approvedAtColumnCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_name = 'payments'
+                  AND column_name = 'approved_at'
+                """, Integer.class);
+        assertThat(approvedAtColumnCount).isEqualTo(1);
+
+        java.sql.Timestamp approvedAt = jdbcTemplate.queryForObject(
+                "SELECT approved_at FROM payments WHERE order_id = 9001",
+                java.sql.Timestamp.class);
+        assertThat(approvedAt).isEqualTo(java.sql.Timestamp.valueOf("2026-08-25 12:34:56"));
     }
 
     static class StepOneSchemaInitializer
@@ -62,6 +75,17 @@ class PaymentSchemaMigrationIntegrationTest {
                             version BIGINT NOT NULL DEFAULT 0,
                             created_at DATETIME(6) NOT NULL,
                             updated_at DATETIME(6) NOT NULL
+                        )
+                        """);
+                statement.execute("""
+                        INSERT INTO payments (
+                            order_id, status, expected_amount, approved_amount,
+                            payment_key, version, created_at, updated_at
+                        ) VALUES (
+                            9001, 'APPROVED', 10000.00, 10000.00,
+                            'migration-payment-9001', 0,
+                            TIMESTAMP '2026-08-25 12:00:00',
+                            TIMESTAMP '2026-08-25 12:34:56'
                         )
                         """);
             } catch (SQLException exception) {

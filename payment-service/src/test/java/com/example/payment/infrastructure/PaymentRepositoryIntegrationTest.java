@@ -25,5 +25,6 @@ class PaymentRepositoryIntegrationTest {
 
         Payment reloaded = paymentRepository.findByOrderId(100L).orElseThrow();
         assertThat(reloaded.getPaymentKey()).isEqualTo("payment-100");
+        assertThat(reloaded.getApprovedAt()).isNotNull();
     }
 }
