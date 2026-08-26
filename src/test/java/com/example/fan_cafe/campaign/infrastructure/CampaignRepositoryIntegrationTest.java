@@ -50,6 +50,12 @@ class CampaignRepositoryIntegrationTest {
                 new BigDecimal("100000"),
                 now.minusDays(2),
                 now.minusDays(1)));
+        Campaign closableCampaign = campaignRepository.save(Campaign.open(
+                "expired without pending contribution",
+                "campaign content",
+                new BigDecimal("100000"),
+                now.minusDays(2),
+                now.minusDays(1)));
         Order order = orderRepository.save(Order.campaignContributionPaymentPending(
                 user, new BigDecimal("10000")));
         Contribution contribution = contributionRepository.saveAndFlush(Contribution.reserved(
@@ -62,7 +68,7 @@ class CampaignRepositoryIntegrationTest {
         assertThat(reloaded.getOrder().getOrderType()).isEqualTo(OrderType.CAMPAIGN_CONTRIBUTION);
         assertThat(campaignRepository.findNextExpiredOpenCampaignForUpdateSkipLocked(now))
                 .map(Campaign::getId)
-                .contains(campaign.getId());
+                .contains(closableCampaign.getId());
         assertThat(contributionRepository.existsByCampaignIdAndStatusIn(
                 campaign.getId(), List.of(ContributionStatus.RESERVED, ContributionStatus.REFUNDING)))
                 .isTrue();

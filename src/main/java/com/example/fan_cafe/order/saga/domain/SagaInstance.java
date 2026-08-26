@@ -113,6 +113,14 @@ public class SagaInstance {
         this.lastError = errorSummary;
     }
 
+    public void schedulePaymentPendingRecovery(LocalDateTime firstRecoveryAt) {
+        if (status != SagaStatus.PAYMENT_PENDING) {
+            throw new IllegalStateException("Pending payment recovery requires PAYMENT_PENDING");
+        }
+        this.nextRetryAt = requireRecoveryTime(firstRecoveryAt);
+        this.lastError = null;
+    }
+
     public void scheduleInitialRefundResultDeadline(LocalDateTime refundResultDeadline) {
         if (status != SagaStatus.COMPENSATING) {
             throw new IllegalStateException("Refund result deadline can only be set for COMPENSATING");
@@ -158,7 +166,9 @@ public class SagaInstance {
     }
 
     private boolean isRecoveryTarget(SagaStatus sagaStatus) {
-        return sagaStatus == SagaStatus.PAYMENT_UNKNOWN || sagaStatus == SagaStatus.COMPENSATING;
+        return sagaStatus == SagaStatus.PAYMENT_PENDING
+                || sagaStatus == SagaStatus.PAYMENT_UNKNOWN
+                || sagaStatus == SagaStatus.COMPENSATING;
     }
 
     private boolean isTerminal(SagaStatus sagaStatus) {

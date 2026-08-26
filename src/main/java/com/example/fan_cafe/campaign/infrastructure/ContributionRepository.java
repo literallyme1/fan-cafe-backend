@@ -17,9 +17,27 @@ public interface ContributionRepository extends JpaRepository<Contribution, Long
 
     Optional<Contribution> findByOrderId(Long orderId);
 
+    Optional<Contribution> findByIdAndUserId(Long contributionId, Long userId);
+
+    @Query("""
+            select c.order.id
+            from Contribution c
+            where c.id = :contributionId
+              and c.user.id = :userId
+            """)
+    Optional<Long> findOrderIdByIdAndUserId(
+            @Param("contributionId") Long contributionId,
+            @Param("userId") Long userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Contribution c where c.id = :contributionId")
     Optional<Contribution> findByIdForUpdate(@Param("contributionId") Long contributionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Contribution c where c.id = :contributionId and c.user.id = :userId")
+    Optional<Contribution> findByIdAndUserIdForUpdate(
+            @Param("contributionId") Long contributionId,
+            @Param("userId") Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Contribution c where c.order.id = :orderId")
@@ -29,6 +47,19 @@ public interface ContributionRepository extends JpaRepository<Contribution, Long
             Long campaignId,
             ContributionStatus status,
             Pageable pageable);
+
+    List<Contribution> findAllByCampaignIdOrderById(Long campaignId);
+
+    @Query("""
+            select c.order.id
+            from Contribution c
+            where c.campaign.id = :campaignId
+              and c.status = :status
+            order by c.id
+            """)
+    List<Long> findOrderIdsByCampaignIdAndStatus(
+            @Param("campaignId") Long campaignId,
+            @Param("status") ContributionStatus status);
 
     boolean existsByCampaignIdAndStatusIn(
             Long campaignId,

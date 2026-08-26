@@ -37,6 +37,21 @@ public class SagaTransactionService {
     }
 
     @Transactional
+    public SagaSnapshot startCampaignPaymentPending(Long orderId) {
+        orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        SagaInstance saga = sagaRepository.findByOrderId(orderId)
+                .orElseGet(() -> sagaRepository.save(SagaInstance.started(orderId)));
+        if (saga.getStatus() == SagaStatus.STARTED) {
+            stateMachine.transition(saga, SagaStatus.PAYMENT_PENDING);
+        }
+        if (saga.getStatus() == SagaStatus.PAYMENT_PENDING && saga.getNextRetryAt() == null) {
+            saga.schedulePaymentPendingRecovery(firstPaymentRecoveryAt());
+        }
+        return SagaSnapshot.from(saga);
+    }
+
+    @Transactional
     public SagaSnapshot transition(UUID sagaId, SagaStatus target) {
         SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
                 .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));

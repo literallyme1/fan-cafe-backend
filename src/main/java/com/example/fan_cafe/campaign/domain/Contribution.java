@@ -93,10 +93,6 @@ public class Contribution extends BaseTimeEntity {
             BigDecimal amount,
             LocalDateTime reservedAt
     ) {
-        validateAmount(amount);
-        if (campaign == null || user == null || order == null || reservedAt == null) {
-            throw new IllegalArgumentException("Contribution relationships and reservedAt are required");
-        }
         this.campaign = campaign;
         this.user = user;
         this.order = order;
@@ -112,6 +108,10 @@ public class Contribution extends BaseTimeEntity {
             BigDecimal amount,
             LocalDateTime reservedAt
     ) {
+        validateAmount(amount);
+        if (campaign == null || user == null || order == null || reservedAt == null) {
+            throw new IllegalArgumentException("Contribution relationships and reservedAt are required");
+        }
         return new Contribution(campaign, user, order, amount, reservedAt);
     }
 
@@ -127,12 +127,18 @@ public class Contribution extends BaseTimeEntity {
 
     public void fail(LocalDateTime failedAt) {
         requireStatus(ContributionStatus.RESERVED);
+        if (failedAt == null) {
+            throw new IllegalArgumentException("Failure time is required");
+        }
         this.status = ContributionStatus.FAILED;
         this.failedAt = failedAt;
     }
 
     public void startRefund(LocalDateTime refundStartedAt) {
         requireStatus(ContributionStatus.CONFIRMED);
+        if (refundStartedAt == null) {
+            throw new IllegalArgumentException("Refund start time is required");
+        }
         this.status = ContributionStatus.REFUNDING;
         this.refundStartedAt = refundStartedAt;
     }
@@ -149,6 +155,9 @@ public class Contribution extends BaseTimeEntity {
 
     public void completeRefund(LocalDateTime refundedAt) {
         requireStatus(ContributionStatus.REFUNDING);
+        if (refundedAt == null) {
+            throw new IllegalArgumentException("Refund completion time is required");
+        }
         this.status = ContributionStatus.REFUNDED;
         this.refundedAt = refundedAt;
     }

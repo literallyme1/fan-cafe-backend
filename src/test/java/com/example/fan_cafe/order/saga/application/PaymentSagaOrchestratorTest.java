@@ -10,6 +10,7 @@ import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import com.example.fan_cafe.order.saga.domain.SagaStep;
+import com.example.fan_cafe.order.saga.domain.SagaCompensationReason;
 import com.example.fan_cafe.order.saga.exception.OrderCompletionFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,7 +108,8 @@ class PaymentSagaOrchestratorTest {
                 10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
                 .isSameAs(failure);
 
-        verify(compensationService).start(sagaId, 10L, "order completion failed");
+        verify(compensationService).startAfterOrderCompletionFailure(
+                sagaId, 10L, SagaCompensationReason.ORDER_FAILURE.name(), null);
         verifyNoInteractions(paymentClient);
     }
 

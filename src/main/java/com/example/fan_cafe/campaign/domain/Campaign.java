@@ -81,10 +81,6 @@ public class Campaign extends BaseTimeEntity {
             LocalDateTime startsAt,
             LocalDateTime deadlineAt
     ) {
-        validateAmount(targetAmount);
-        if (startsAt == null || deadlineAt == null || !startsAt.isBefore(deadlineAt)) {
-            throw new CustomException(CampaignErrorCode.INVALID_PERIOD);
-        }
         this.title = title;
         this.content = content;
         this.targetAmount = targetAmount;
@@ -102,6 +98,10 @@ public class Campaign extends BaseTimeEntity {
             LocalDateTime startsAt,
             LocalDateTime deadlineAt
     ) {
+        validateAmount(targetAmount);
+        if (startsAt == null || deadlineAt == null || !startsAt.isBefore(deadlineAt)) {
+            throw new CustomException(CampaignErrorCode.INVALID_PERIOD);
+        }
         return new Campaign(title, content, targetAmount, startsAt, deadlineAt);
     }
 
@@ -169,6 +169,11 @@ public class Campaign extends BaseTimeEntity {
             throw new CustomException(CampaignErrorCode.INVALID_CAMPAIGN_STATE);
         }
         this.status = CampaignStatus.REFUNDING;
+    }
+
+    public void failAndStartRefunding(LocalDateTime failedAt) {
+        markFailed(failedAt);
+        startRefunding();
     }
 
     public void completeRefunding(LocalDateTime refundedAt) {

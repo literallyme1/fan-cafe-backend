@@ -24,6 +24,17 @@ public class PaymentSagaStateMachine {
                 LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS));
     }
 
+    public void transitionCampaignCompensation(SagaInstance saga) {
+        if (saga.getStatus() != SagaStatus.COMPLETED) {
+            transition(saga, SagaStatus.COMPENSATING);
+            return;
+        }
+        saga.changeState(
+                SagaStatus.COMPENSATING,
+                SagaStep.PAYMENT_REFUND,
+                LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS));
+    }
+
     private SagaStep resolveNextStep(SagaStatus current, SagaStatus target) {
         if (current == SagaStatus.STARTED && target == SagaStatus.PAYMENT_PENDING) {
             return SagaStep.PAYMENT_APPROVAL;
@@ -56,6 +67,10 @@ public class PaymentSagaStateMachine {
             return SagaStep.DONE;
         }
         if ((current == SagaStatus.PAYMENT_UNKNOWN || current == SagaStatus.COMPENSATING)
+                && target == SagaStatus.RECONCILIATION_REQUIRED) {
+            return SagaStep.MANUAL_RECONCILIATION;
+        }
+        if (current == SagaStatus.PAYMENT_PENDING
                 && target == SagaStatus.RECONCILIATION_REQUIRED) {
             return SagaStep.MANUAL_RECONCILIATION;
         }
