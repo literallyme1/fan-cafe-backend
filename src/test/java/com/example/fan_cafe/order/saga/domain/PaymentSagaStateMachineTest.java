@@ -169,6 +169,12 @@ class PaymentSagaStateMachineTest {
         stateMachine.transition(compensatingSaga, SagaStatus.RECONCILIATION_REQUIRED);
         assertThat(compensatingSaga.getStatus()).isEqualTo(SagaStatus.RECONCILIATION_REQUIRED);
         assertThat(compensatingSaga.getCurrentStep()).isEqualTo(SagaStep.MANUAL_RECONCILIATION);
+
+        SagaInstance completionSaga = SagaInstance.started(12L);
+        stateMachine.transition(completionSaga, SagaStatus.PAYMENT_PENDING);
+        stateMachine.transition(completionSaga, SagaStatus.PAYMENT_COMPLETED);
+        stateMachine.transition(completionSaga, SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(completionSaga.getCurrentStep()).isEqualTo(SagaStep.MANUAL_RECONCILIATION);
     }
 
     @Test

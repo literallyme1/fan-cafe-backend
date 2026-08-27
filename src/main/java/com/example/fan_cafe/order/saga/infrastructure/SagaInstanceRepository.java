@@ -28,7 +28,7 @@ public interface SagaInstanceRepository extends JpaRepository<SagaInstance, UUID
     @Query(value = """
             SELECT *
             FROM saga_instance
-            WHERE status IN ('PAYMENT_UNKNOWN', 'COMPENSATING')
+            WHERE status IN ('PAYMENT_PENDING', 'PAYMENT_UNKNOWN', 'PAYMENT_COMPLETED', 'COMPENSATING')
               AND next_retry_at <= :now
             ORDER BY next_retry_at, saga_id
             LIMIT 1

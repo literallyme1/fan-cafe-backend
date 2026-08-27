@@ -54,7 +54,35 @@ public class SagaRecoveryWorker {
             retryCompensation(claim);
             return;
         }
+        if (claim.status() == SagaStatus.PAYMENT_PENDING) {
+            recoverPaymentPending(claim);
+            return;
+        }
+        if (claim.status() == SagaStatus.PAYMENT_COMPLETED) {
+            recoverPaymentCompleted(claim);
+            return;
+        }
         recoverPaymentUnknown(claim);
+    }
+
+    private void recoverPaymentCompleted(SagaRecoveryClaim claim) {
+        try {
+            paymentSagaOrchestrator.resumePaymentCompleted(claim.sagaId(), claim.orderId());
+        } catch (RuntimeException failure) {
+            recoveryTransactionService.recordPaymentUnknownFailure(claim, failure);
+            log.warn("[SAGA RECOVERY] order completion unresolved sagaId={}, retryCount={}",
+                    claim.sagaId(), claim.retryCount(), failure);
+        }
+    }
+
+    private void recoverPaymentPending(SagaRecoveryClaim claim) {
+        try {
+            paymentSagaOrchestrator.recoverPaymentPending(claim.sagaId(), claim.orderId());
+        } catch (RuntimeException failure) {
+            recoveryTransactionService.recordPaymentUnknownFailure(claim, failure);
+            log.warn("[SAGA RECOVERY] pending payment unresolved sagaId={}, retryCount={}",
+                    claim.sagaId(), claim.retryCount(), failure);
+        }
     }
 
     private void recoverPaymentUnknown(SagaRecoveryClaim claim) {

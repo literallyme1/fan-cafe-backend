@@ -30,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -205,7 +206,7 @@ class SagaLateSuccessIntegrationTest {
             assertThat(cancellationCommitted.await(10, TimeUnit.SECONDS)).isTrue();
             return invocation.callRealMethod();
         }).when(sagaTransactionService)
-                .advanceToMilestone(eq(unknown.sagaId()), eq(SagaStatus.PAYMENT_COMPLETED));
+                .markPaymentCompleted(eq(unknown.sagaId()), any(LocalDateTime.class));
 
         var executor = Executors.newSingleThreadExecutor();
         try {
@@ -272,7 +273,7 @@ class SagaLateSuccessIntegrationTest {
     private PaymentStatusResponse approvedStatus() {
         return new PaymentStatusResponse(
                 fixture.order().getId(), PaymentResultStatus.APPROVED,
-                fixture.totalPrice(), fixture.totalPrice(), "late-payment-key",
+                fixture.totalPrice(), fixture.totalPrice(), LocalDateTime.now(), "late-payment-key",
                 null, null, null, null);
     }
 

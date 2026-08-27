@@ -1,5 +1,6 @@
 package com.example.fan_cafe.order.saga.application;
 
+import com.example.fan_cafe.campaign.application.CampaignRefundStateService;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.global.exception.GlobalErrorCode;
 import com.example.fan_cafe.merchandise.domain.Merchandise;
@@ -7,6 +8,7 @@ import com.example.fan_cafe.merchandise.exception.MerchandiseErrorCode;
 import com.example.fan_cafe.merchandise.infrastructure.MerchandiseRepository;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.domain.OrderItem;
+import com.example.fan_cafe.order.domain.OrderType;
 import com.example.fan_cafe.order.domain.OrderStatusHistory;
 import com.example.fan_cafe.order.domain.Status;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
@@ -51,6 +53,7 @@ public class SagaCompensationService {
     private final ObjectMapper objectMapper;
     private final SagaRecoveryProperties recoveryProperties;
     private final Clock clock;
+    private final CampaignRefundStateService campaignRefundStateService;
 
     @Transactional
     public void start(UUID sagaId, Long orderId, String reason) {
@@ -64,6 +67,22 @@ public class SagaCompensationService {
         }
 
         startCompensation(saga, orderId, reason);
+    }
+
+    @Transactional
+    public void startAfterOrderCompletionFailure(
+            UUID sagaId,
+            Long orderId,
+            String reason,
+            LocalDateTime approvedAt
+    ) {
+        Order order = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        if (order.getOrderType() == OrderType.CAMPAIGN_CONTRIBUTION) {
+            startCampaign(sagaId, orderId, reason, approvedAt);
+            return;
+        }
+        start(sagaId, orderId, reason);
     }
 
     @Transactional
@@ -89,6 +108,60 @@ public class SagaCompensationService {
             throw new CustomException(SagaErrorCode.INVALID_MANUAL_ACTION);
         }
         startCompensation(saga, orderId, reason);
+    }
+
+    @Transactional
+    public OrderQueryResponse startCampaign(
+            UUID sagaId,
+            Long orderId,
+            String reason,
+            LocalDateTime approvedAt
+    ) {
+        Order order = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        if (order.getOrderType() != OrderType.CAMPAIGN_CONTRIBUTION) {
+            throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
+        }
+        SagaInstance saga = findSagaForUpdate(sagaId);
+        validateOrder(saga, orderId);
+        if (saga.getStatus() == SagaStatus.COMPENSATED
+                || saga.getStatus() == SagaStatus.COMPENSATING) {
+            return OrderQueryResponse.from(order);
+        }
+        if (saga.getStatus() != SagaStatus.PAYMENT_COMPLETED
+                && saga.getStatus() != SagaStatus.COMPLETED) {
+            throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
+        }
+
+        campaignRefundStateService.begin(orderId, approvedAt);
+        stateMachine.transitionCampaignCompensation(saga);
+        saga.scheduleInitialRefundResultDeadline(
+                LocalDateTime.now(clock).plus(recoveryProperties.getRefundResultTimeout()));
+        persistRefundCommand(saga, orderId, reason);
+        return OrderQueryResponse.from(order);
+    }
+
+    @Transactional
+    public OrderQueryResponse startCampaignUserRefund(
+            UUID sagaId,
+            Long orderId,
+            Long campaignId,
+            Long userId
+    ) {
+        Order order = orderRepository.findPaymentOrderWithPessimisticLock(orderId)
+                .orElseThrow(() -> new CustomException(OrderErrorCode.ORDER_NOT_FOUND));
+        if (order.getOrderType() != OrderType.CAMPAIGN_CONTRIBUTION) {
+            throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
+        }
+        SagaInstance saga = findSagaForUpdate(sagaId);
+        validateOrder(saga, orderId);
+        if (saga.getStatus() == SagaStatus.COMPENSATED
+                || saga.getStatus() == SagaStatus.COMPENSATING) {
+            return OrderQueryResponse.from(order);
+        }
+        campaignRefundStateService.validateUserRefund(orderId, campaignId, userId);
+        return startCampaign(sagaId, orderId,
+                com.example.fan_cafe.order.saga.domain.SagaCompensationReason.USER_REFUND.name(), null);
     }
 
     @Transactional
@@ -126,8 +199,11 @@ public class SagaCompensationService {
         if (saga.getStatus() == SagaStatus.COMPENSATED && order.getStatus() == Status.REFUNDED) {
             return;
         }
+        boolean campaignPaid = order.getOrderType() == OrderType.CAMPAIGN_CONTRIBUTION
+                && order.getStatus() == Status.PAID;
         if (order.getStatus() != Status.PAYMENT_PENDING
-                && order.getStatus() != Status.CANCELLED) {
+                && order.getStatus() != Status.CANCELLED
+                && !campaignPaid) {
             throw new CustomException(OrderErrorCode.INVALID_PAYMENT_STATE);
         }
 
@@ -135,6 +211,7 @@ public class SagaCompensationService {
             restoreStock(order);
         }
         Status from = order.getStatus();
+        campaignRefundStateService.complete(order.getId());
         order.markCompensatedRefunded();
         orderStatusHistoryRepository.save(OrderStatusHistory.of(
                 order, from, Status.REFUNDED, resolveReason(result.refundReason())));

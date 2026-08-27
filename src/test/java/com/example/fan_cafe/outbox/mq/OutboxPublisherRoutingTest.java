@@ -12,6 +12,7 @@ import java.util.UUID;
 
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_ROUTING_KEY;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_REFUND_COMMAND_ROUTING_KEY;
+import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_APPROVAL_COMMAND_ROUTING_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -34,6 +35,35 @@ class OutboxPublisherRoutingTest {
 
         assertThat(publisher.resolveRoutingKey(payload)).isEqualTo(OUTBOX_ROUTING_KEY);
         assertThat(publisher.resolveMessagePayload(payload, OUTBOX_ROUTING_KEY)).isEqualTo(payload);
+    }
+
+    @Test
+    void approvePaymentCommandUsesDedicatedRoutingAndConvertsForPaymentConsumer() {
+        String payload = """
+                {"eventType":"APPROVE_PAYMENT","orderId":10,
+                 "expectedAmount":10000,"approvalAmount":10000,"paymentKey":"campaign-key"}
+                """;
+
+        assertThat(publisher.resolveRoutingKey(payload))
+                .isEqualTo(PAYMENT_APPROVAL_COMMAND_ROUTING_KEY);
+        Object outbound = publisher.resolveMessagePayload(
+                payload, PAYMENT_APPROVAL_COMMAND_ROUTING_KEY);
+        Jackson2JsonMessageConverter orderConverter =
+                new Jackson2JsonMessageConverter(new ObjectMapper());
+        Jackson2JsonMessageConverter paymentConverter =
+                new Jackson2JsonMessageConverter(new ObjectMapper());
+
+        Message message = orderConverter.toMessage(outbound, new MessageProperties());
+        publisher.prepareMessage(message, "trace-approval", PAYMENT_APPROVAL_COMMAND_ROUTING_KEY);
+        message.getMessageProperties().setInferredArgumentType(
+                com.example.payment.messaging.ApprovePaymentCommand.class);
+        Object converted = paymentConverter.fromMessage(message);
+
+        assertThat(message.getMessageProperties().getHeaders()).doesNotContainKey("__TypeId__");
+        assertThat(converted).isInstanceOf(com.example.payment.messaging.ApprovePaymentCommand.class);
+        var command = (com.example.payment.messaging.ApprovePaymentCommand) converted;
+        assertThat(command.orderId()).isEqualTo(10L);
+        assertThat(command.paymentKey()).isEqualTo("campaign-key");
     }
 
     @Test

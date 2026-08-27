@@ -39,6 +39,9 @@ public class Payment {
     @Column(name = "approved_amount", precision = 19, scale = 2)
     private BigDecimal approvedAmount;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
     @Column(name = "payment_key", unique = true, length = 100)
     private String paymentKey;
 
@@ -88,10 +91,20 @@ public class Payment {
     }
 
     public void approve(BigDecimal amount, String key) {
+        approve(amount, key, LocalDateTime.now(java.time.Clock.systemUTC()));
+    }
+
+    public void approve(BigDecimal amount, String key, LocalDateTime approvedAt) {
+        if (approvedAt == null) {
+            throw new IllegalArgumentException("Approval time is required");
+        }
         this.status = PaymentStatus.APPROVED;
         this.approvedAmount = amount;
         this.paymentKey = key;
         this.failureReason = null;
+        if (this.approvedAt == null) {
+            this.approvedAt = approvedAt;
+        }
     }
 
     public void fail(String reason) {
@@ -132,6 +145,10 @@ public class Payment {
 
     public BigDecimal getApprovedAmount() {
         return approvedAmount;
+    }
+
+    public LocalDateTime getApprovedAt() {
+        return approvedAt;
     }
 
     public String getRefundIdempotencyKey() {

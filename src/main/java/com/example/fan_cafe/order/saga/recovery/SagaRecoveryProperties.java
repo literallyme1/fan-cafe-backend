@@ -13,6 +13,7 @@ public class SagaRecoveryProperties {
     private int batchSize = 10;
     private int maxRetryCount = 3;
     private Duration paymentUnknownInitialDelay = Duration.ofSeconds(10);
+    private Duration orderCompletionInitialDelay = Duration.ofSeconds(10);
     private Duration refundResultTimeout = Duration.ofMinutes(1);
     private Duration baseDelay = Duration.ofSeconds(5);
     private Duration maxDelay = Duration.ofMinutes(5);
@@ -30,6 +31,10 @@ public class SagaRecoveryProperties {
     public Duration getPaymentUnknownInitialDelay() { return paymentUnknownInitialDelay; }
     public void setPaymentUnknownInitialDelay(Duration paymentUnknownInitialDelay) {
         this.paymentUnknownInitialDelay = paymentUnknownInitialDelay;
+    }
+    public Duration getOrderCompletionInitialDelay() { return orderCompletionInitialDelay; }
+    public void setOrderCompletionInitialDelay(Duration orderCompletionInitialDelay) {
+        this.orderCompletionInitialDelay = orderCompletionInitialDelay;
     }
     public Duration getRefundResultTimeout() { return refundResultTimeout; }
     public void setRefundResultTimeout(Duration refundResultTimeout) {

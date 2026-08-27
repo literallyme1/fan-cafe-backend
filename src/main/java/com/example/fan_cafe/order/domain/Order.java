@@ -37,6 +37,11 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private Status status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 40)
+    @Default
+    private OrderType orderType = OrderType.MERCHANDISE;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Default
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -47,6 +52,16 @@ public class Order extends BaseTimeEntity {
                 .user(user)
                 .totalPrice(totalPrice)
                 .status(Status.PAYMENT_PENDING)
+                .orderType(OrderType.MERCHANDISE)
+                .build();
+    }
+
+    public static Order campaignContributionPaymentPending(User user, BigDecimal amount) {
+        return Order.builder()
+                .user(user)
+                .totalPrice(amount)
+                .status(Status.PAYMENT_PENDING)
+                .orderType(OrderType.CAMPAIGN_CONTRIBUTION)
                 .build();
     }
 

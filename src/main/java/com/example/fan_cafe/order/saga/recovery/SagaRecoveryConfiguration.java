@@ -9,6 +9,6 @@ import java.time.Clock;
 public class SagaRecoveryConfiguration {
     @Bean
     Clock sagaRecoveryClock() {
-        return Clock.systemDefaultZone();
+        return Clock.systemUTC();
     }
 }

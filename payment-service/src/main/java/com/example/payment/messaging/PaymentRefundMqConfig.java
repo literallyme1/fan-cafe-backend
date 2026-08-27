@@ -39,6 +39,20 @@ public class PaymentRefundMqConfig {
     }
 
     @Bean
+    public Queue paymentApprovalCommandQueue() {
+        return QueueBuilder.durable(PaymentRefundMqNames.APPROVAL_COMMAND_QUEUE).build();
+    }
+
+    @Bean
+    public Binding paymentApprovalCommandBinding(
+            @Qualifier("paymentApprovalCommandQueue") Queue queue,
+            @Qualifier("paymentRefundExchange") DirectExchange exchange
+    ) {
+        return BindingBuilder.bind(queue).to(exchange)
+                .with(PaymentRefundMqNames.APPROVAL_COMMAND_ROUTING_KEY);
+    }
+
+    @Bean
     public Jackson2JsonMessageConverter paymentMessageConverter(ObjectMapper objectMapper) {
         return new Jackson2JsonMessageConverter(objectMapper);
     }

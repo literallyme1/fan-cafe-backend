@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -182,7 +183,9 @@ class SagaAdminServiceIntegrationTest {
     private PaymentStatusResponse paymentStatus(PaymentResultStatus status) {
         BigDecimal total = fixture.totalPrice();
         return new PaymentStatusResponse(
-                fixture.order().getId(), status, total, total, "admin-payment-key",
+                fixture.order().getId(), status, total, total,
+                status == PaymentResultStatus.APPROVED ? LocalDateTime.now() : null,
+                "admin-payment-key",
                 null, status == PaymentResultStatus.REFUNDED ? "REFUND:test" : null,
                 null, null);
     }

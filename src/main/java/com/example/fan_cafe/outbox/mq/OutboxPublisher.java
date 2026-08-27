@@ -1,6 +1,7 @@
 package com.example.fan_cafe.outbox.mq;
 
 import com.example.fan_cafe.order.saga.messaging.RefundPaymentCommand;
+import com.example.fan_cafe.order.saga.messaging.ApprovePaymentCommand;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_EXCHANGE;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.OUTBOX_ROUTING_KEY;
 import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_REFUND_COMMAND_ROUTING_KEY;
+import static com.example.fan_cafe.outbox.mq.OutboxMQNames.PAYMENT_APPROVAL_COMMAND_ROUTING_KEY;
 
 @Slf4j
 @Component
@@ -55,7 +57,8 @@ public class OutboxPublisher implements com.example.fan_cafe.outbox.application.
     Message prepareMessage(Message message, String traceId, String routingKey) {
         String tid = traceId != null ? traceId : MDC.get("traceId");
         message.getMessageProperties().setHeader("traceId", tid);
-        if (PAYMENT_REFUND_COMMAND_ROUTING_KEY.equals(routingKey)) {
+        if (PAYMENT_REFUND_COMMAND_ROUTING_KEY.equals(routingKey)
+                || PAYMENT_APPROVAL_COMMAND_ROUTING_KEY.equals(routingKey)) {
             message.getMessageProperties().getHeaders()
                     .remove(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME);
         }
@@ -63,11 +66,14 @@ public class OutboxPublisher implements com.example.fan_cafe.outbox.application.
     }
 
     Object resolveMessagePayload(String payload, String routingKey) {
-        if (!PAYMENT_REFUND_COMMAND_ROUTING_KEY.equals(routingKey)) {
+        if (!PAYMENT_REFUND_COMMAND_ROUTING_KEY.equals(routingKey)
+                && !PAYMENT_APPROVAL_COMMAND_ROUTING_KEY.equals(routingKey)) {
             return payload;
         }
         try {
-            return objectMapper.readValue(payload, RefundPaymentCommand.class);
+            return PAYMENT_APPROVAL_COMMAND_ROUTING_KEY.equals(routingKey)
+                    ? objectMapper.readValue(payload, ApprovePaymentCommand.class)
+                    : objectMapper.readValue(payload, RefundPaymentCommand.class);
         } catch (JsonProcessingException invalidPayload) {
             throw messageConversionException(invalidPayload);
         }
@@ -76,8 +82,11 @@ public class OutboxPublisher implements com.example.fan_cafe.outbox.application.
     String resolveRoutingKey(String payload) {
         try {
             String eventType = objectMapper.readTree(payload).path("eventType").asText();
-            return RefundPaymentCommand.EVENT_TYPE.equals(eventType)
-                    ? PAYMENT_REFUND_COMMAND_ROUTING_KEY
+            if (RefundPaymentCommand.EVENT_TYPE.equals(eventType)) {
+                return PAYMENT_REFUND_COMMAND_ROUTING_KEY;
+            }
+            return ApprovePaymentCommand.EVENT_TYPE.equals(eventType)
+                    ? PAYMENT_APPROVAL_COMMAND_ROUTING_KEY
                     : OUTBOX_ROUTING_KEY;
         } catch (JsonProcessingException invalidPayload) {
             throw messageConversionException(invalidPayload);

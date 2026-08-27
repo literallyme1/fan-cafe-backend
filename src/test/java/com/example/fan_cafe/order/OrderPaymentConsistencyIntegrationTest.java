@@ -40,6 +40,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -126,7 +127,7 @@ class OrderPaymentConsistencyIntegrationTest {
                                 null, "approval amount mismatch", "PAYMENT_AMOUNT_MISMATCH");
                     }
                     return new PaymentResultResponse(orderId, PaymentResultStatus.APPROVED,
-                            PAYMENT_KEY, null, null);
+                            PAYMENT_KEY, null, null, LocalDateTime.now());
                 });
         when(paymentClient.refund(anyLong(), any(UUID.class), anyString()))
                 .thenAnswer(invocation -> {
@@ -144,7 +145,7 @@ class OrderPaymentConsistencyIntegrationTest {
                             .isEqualTo(SagaStatus.PAYMENT_PENDING);
                     return new PaymentResultResponse(
                             orderId, PaymentResultStatus.APPROVED,
-                            invocation.getArgument(3), null, null);
+                            invocation.getArgument(3), null, null, LocalDateTime.now());
                 });
     }
 
@@ -354,7 +355,7 @@ class OrderPaymentConsistencyIntegrationTest {
                     }
                     return new PaymentResultResponse(
                             fixture.order().getId(), PaymentResultStatus.APPROVED,
-                            PAYMENT_KEY, null, null);
+                            PAYMENT_KEY, null, null, LocalDateTime.now());
                 }).when(paymentClient).approve(
                         fixture.order().getId(), fixture.totalPrice(), fixture.totalPrice(), PAYMENT_KEY);
 

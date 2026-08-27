@@ -113,6 +113,11 @@ class PaymentClientTest {
     }
 
     @Test
+    void approvedResponseWithoutApprovalTime_isClassifiedAsUnknownOutcome() {
+        assertUnknownApprovalResponse("{\"orderId\":10,\"status\":\"APPROVED\"}");
+    }
+
+    @Test
     void approvalReadTimeout_isClassifiedAsUnknownOutcome() throws Exception {
         HttpServer delayedServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         delayedServer.createContext("/internal/payments/10/approve", exchange -> {

@@ -1,5 +1,6 @@
 package com.example.fan_cafe.order.saga.application;
 
+import com.example.fan_cafe.campaign.exception.CampaignApprovalAfterDeadlineException;
 import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.exception.OrderErrorCode;
 import com.example.fan_cafe.order.interfaces.dto.OrderQueryResponse;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +34,7 @@ public class PaymentSagaOrchestrator {
             Long orderId,
             BigDecimal expectedAmount,
             BigDecimal approvalAmount,
-        String paymentKey
+            String paymentKey
     ) {
         SagaSnapshot saga = sagaTransactionService.start(orderId);
         return switch (saga.status()) {
@@ -42,7 +44,7 @@ public class PaymentSagaOrchestrator {
             case PAYMENT_PENDING -> approvePending(
                     saga, orderId, expectedAmount, approvalAmount, paymentKey);
             case PAYMENT_UNKNOWN -> resolveUnknownPayment(saga, orderId);
-            case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
+            case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId, null);
             case CANCELLED -> paymentFailureService.fail(
                     saga.sagaId(), orderId, FAILED_REASON);
             case COMPENSATING, COMPENSATED, RECONCILIATION_REQUIRED ->
@@ -58,8 +60,36 @@ public class PaymentSagaOrchestrator {
                 orderId);
     }
 
+    public OrderQueryResponse recoverPaymentPending(UUID sagaId, Long orderId) {
+        return resolveUnknownPayment(
+                new SagaSnapshot(
+                        sagaId, orderId, SagaStatus.PAYMENT_PENDING,
+                        com.example.fan_cafe.order.saga.domain.SagaStep.PAYMENT_STATUS_CHECK),
+                orderId);
+    }
+
     public OrderQueryResponse resumePaymentCompleted(UUID sagaId, Long orderId) {
-        return completeOrder(sagaId, orderId);
+        LocalDateTime approvedAt = sagaTransactionService.getPaymentApprovedAt(sagaId);
+        if (approvedAt != null) {
+            return completeOrder(sagaId, orderId, approvedAt);
+        }
+
+        PaymentStatusResponse payment = paymentClient.getStatus(orderId);
+        validatePaymentOrder(orderId, payment.orderId());
+        if (payment.status() != PaymentResultStatus.APPROVED || payment.approvedAt() == null) {
+            throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+        }
+        sagaTransactionService.markPaymentCompleted(sagaId, payment.approvedAt());
+        return completeOrder(sagaId, orderId, payment.approvedAt());
+    }
+
+    public OrderQueryResponse resumePaymentCompleted(
+            UUID sagaId,
+            Long orderId,
+            LocalDateTime approvedAt
+    ) {
+        sagaTransactionService.markPaymentCompleted(sagaId, approvedAt);
+        return completeOrder(sagaId, orderId, approvedAt);
     }
 
     private OrderQueryResponse approvePending(
@@ -91,8 +121,8 @@ public class PaymentSagaOrchestrator {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
 
-        sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
-        return completeOrder(saga.sagaId(), orderId);
+        sagaTransactionService.markPaymentCompleted(saga.sagaId(), payment.approvedAt());
+        return completeOrder(saga.sagaId(), orderId, payment.approvedAt());
     }
 
     private OrderQueryResponse continueAfterUnknown(
@@ -102,7 +132,7 @@ public class PaymentSagaOrchestrator {
     ) {
         return switch (saga.status()) {
             case PAYMENT_UNKNOWN -> resolveUnknownPayment(saga, orderId);
-            case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId);
+            case PAYMENT_COMPLETED, COMPLETED -> completeOrder(saga.sagaId(), orderId, null);
             case CANCELLED -> paymentFailureService.fail(saga.sagaId(), orderId, FAILED_REASON);
             case STARTED, PAYMENT_PENDING, COMPENSATING, COMPENSATED,
                     RECONCILIATION_REQUIRED -> throw originalFailure;
@@ -123,9 +153,8 @@ public class PaymentSagaOrchestrator {
                 if (compensation.isPresent()) {
                     yield compensation.get();
                 }
-                sagaTransactionService.advanceToMilestone(
-                        saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
-                yield completeOrder(saga.sagaId(), orderId);
+                sagaTransactionService.markPaymentCompleted(saga.sagaId(), payment.approvedAt());
+                yield completeOrder(saga.sagaId(), orderId, payment.approvedAt());
             }
             case FAILED -> paymentFailureService.fail(
                     saga.sagaId(), orderId,
@@ -145,11 +174,23 @@ public class PaymentSagaOrchestrator {
         return unknown.getClass().getSimpleName() + ": " + unknown.getErrorMessage();
     }
 
-    private OrderQueryResponse completeOrder(UUID sagaId, Long orderId) {
+    private OrderQueryResponse completeOrder(UUID sagaId, Long orderId, LocalDateTime approvedAt) {
         try {
-            return completionService.complete(sagaId, orderId, APPROVED_REASON);
+            return approvedAt == null
+                    ? completionService.complete(sagaId, orderId, APPROVED_REASON)
+                    : completionService.complete(sagaId, orderId, APPROVED_REASON, approvedAt);
+        } catch (CampaignApprovalAfterDeadlineException lateApproval) {
+            return compensationService.startCampaign(
+                    sagaId,
+                    orderId,
+                    com.example.fan_cafe.order.saga.domain.SagaCompensationReason
+                            .LATE_APPROVAL_AFTER_DEADLINE.name(),
+                    lateApproval.getApprovedAt());
         } catch (OrderCompletionFailedException completionFailure) {
-            compensationService.start(sagaId, orderId, "order completion failed");
+            compensationService.startAfterOrderCompletionFailure(
+                    sagaId, orderId,
+                    com.example.fan_cafe.order.saga.domain.SagaCompensationReason.ORDER_FAILURE.name(),
+                    approvedAt);
             throw completionFailure;
         }
     }
