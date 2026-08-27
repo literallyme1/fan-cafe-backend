@@ -13,6 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,7 +27,15 @@ class PaymentApprovalServiceTest {
     private static final BigDecimal AMOUNT = new BigDecimal("20000.00");
 
     @Mock private PaymentRepository paymentRepository;
+    @Mock private Clock clock;
     @InjectMocks private PaymentApprovalService paymentApprovalService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpClock() {
+        org.mockito.Mockito.lenient().when(clock.instant())
+                .thenReturn(Instant.parse("2026-08-27T00:00:00Z"));
+        org.mockito.Mockito.lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+    }
 
     @Test
     void pendingPayment_isApproved() {

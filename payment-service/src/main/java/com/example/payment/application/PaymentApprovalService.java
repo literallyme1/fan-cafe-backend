@@ -10,13 +10,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 @Service
 public class PaymentApprovalService {
     private final PaymentRepository paymentRepository;
+    private final Clock clock;
 
-    public PaymentApprovalService(PaymentRepository paymentRepository) {
+    public PaymentApprovalService(PaymentRepository paymentRepository, Clock clock) {
         this.paymentRepository = paymentRepository;
+        this.clock = clock;
     }
 
     @Transactional
@@ -45,7 +49,7 @@ public class PaymentApprovalService {
             return PaymentResultResponse.amountMismatch(payment);
         }
 
-        payment.approve(approvalAmount, paymentKey);
+        payment.approve(approvalAmount, paymentKey, LocalDateTime.now(clock));
         return PaymentResultResponse.from(payment);
     }
 

@@ -107,6 +107,7 @@ class SagaCrashRecoveryIntegrationTest {
                         "--spring.rabbitmq.listener.direct.auto-startup=false",
                         "--saga.recovery.enabled=false",
                         "--saga.recovery.refund-result-timeout=0s",
+                        "--saga.recovery.order-completion-initial-delay=0s",
                         "--scheduler.comment-count.enabled=false",
                         "--redis.warmup.enabled=false"
                 );

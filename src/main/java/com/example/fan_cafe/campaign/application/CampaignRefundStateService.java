@@ -37,7 +37,6 @@ public class CampaignRefundStateService {
             return;
         }
         if (contribution.getStatus() == ContributionStatus.CONFIRMED) {
-            campaign.subtractRefundedAmount(contribution.getAmount());
             contribution.startRefund(now);
             return;
         }
@@ -65,6 +64,9 @@ public class CampaignRefundStateService {
             throw new CustomException(CampaignErrorCode.INVALID_CONTRIBUTION_STATE);
         }
         Campaign campaign = lockCampaign(contribution);
+        if (contribution.getConfirmedAt() != null) {
+            campaign.subtractRefundedAmount(contribution.getAmount());
+        }
         contribution.completeRefund(LocalDateTime.now(clock));
         if (campaign.getStatus() == CampaignStatus.REFUNDING
                 && !contributionRepository.existsByCampaignIdAndStatusIn(

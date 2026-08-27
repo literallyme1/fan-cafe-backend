@@ -8,6 +8,7 @@ public final class OutboxMQNames {
     public static final String OUTBOX_ROUTING_KEY = "outbox.event";
     public static final String OUTBOX_QUEUE = "outbox.queue";
     public static final String PAYMENT_REFUND_COMMAND_ROUTING_KEY = "payment.refund.command";
+    public static final String PAYMENT_APPROVAL_COMMAND_ROUTING_KEY = "payment.approval.command";
     public static final String PAYMENT_REFUND_RESULT_ROUTING_KEY = "payment.refund.result";
     public static final String PAYMENT_REFUND_RESULT_QUEUE = "payment.refund.result.order.queue";
 

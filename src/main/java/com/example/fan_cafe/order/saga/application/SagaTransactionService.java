@@ -96,6 +96,32 @@ public class SagaTransactionService {
         return SagaSnapshot.from(saga);
     }
 
+    @Transactional
+    public SagaSnapshot markPaymentCompleted(UUID sagaId, LocalDateTime approvedAt) {
+        SagaInstance saga = sagaRepository.findBySagaIdForUpdate(sagaId)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+        if (saga.getStatus() == SagaStatus.PAYMENT_PENDING
+                || saga.getStatus() == SagaStatus.PAYMENT_UNKNOWN) {
+            stateMachine.transition(saga, SagaStatus.PAYMENT_COMPLETED);
+        } else if (saga.getStatus() != SagaStatus.PAYMENT_COMPLETED
+                && saga.getStatus() != SagaStatus.COMPLETED) {
+            throw new CustomException(SagaErrorCode.INVALID_SAGA_TRANSITION);
+        }
+        if (saga.getStatus() == SagaStatus.PAYMENT_COMPLETED) {
+            saga.schedulePaymentCompletedRecovery(
+                    approvedAt,
+                    LocalDateTime.now(clock).plus(recoveryProperties.getOrderCompletionInitialDelay()));
+        }
+        return SagaSnapshot.from(saga);
+    }
+
+    @Transactional(readOnly = true)
+    public LocalDateTime getPaymentApprovedAt(UUID sagaId) {
+        return sagaRepository.findById(sagaId)
+                .map(SagaInstance::getPaymentApprovedAt)
+                .orElseThrow(() -> new CustomException(SagaErrorCode.SAGA_NOT_FOUND));
+    }
+
     @Transactional(readOnly = true)
     public SagaSnapshot get(UUID sagaId) {
         return sagaRepository.findById(sagaId)

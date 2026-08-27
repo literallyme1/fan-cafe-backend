@@ -34,7 +34,7 @@ public class PaymentSagaOrchestrator {
             Long orderId,
             BigDecimal expectedAmount,
             BigDecimal approvalAmount,
-        String paymentKey
+            String paymentKey
     ) {
         SagaSnapshot saga = sagaTransactionService.start(orderId);
         return switch (saga.status()) {
@@ -61,23 +61,35 @@ public class PaymentSagaOrchestrator {
     }
 
     public OrderQueryResponse recoverPaymentPending(UUID sagaId, Long orderId) {
-        try {
-            return resolveUnknownPayment(
-                    new SagaSnapshot(
-                            sagaId, orderId, SagaStatus.PAYMENT_PENDING,
-                            com.example.fan_cafe.order.saga.domain.SagaStep.PAYMENT_STATUS_CHECK),
-                    orderId);
-        } catch (CustomException failure) {
-            if (failure.getErrorCode() == OrderErrorCode.PAYMENT_NOT_FOUND) {
-                return paymentFailureService.fail(
-                        sagaId, orderId, "payment execute was not observed before recovery deadline");
-            }
-            throw failure;
-        }
+        return resolveUnknownPayment(
+                new SagaSnapshot(
+                        sagaId, orderId, SagaStatus.PAYMENT_PENDING,
+                        com.example.fan_cafe.order.saga.domain.SagaStep.PAYMENT_STATUS_CHECK),
+                orderId);
     }
 
     public OrderQueryResponse resumePaymentCompleted(UUID sagaId, Long orderId) {
-        return completeOrder(sagaId, orderId, null);
+        LocalDateTime approvedAt = sagaTransactionService.getPaymentApprovedAt(sagaId);
+        if (approvedAt != null) {
+            return completeOrder(sagaId, orderId, approvedAt);
+        }
+
+        PaymentStatusResponse payment = paymentClient.getStatus(orderId);
+        validatePaymentOrder(orderId, payment.orderId());
+        if (payment.status() != PaymentResultStatus.APPROVED || payment.approvedAt() == null) {
+            throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
+        }
+        sagaTransactionService.markPaymentCompleted(sagaId, payment.approvedAt());
+        return completeOrder(sagaId, orderId, payment.approvedAt());
+    }
+
+    public OrderQueryResponse resumePaymentCompleted(
+            UUID sagaId,
+            Long orderId,
+            LocalDateTime approvedAt
+    ) {
+        sagaTransactionService.markPaymentCompleted(sagaId, approvedAt);
+        return completeOrder(sagaId, orderId, approvedAt);
     }
 
     private OrderQueryResponse approvePending(
@@ -109,7 +121,7 @@ public class PaymentSagaOrchestrator {
             throw new CustomException(OrderErrorCode.PAYMENT_SERVICE_ERROR);
         }
 
-        sagaTransactionService.advanceToMilestone(saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
+        sagaTransactionService.markPaymentCompleted(saga.sagaId(), payment.approvedAt());
         return completeOrder(saga.sagaId(), orderId, payment.approvedAt());
     }
 
@@ -141,8 +153,7 @@ public class PaymentSagaOrchestrator {
                 if (compensation.isPresent()) {
                     yield compensation.get();
                 }
-                sagaTransactionService.advanceToMilestone(
-                        saga.sagaId(), SagaStatus.PAYMENT_COMPLETED);
+                sagaTransactionService.markPaymentCompleted(saga.sagaId(), payment.approvedAt());
                 yield completeOrder(saga.sagaId(), orderId, payment.approvedAt());
             }
             case FAILED -> paymentFailureService.fail(

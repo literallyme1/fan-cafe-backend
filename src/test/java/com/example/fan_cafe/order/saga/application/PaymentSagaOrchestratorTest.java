@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentSagaOrchestratorTest {
+    private static final LocalDateTime APPROVED_AT = LocalDateTime.of(2026, 8, 27, 1, 2, 3);
     @Mock private SagaTransactionService sagaTransactionService;
     @Mock private SagaOrderCompletionService completionService;
     @Mock private SagaCompensationService compensationService;
@@ -44,15 +46,16 @@ class PaymentSagaOrchestratorTest {
         SagaSnapshot pending = snapshot(sagaId, SagaStatus.PAYMENT_PENDING, SagaStep.PAYMENT_APPROVAL);
         SagaSnapshot paymentCompleted = snapshot(sagaId, SagaStatus.PAYMENT_COMPLETED, SagaStep.ORDER_COMPLETION);
         PaymentResultResponse approved = new PaymentResultResponse(
-                10L, PaymentResultStatus.APPROVED, "pay-1", null, null);
+                10L, PaymentResultStatus.APPROVED, "pay-1", null, null, APPROVED_AT);
         OrderQueryResponse completedOrder = mock(OrderQueryResponse.class);
 
         when(sagaTransactionService.start(10L)).thenReturn(started);
         when(sagaTransactionService.transition(sagaId, SagaStatus.PAYMENT_PENDING)).thenReturn(pending);
         when(paymentClient.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1")).thenReturn(approved);
-        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED))
+        when(sagaTransactionService.markPaymentCompleted(sagaId, APPROVED_AT))
                 .thenReturn(paymentCompleted);
-        when(completionService.complete(sagaId, 10L, "mock payment approved")).thenReturn(completedOrder);
+        when(completionService.complete(sagaId, 10L, "mock payment approved", APPROVED_AT))
+                .thenReturn(completedOrder);
 
         OrderQueryResponse result = orchestrator.approve(
                 10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1");
@@ -62,8 +65,8 @@ class PaymentSagaOrchestratorTest {
         order.verify(sagaTransactionService).start(10L);
         order.verify(sagaTransactionService).transition(sagaId, SagaStatus.PAYMENT_PENDING);
         order.verify(paymentClient).approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1");
-        order.verify(sagaTransactionService).advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
-        order.verify(completionService).complete(sagaId, 10L, "mock payment approved");
+        order.verify(sagaTransactionService).markPaymentCompleted(sagaId, APPROVED_AT);
+        order.verify(completionService).complete(sagaId, 10L, "mock payment approved", APPROVED_AT);
     }
 
     @Test
@@ -174,9 +177,10 @@ class PaymentSagaOrchestratorTest {
         when(paymentClient.getStatus(10L)).thenReturn(approved);
         when(compensationService.startLateSuccessIfOrderCannotComplete(sagaId, 10L))
                 .thenReturn(Optional.empty());
-        when(sagaTransactionService.advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED))
+        when(sagaTransactionService.markPaymentCompleted(sagaId, APPROVED_AT))
                 .thenReturn(paymentCompleted);
-        when(completionService.complete(sagaId, 10L, "mock payment approved")).thenReturn(completed);
+        when(completionService.complete(sagaId, 10L, "mock payment approved", APPROVED_AT))
+                .thenReturn(completed);
 
         assertThat(orchestrator.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
                 .isSameAs(completed);
@@ -186,9 +190,9 @@ class PaymentSagaOrchestratorTest {
                 paymentClient, compensationService, sagaTransactionService, completionService);
         order.verify(paymentClient).getStatus(10L);
         order.verify(compensationService).startLateSuccessIfOrderCannotComplete(sagaId, 10L);
-        order.verify(sagaTransactionService)
-                .advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
-        order.verify(completionService).complete(sagaId, 10L, "mock payment approved");
+        order.verify(sagaTransactionService).markPaymentCompleted(sagaId, APPROVED_AT);
+        order.verify(completionService)
+                .complete(sagaId, 10L, "mock payment approved", APPROVED_AT);
     }
 
     @Test
@@ -204,8 +208,7 @@ class PaymentSagaOrchestratorTest {
         assertThat(orchestrator.approve(10L, BigDecimal.TEN, BigDecimal.TEN, "pay-1"))
                 .isSameAs(cancelled);
 
-        verify(sagaTransactionService, never())
-                .advanceToMilestone(sagaId, SagaStatus.PAYMENT_COMPLETED);
+        verify(sagaTransactionService, never()).markPaymentCompleted(sagaId, APPROVED_AT);
         verifyNoInteractions(completionService);
     }
 
@@ -263,7 +266,8 @@ class PaymentSagaOrchestratorTest {
 
     private PaymentStatusResponse paymentStatus(PaymentResultStatus status) {
         return new PaymentStatusResponse(
-                10L, status, BigDecimal.TEN, BigDecimal.TEN, "pay-1",
+                10L, status, BigDecimal.TEN, BigDecimal.TEN,
+                status == PaymentResultStatus.APPROVED ? APPROVED_AT : null, "pay-1",
                 status == PaymentResultStatus.FAILED ? "declined" : null,
                 null, null, null);
     }

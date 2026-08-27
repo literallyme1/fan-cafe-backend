@@ -74,6 +74,10 @@ public class PaymentSagaStateMachine {
                 && target == SagaStatus.RECONCILIATION_REQUIRED) {
             return SagaStep.MANUAL_RECONCILIATION;
         }
+        if (current == SagaStatus.PAYMENT_COMPLETED
+                && target == SagaStatus.RECONCILIATION_REQUIRED) {
+            return SagaStep.MANUAL_RECONCILIATION;
+        }
         if (current == SagaStatus.RECONCILIATION_REQUIRED
                 && target == SagaStatus.PAYMENT_COMPLETED) {
             return SagaStep.ORDER_COMPLETION;

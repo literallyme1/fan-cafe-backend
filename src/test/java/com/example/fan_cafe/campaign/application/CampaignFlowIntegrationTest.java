@@ -16,6 +16,7 @@ import com.example.fan_cafe.order.payment.client.PaymentResultResponse;
 import com.example.fan_cafe.order.payment.client.PaymentResultStatus;
 import com.example.fan_cafe.order.payment.client.PaymentStatusResponse;
 import com.example.fan_cafe.order.saga.application.SagaCompensationService;
+import com.example.fan_cafe.order.saga.application.SagaTransactionService;
 import com.example.fan_cafe.order.saga.domain.SagaStatus;
 import com.example.fan_cafe.order.saga.infrastructure.SagaInstanceRepository;
 import com.example.fan_cafe.order.saga.messaging.PaymentRefundedResult;
@@ -35,12 +36,14 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,6 +68,7 @@ class CampaignFlowIntegrationTest {
     @Autowired private CampaignRefundService refundService;
     @Autowired private CampaignDeadlineWorker deadlineWorker;
     @Autowired private SagaCompensationService compensationService;
+    @Autowired private SagaTransactionService sagaTransactionService;
     @Autowired private SagaRecoveryWorker sagaRecoveryWorker;
     @Autowired private CampaignRepository campaignRepository;
     @Autowired private ContributionRepository contributionRepository;
@@ -105,7 +109,8 @@ class CampaignFlowIntegrationTest {
                 .contains("CAMPAIGN_SUCCEEDED")
                 .contains("\"receiverId\":" + user.getId());
 
-        assertThatThrownBy(() -> reservationService.reserve(user, campaign.getId(), TEN_THOUSAND))
+        assertThatThrownBy(() -> reservationService.reserve(
+                user, campaign.getId(), TEN_THOUSAND, "deadline-payment"))
                 .isInstanceOf(CustomException.class)
                 .extracting(failure -> ((CustomException) failure).getErrorCode())
                 .isEqualTo(CampaignErrorCode.CAMPAIGN_NOT_OPEN);
@@ -158,11 +163,11 @@ class CampaignFlowIntegrationTest {
     }
 
     @Test
-    void crashBeforePaymentExecuteIsRecoveredFromPersistedPendingSaga() {
+    void pendingNotFoundRaceRemainsRecoverableUntilDurableApprovalArrives() {
         User user = user("pre-execute-crash");
         Campaign campaign = campaign(new BigDecimal("20000"), 2);
         CampaignContributionReservation reservation = reservationService.reserve(
-                user, campaign.getId(), TEN_THOUSAND);
+                user, campaign.getId(), TEN_THOUSAND, "crash-payment");
         jdbcTemplate.update("UPDATE saga_instance SET next_retry_at = ? WHERE order_id = ?",
                 LocalDateTime.of(2000, 1, 1, 0, 0), reservation.orderId());
         when(paymentClient.getStatus(reservation.orderId()))
@@ -172,14 +177,96 @@ class CampaignFlowIntegrationTest {
         sagaRecoveryWorker.recoverDueSagas();
 
         assertThat(contributionRepository.findById(reservation.contributionId()).orElseThrow().getStatus())
-                .isEqualTo(ContributionStatus.FAILED);
+                .isEqualTo(ContributionStatus.RESERVED);
+        assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getReservedAmount())
+                .isEqualByComparingTo(TEN_THOUSAND);
+        assertThat(orderRepository.findById(reservation.orderId()).orElseThrow().getStatus())
+                .isEqualTo(Status.PAYMENT_PENDING);
+        assertThat(sagaRepository.findByOrderId(reservation.orderId()).orElseThrow().getStatus())
+                .isEqualTo(SagaStatus.PAYMENT_PENDING);
+
+        LocalDateTime approvedAt = LocalDateTime.now();
+        org.mockito.Mockito.doReturn(approvedStatus(reservation.orderId(), approvedAt))
+                .when(paymentClient).getStatus(reservation.orderId());
+        jdbcTemplate.update("UPDATE saga_instance SET next_retry_at = ? WHERE order_id = ?",
+                LocalDateTime.of(2000, 1, 1, 0, 0), reservation.orderId());
+
+        sagaRecoveryWorker.recoverDueSagas();
+
+        assertThat(contributionRepository.findById(reservation.contributionId()).orElseThrow().getStatus())
+                .isEqualTo(ContributionStatus.CONFIRMED);
+        assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getFundedAmount())
+                .isEqualByComparingTo(TEN_THOUSAND);
         assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getReservedAmount())
                 .isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(orderRepository.findById(reservation.orderId()).orElseThrow().getStatus())
-                .isEqualTo(Status.PAYMENT_FAILED);
         assertThat(sagaRepository.findByOrderId(reservation.orderId()).orElseThrow().getStatus())
-                .isEqualTo(SagaStatus.CANCELLED);
+                .isEqualTo(SagaStatus.COMPLETED);
+        assertThat(outboxRepository.countByAggregateTypeAndAggregateId(
+                "PAYMENT_APPROVAL", reservation.orderId())).isEqualTo(1);
         verify(paymentClient, never()).approve(anyLong(), any(), any(), anyString());
+    }
+
+    @Test
+    void terminalApprovalOutboxFailureAndPersistentNotFoundRequiresReconciliation() {
+        User user = user("approval-outbox-terminal");
+        Campaign campaign = campaign(new BigDecimal("20000"), 2);
+        CampaignContributionReservation reservation = reservationService.reserve(
+                user, campaign.getId(), TEN_THOUSAND, "terminal-outbox-payment");
+
+        jdbcTemplate.update("""
+                UPDATE outbox_events
+                   SET status = 'MANUAL_REQUIRED', retry_count = 6,
+                       next_retry_at = NULL, last_error = 'broker unavailable'
+                 WHERE aggregate_type = 'PAYMENT_APPROVAL' AND aggregate_id = ?
+                """, reservation.orderId());
+        jdbcTemplate.update("""
+                UPDATE saga_instance
+                   SET retry_count = 2, next_retry_at = ?
+                 WHERE order_id = ?
+                """, LocalDateTime.of(2000, 1, 1, 0, 0), reservation.orderId());
+        when(paymentClient.getStatus(reservation.orderId()))
+                .thenThrow(new CustomException(
+                        com.example.fan_cafe.order.exception.OrderErrorCode.PAYMENT_NOT_FOUND));
+
+        sagaRecoveryWorker.recoverDueSagas();
+
+        assertThat(sagaRepository.findByOrderId(reservation.orderId()).orElseThrow().getStatus())
+                .isEqualTo(SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(orderRepository.findById(reservation.orderId()).orElseThrow().getStatus())
+                .isEqualTo(Status.PAYMENT_PENDING);
+        assertThat(contributionRepository.findById(reservation.contributionId()).orElseThrow().getStatus())
+                .isEqualTo(ContributionStatus.RESERVED);
+        assertThat(outboxRepository.findAll()).anySatisfy(event -> {
+            assertThat(event.getAggregateType()).isEqualTo("PAYMENT_SAGA");
+            assertThat(event.getAggregateId()).isEqualTo(reservation.orderId());
+            assertThat(event.getPayload()).contains("SAGA_RECONCILIATION_REQUIRED");
+        });
+    }
+
+    @Test
+    void paymentCompletedCrashRecoveryUsesPersistedApprovalTimeExactlyOnce() {
+        User user = user("payment-completed-crash");
+        Campaign campaign = campaign(new BigDecimal("20000"), 2);
+        CampaignContributionReservation reservation = reservationService.reserve(
+                user, campaign.getId(), TEN_THOUSAND, "completed-crash-payment");
+        var saga = sagaRepository.findByOrderId(reservation.orderId()).orElseThrow();
+        LocalDateTime approvedAt = LocalDateTime.now().minusSeconds(1);
+        sagaTransactionService.markPaymentCompleted(saga.getSagaId(), approvedAt);
+        jdbcTemplate.update("UPDATE saga_instance SET next_retry_at = ? WHERE order_id = ?",
+                LocalDateTime.of(2000, 1, 1, 0, 0), reservation.orderId());
+
+        sagaRecoveryWorker.recoverDueSagas();
+        sagaRecoveryWorker.recoverDueSagas();
+
+        var reloadedSaga = sagaRepository.findById(saga.getSagaId()).orElseThrow();
+        assertThat(reloadedSaga.getStatus()).isEqualTo(SagaStatus.COMPLETED);
+        assertThat(reloadedSaga.getPaymentApprovedAt())
+                .isEqualTo(approvedAt.truncatedTo(ChronoUnit.MICROS));
+        assertThat(contributionRepository.findById(reservation.contributionId()).orElseThrow().getStatus())
+                .isEqualTo(ContributionStatus.CONFIRMED);
+        assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getFundedAmount())
+                .isEqualByComparingTo(TEN_THOUSAND);
+        verify(paymentClient, never()).getStatus(reservation.orderId());
     }
 
     @Test
@@ -226,10 +313,13 @@ class CampaignFlowIntegrationTest {
 
         assertThat(first.status()).isEqualTo(ContributionStatus.REFUNDING);
         assertThat(second.status()).isEqualTo(ContributionStatus.REFUNDING);
+        assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getFundedAmount())
+                .isEqualByComparingTo(TEN_THOUSAND);
         assertThat(outboxRepository.countByAggregateTypeAndAggregateId(
                 "PAYMENT_SAGA", confirmed.orderId())).isEqualTo(1);
         verify(paymentClient, never()).refund(anyLong(), any(), anyString());
 
+        compensationService.complete(refunded(saga.getSagaId(), confirmed.orderId()));
         compensationService.complete(refunded(saga.getSagaId(), confirmed.orderId()));
         assertThat(campaignRepository.findById(campaign.getId()).orElseThrow().getFundedAmount())
                 .isEqualByComparingTo(BigDecimal.ZERO);
@@ -248,7 +338,7 @@ class CampaignFlowIntegrationTest {
         var second = contributionService.contribute(
                 secondUser, campaign.getId(), request(TEN_THOUSAND, "deadline-b"));
         jdbcTemplate.update("UPDATE campaigns SET deadline_at = ? WHERE id = ?",
-                LocalDateTime.now().minusSeconds(1), campaign.getId());
+                LocalDateTime.of(2000, 1, 1, 0, 0), campaign.getId());
 
         deadlineWorker.processDueCampaigns(10);
 
@@ -279,6 +369,54 @@ class CampaignFlowIntegrationTest {
     }
 
     @Test
+    void concurrentLastRefundResultsSubtractFundingOnceAndCompleteCampaignAfterAll() throws Exception {
+        User firstUser = user("concurrent-refund-a");
+        User secondUser = user("concurrent-refund-b");
+        Campaign campaign = campaign(new BigDecimal("30000"), 2);
+        approveSuccessfully(LocalDateTime.now());
+        var first = contributionService.contribute(
+                firstUser, campaign.getId(), request(TEN_THOUSAND, "concurrent-refund-a"));
+        var second = contributionService.contribute(
+                secondUser, campaign.getId(), request(TEN_THOUSAND, "concurrent-refund-b"));
+        jdbcTemplate.update("UPDATE campaigns SET deadline_at = ? WHERE id = ?",
+                LocalDateTime.of(2000, 1, 1, 0, 0), campaign.getId());
+        deadlineWorker.processDueCampaigns(10);
+        var firstSaga = sagaRepository.findByOrderId(first.orderId()).orElseThrow();
+        var secondSaga = sagaRepository.findByOrderId(second.orderId()).orElseThrow();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var failures = new ConcurrentLinkedQueue<Throwable>();
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            for (var result : List.of(
+                    refunded(firstSaga.getSagaId(), first.orderId()),
+                    refunded(secondSaga.getSagaId(), second.orderId()))) {
+                executor.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await(5, TimeUnit.SECONDS);
+                        compensationService.complete(result);
+                    } catch (Throwable failure) {
+                        failures.add(failure);
+                    }
+                });
+            }
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            executor.shutdown();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        assertThat(failures).isEmpty();
+        Campaign reloaded = campaignRepository.findById(campaign.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(CampaignStatus.REFUNDED);
+        assertThat(reloaded.getFundedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(contributionRepository.findAllByCampaignIdOrderById(campaign.getId()))
+                .extracting(contribution -> contribution.getStatus())
+                .containsOnly(ContributionStatus.REFUNDED);
+    }
+
+    @Test
     void pessimisticReservationAllowsOnlyOneLastAmountWinner() throws Exception {
         User first = user("race-a");
         User second = user("race-b");
@@ -294,7 +432,9 @@ class CampaignFlowIntegrationTest {
                     ready.countDown();
                     try {
                         start.await(5, TimeUnit.SECONDS);
-                        reservationService.reserve(user, campaign.getId(), TEN_THOUSAND);
+                        reservationService.reserve(
+                                user, campaign.getId(), TEN_THOUSAND,
+                                "concurrent-payment-" + Thread.currentThread().threadId());
                         successes.incrementAndGet();
                     } catch (CustomException failure) {
                         if (failure.getErrorCode() == CampaignErrorCode.TARGET_AMOUNT_EXCEEDED) {

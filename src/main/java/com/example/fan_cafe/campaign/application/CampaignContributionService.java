@@ -20,7 +20,7 @@ public class CampaignContributionService {
 
     public ContributionResponse contribute(User user, Long campaignId, ContributionCreateRequest request) {
         CampaignContributionReservation reservation = reservationService.reserve(
-                user, campaignId, request.amount());
+                user, campaignId, request.amount(), request.paymentKey());
         paymentSagaOrchestrator.approve(
                 reservation.orderId(), request.amount(), request.amount(), request.paymentKey());
         return get(reservation.contributionId());

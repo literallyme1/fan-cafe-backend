@@ -30,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -212,6 +213,7 @@ class PaymentUnknownIntegrationTest {
     private PaymentStatusResponse status(PaymentResultStatus status, String failureReason) {
         return new PaymentStatusResponse(
                 fixture.order().getId(), status, fixture.totalPrice(), fixture.totalPrice(),
+                status == PaymentResultStatus.APPROVED ? LocalDateTime.now() : null,
                 PAYMENT_KEY, failureReason, null, null, null);
     }
 }

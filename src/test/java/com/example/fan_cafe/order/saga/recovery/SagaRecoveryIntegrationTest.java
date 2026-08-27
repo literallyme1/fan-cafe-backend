@@ -204,6 +204,27 @@ class SagaRecoveryIntegrationTest {
     }
 
     @Test
+    void thirdPendingNotFoundReconcilesInsteadOfCancellingOrRemainingForever() {
+        PaymentPendingFixture fixture = fixture();
+        SagaSnapshot started = sagaTransactionService.start(fixture.order().getId());
+        SagaSnapshot pending = sagaTransactionService.transition(
+                started.sagaId(), SagaStatus.PAYMENT_PENDING);
+        setRecoveryFailure(pending.sagaId(), 2, localNow().minusSeconds(1));
+        when(paymentClient.getStatus(fixture.order().getId()))
+                .thenThrow(new CustomException(OrderErrorCode.PAYMENT_NOT_FOUND));
+
+        worker.recoverDueSagas();
+
+        SagaInstance reconciled = sagaRepository.findById(pending.sagaId()).orElseThrow();
+        assertThat(reconciled.getStatus()).isEqualTo(SagaStatus.RECONCILIATION_REQUIRED);
+        assertThat(reconciled.getRetryCount()).isEqualTo(3);
+        assertThat(orderRepository.findById(fixture.order().getId()).orElseThrow().getStatus())
+                .isEqualTo(Status.PAYMENT_PENDING);
+        assertThat(paymentSagaOutbox(fixture.order().getId()).stream()
+                .filter(this::isReconciliationAlert)).hasSize(1);
+    }
+
+    @Test
     void thirdCompensationFailureReconcilesWithoutAnotherRefundCommand() {
         PaymentPendingFixture fixture = fixture();
         SagaSnapshot compensating = makeCompensating(fixture);
@@ -403,6 +424,7 @@ class SagaRecoveryIntegrationTest {
     ) {
         return new PaymentStatusResponse(
                 fixture.order().getId(), status, fixture.totalPrice(), fixture.totalPrice(),
+                status == PaymentResultStatus.APPROVED ? localNow() : null,
                 "recovery-payment-key", failureReason, null, null, null);
     }
 
@@ -414,4 +436,3 @@ class SagaRecoveryIntegrationTest {
         now.updateAndGet(value -> value.plusSeconds(seconds));
     }
 }
-

@@ -26,7 +26,7 @@ class CampaignSchemaMigrationIntegrationTest {
                 .baselineVersion("8")
                 .load();
 
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
 
         try (var connection = DriverManager.getConnection(URL, "sa", "");
              var statement = connection.createStatement()) {
@@ -45,6 +45,12 @@ class CampaignSchemaMigrationIntegrationTest {
 
             statement.executeUpdate(validCampaignInsert(10, "1000.00"));
             statement.executeUpdate(validCampaignInsert(11, "2000.00"));
+            try (var result = statement.executeQuery("""
+                    SELECT payment_approved_at FROM saga_instance WHERE saga_id = 'saga-1'
+                    """)) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getTimestamp("payment_approved_at")).isNull();
+            }
         }
 
         assertThatThrownBy(() -> insertCampaign(12, "999.00"))
@@ -68,6 +74,26 @@ class CampaignSchemaMigrationIntegrationTest {
                     """);
             statement.executeUpdate("INSERT INTO users (id) VALUES (1)");
             statement.executeUpdate("INSERT INTO orders (id, user_id, status) VALUES (1, 1, 'PAID')");
+            statement.execute("""
+                    CREATE TABLE saga_instance (
+                        saga_id VARCHAR(36) PRIMARY KEY,
+                        order_id BIGINT NOT NULL,
+                        status VARCHAR(40) NOT NULL,
+                        current_step VARCHAR(40) NOT NULL,
+                        retry_count INT NOT NULL,
+                        next_retry_at TIMESTAMP NULL,
+                        last_error VARCHAR(1000) NULL,
+                        payment_unknown_at TIMESTAMP NULL,
+                        resolved_at TIMESTAMP NULL,
+                        created_at TIMESTAMP NULL,
+                        updated_at TIMESTAMP NULL
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO saga_instance (
+                        saga_id, order_id, status, current_step, retry_count
+                    ) VALUES ('saga-1', 1, 'COMPLETED', 'DONE', 0)
+                    """);
         }
     }
 

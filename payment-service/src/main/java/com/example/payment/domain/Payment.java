@@ -91,12 +91,19 @@ public class Payment {
     }
 
     public void approve(BigDecimal amount, String key) {
+        approve(amount, key, LocalDateTime.now(java.time.Clock.systemUTC()));
+    }
+
+    public void approve(BigDecimal amount, String key, LocalDateTime approvedAt) {
+        if (approvedAt == null) {
+            throw new IllegalArgumentException("Approval time is required");
+        }
         this.status = PaymentStatus.APPROVED;
         this.approvedAmount = amount;
         this.paymentKey = key;
         this.failureReason = null;
         if (this.approvedAt == null) {
-            this.approvedAt = LocalDateTime.now();
+            this.approvedAt = approvedAt;
         }
     }
 

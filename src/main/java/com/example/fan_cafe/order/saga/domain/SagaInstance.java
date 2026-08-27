@@ -62,6 +62,9 @@ public class SagaInstance {
     @Column(name = "payment_unknown_at")
     private LocalDateTime paymentUnknownAt;
 
+    @Column(name = "payment_approved_at")
+    private LocalDateTime paymentApprovedAt;
+
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
@@ -121,6 +124,23 @@ public class SagaInstance {
         this.lastError = null;
     }
 
+    public void schedulePaymentCompletedRecovery(
+            LocalDateTime approvedAt,
+            LocalDateTime firstRecoveryAt
+    ) {
+        if (status != SagaStatus.PAYMENT_COMPLETED) {
+            throw new IllegalStateException("Order completion recovery requires PAYMENT_COMPLETED");
+        }
+        if (approvedAt == null) {
+            throw new IllegalArgumentException("Payment approval time is required");
+        }
+        if (paymentApprovedAt == null) {
+            paymentApprovedAt = approvedAt.truncatedTo(ChronoUnit.MICROS);
+        }
+        nextRetryAt = requireRecoveryTime(firstRecoveryAt).truncatedTo(ChronoUnit.MICROS);
+        lastError = null;
+    }
+
     public void scheduleInitialRefundResultDeadline(LocalDateTime refundResultDeadline) {
         if (status != SagaStatus.COMPENSATING) {
             throw new IllegalStateException("Refund result deadline can only be set for COMPENSATING");
@@ -168,6 +188,7 @@ public class SagaInstance {
     private boolean isRecoveryTarget(SagaStatus sagaStatus) {
         return sagaStatus == SagaStatus.PAYMENT_PENDING
                 || sagaStatus == SagaStatus.PAYMENT_UNKNOWN
+                || sagaStatus == SagaStatus.PAYMENT_COMPLETED
                 || sagaStatus == SagaStatus.COMPENSATING;
     }
 

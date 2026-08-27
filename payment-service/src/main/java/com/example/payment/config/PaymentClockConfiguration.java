@@ -1,4 +1,4 @@
-package com.example.fan_cafe.order.saga.recovery;
+package com.example.payment.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 
 @Configuration
-public class SagaRecoveryConfiguration {
+public class PaymentClockConfiguration {
     @Bean
-    Clock sagaRecoveryClock() {
+    Clock paymentClock() {
         return Clock.systemUTC();
     }
 }

@@ -74,16 +74,22 @@ public class SagaAdminService {
             return response(snapshot.sagaId(), PaymentResultStatus.APPROVED);
         }
 
-        PaymentResultStatus observedStatus = null;
+        PaymentStatusResponse observedPayment = null;
         if (snapshot.status() == SagaStatus.RECONCILIATION_REQUIRED) {
-            observedStatus = requireApprovedPayment(snapshot.orderId());
+            observedPayment = requireApprovedPayment(snapshot.orderId());
         } else if (snapshot.status() != SagaStatus.PAYMENT_COMPLETED) {
             throw new CustomException(SagaErrorCode.INVALID_MANUAL_ACTION);
         }
 
         sagaTransactionService.prepareManualForward(snapshot.sagaId());
-        paymentSagaOrchestrator.resumePaymentCompleted(snapshot.sagaId(), snapshot.orderId());
-        return response(snapshot.sagaId(), observedStatus);
+        if (observedPayment == null) {
+            paymentSagaOrchestrator.resumePaymentCompleted(snapshot.sagaId(), snapshot.orderId());
+        } else {
+            paymentSagaOrchestrator.resumePaymentCompleted(
+                    snapshot.sagaId(), snapshot.orderId(), observedPayment.approvedAt());
+        }
+        return response(snapshot.sagaId(),
+                observedPayment == null ? null : observedPayment.status());
     }
 
     private SagaManualActionResponse compensate(SagaSnapshot snapshot) {
@@ -109,12 +115,12 @@ public class SagaAdminService {
         return response(snapshot.sagaId(), observedStatus);
     }
 
-    private PaymentResultStatus requireApprovedPayment(Long orderId) {
+    private PaymentStatusResponse requireApprovedPayment(Long orderId) {
         PaymentStatusResponse payment = paymentClient.getStatus(orderId);
-        if (payment.status() != PaymentResultStatus.APPROVED) {
+        if (payment.status() != PaymentResultStatus.APPROVED || payment.approvedAt() == null) {
             throw new CustomException(SagaErrorCode.PAYMENT_NOT_APPROVED_FOR_MANUAL_ACTION);
         }
-        return payment.status();
+        return payment;
     }
 
     private SagaManualActionResponse response(UUID sagaId, PaymentResultStatus paymentStatus) {

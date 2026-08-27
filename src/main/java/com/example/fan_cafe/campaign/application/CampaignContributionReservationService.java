@@ -9,6 +9,7 @@ import com.example.fan_cafe.global.exception.CustomException;
 import com.example.fan_cafe.order.domain.Order;
 import com.example.fan_cafe.order.infrastructure.OrderRepository;
 import com.example.fan_cafe.order.saga.application.SagaTransactionService;
+import com.example.fan_cafe.order.saga.application.PaymentApprovalOutboxService;
 import com.example.fan_cafe.user.domain.User;
 import com.example.fan_cafe.user.exception.UserErrorCode;
 import com.example.fan_cafe.user.infrastructure.UserRepository;
@@ -28,10 +29,16 @@ public class CampaignContributionReservationService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final SagaTransactionService sagaTransactionService;
+    private final PaymentApprovalOutboxService paymentApprovalOutboxService;
     private final Clock clock;
 
     @Transactional
-    public CampaignContributionReservation reserve(User requester, Long campaignId, BigDecimal amount) {
+    public CampaignContributionReservation reserve(
+            User requester,
+            Long campaignId,
+            BigDecimal amount,
+            String paymentKey
+    ) {
         User user = userRepository.findByIdAndDeletedAtIsNull(requester.getId())
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
         Campaign campaign = campaignRepository.findByIdForUpdate(campaignId)
@@ -43,6 +50,7 @@ public class CampaignContributionReservationService {
         Contribution contribution = contributionRepository.save(
                 Contribution.reserved(campaign, user, order, amount, now));
         sagaTransactionService.startCampaignPaymentPending(order.getId());
+        paymentApprovalOutboxService.save(order.getId(), amount, amount, paymentKey);
         return new CampaignContributionReservation(contribution.getId(), order.getId());
     }
 }

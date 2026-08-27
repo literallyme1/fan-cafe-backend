@@ -60,7 +60,7 @@ public class PaymentClient {
         if (result == null || result.orderId() == null || !result.orderId().equals(expectedOrderId)) {
             return false;
         }
-        return result.status() == PaymentResultStatus.APPROVED
+        return (result.status() == PaymentResultStatus.APPROVED && result.approvedAt() != null)
                 || result.status() == PaymentResultStatus.FAILED;
     }
 
