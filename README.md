@@ -118,7 +118,7 @@ if (campaign.isTargetReached()) {
 
 **Fix:** Recovery Worker가 `PAYMENT_PENDING`, `PAYMENT_UNKNOWN`, `PAYMENT_COMPLETED`, `COMPENSATING` 상태 중 `next_retry_at`이 지난 Saga를 다시 처리합니다. 실패 시 `retry_count`, `next_retry_at`, `last_error`를 갱신하고, 한도를 넘으면 `RECONCILIATION_REQUIRED`로 전이해 Slack 알림 Outbox를 저장합니다. 다중 Worker는 `READ_COMMITTED`의 짧은 claim 트랜잭션과 `FOR UPDATE SKIP LOCKED`로 작업을 분리합니다.
 
-**Result:** 4,000개의 due `PAYMENT_UNKNOWN` Saga를 대상으로 Worker 동시성별 처리량과 InnoDB row lock delta를 비교할 수 있는 재현 가능한 실험 환경을 구성했습니다.
+**Result:** 4,000개의 미완료 Saga를 대상으로 Worker 수를 변경하며 처리량과 DB Lock 경쟁을 비교했고, 다중 Worker 환경에서도 중복 처리 없이 복구되는지 검증했습니다.
 
 <details>
 <summary>관련 코드 및 파일 보기</summary>
