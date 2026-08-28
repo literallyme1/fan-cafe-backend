@@ -1,26 +1,28 @@
 # Fan-Cafe
 
-굿즈 주문이 집중되는 환경에서 재고 동시성, 결제 중복 처리와 후속 이벤트 유실 문제를 다루는 Spring Boot 백엔드 프로젝트입니다. (개인 프로젝트)
+굿즈 주문과 팬 조공 모금을 처리하며, 결제 과정의 부분 실패와 이벤트 유실을 복구하는 Spring Boot 백엔드 프로젝트입니다. (개인 프로젝트)
 
 ## 시연 영상
-[시연 영상 보기](https://youtu.be/hIbWzBgVqBk)
+
+결제 후 이벤트 실패를 Trace ID로 추적하고 Admin UI에서 복구하는 과정입니다. ([영상 보기](https://youtu.be/hIbWzBgVqBk))
+
+---
 
 ## 기술 스택 및 아키텍처
 
 ### 기술 스택
 
-| 구분 | 기술 / 버전 | 도입 목적                             |
-| --- | --- |-----------------------------------|
-| Language / Framework | Java 21, Spring Boot 3.5.13, Spring Data JPA, Spring Security | 도메인 로직, 트랜잭션, JWT 인증 구현           |
-| Database / Cache | MySQL 8.0, Redis 7, QueryDSL 5.0.0 | 영속 데이터 저장, 멱등성 조회 부하 완화, 동적 조회 구현 |
-| Messaging | RabbitMQ 3 (`rabbitmq:3-management`), Spring AMQP | 결제 후 알림 분리, 지연 재시도 및 DLQ 구성       |
-| Infra / Monitoring | Docker Compose 3.9, AWS S3, CloudWatch Logs, Actuator, Slack | 실행 환경 구성, 파일 저장, 상태 감지 및 장애 알림    |
-| Test / Tools | JUnit 5, Mockito, k6 | 단위, 통합 테스트와 Webhook, Outbox 부하 측정 |
+| 구분 | 기술 / 버전 | 도입 목적 |
+| --- | --- | --- |
+| Language / Framework | Java 21, Spring Boot 3.5.13, Spring Data JPA, Spring Security | 도메인 로직, 트랜잭션, 인증 |
+| Database / Cache | MySQL 8.0, Redis 7, QueryDSL 5.0.0 | 데이터 영속화, 멱등 처리, 조회 |
+| Messaging | RabbitMQ 3, Spring AMQP | 비동기 이벤트 전달, 재시도, DLQ |
+| Infra / Monitoring | Docker Compose, AWS S3, CloudWatch Logs, Actuator, Slack | 실행 환경, 파일 저장, 로그, 장애 감지 |
+| Test / Tools | JUnit 5, Mockito, k6 | 단위 및 통합 테스트, 동시성, 복구 검증 |
 
+### 전체 시스템 아키텍처
 
-### 아키텍처 및 주문·결제 처리 흐름
-
-**Spring Boot 기반 주문·결제 서버와 MySQL, Redis, RabbitMQ 및 외부 서비스를 연동한 전체 시스템 구성입니다.**
+주문, 모금, 결제 처리와 MySQL, Redis, RabbitMQ, 외부 알림 서비스의 전체 연동 구조입니다.
 
 <p align="center">
   <img src="./docs/images/fan_cafe_system.png"
@@ -28,128 +30,119 @@
        width="800">
 </p>
 
-#### Transactional Outbox 기반 결제 이벤트 처리 흐름
+### Saga 기반 결제, 모금 정합성 처리 흐름
 
-**결제 상태와 Outbox 이벤트를 원자적으로 저장하고, RabbitMQ를 통해 후속 처리를 비동기로 수행하는 흐름입니다.**
+결제 승인 후 모금 반영, Campaign 성공, 목표 미달 환불까지 Saga가 현재 상태에 따라 정방향 처리와 보상을 결정합니다.
 
 <p align="center">
-  <img src="./docs/images/fan_cafe_outbox.png"
-       alt="Transactional Outbox 기반 결제 이벤트 처리 흐름"
+  <img src="./docs/images/saga_flow.png"
+       alt="Saga 기반 결제, 모금 정합성 처리 흐름"
        width="800">
 </p>
 
-주문 시 재고를 안전하게 확보한 후 결제 검증을 합니다. 
-주문 상태와 알림 이벤트를 함께 저장한 뒤 RabbitMQ를 통해 중복 없이 사용자 알림을 전달합니다.
+### Transactional Outbox 기반 이벤트 처리 흐름
+
+상태 변경과 Outbox 이벤트를 함께 저장하고, RabbitMQ를 통해 후속 이벤트를 전달하며 실패를 재시도와 격리 경로로 분리합니다.
+
+<p align="center">
+  <img src="./docs/images/fan_cafe_outbox.png"
+       alt="Transactional Outbox 기반 이벤트 처리 흐름"
+       width="800">
+</p>
+
+---
 
 ## 핵심 기술적 문제 해결
 
-### 1. Transactional Outbox를 통한 이벤트 유실 방지
+### 1. Saga FSM으로 결제 부분 실패 처리
 
-**Problem:** DB 커밋과 MQ 발행 사이에 서버가 중단되면 결제 상태만 반영되고 알림 이벤트가 유실될 수 있었습니다. 알림을 동기 처리하면 RabbitMQ 지연과 장애가 결제 응답에 영향을 미칩니다.
+**Problem:** Payment 승인 이후 후속 처리에 실패하면 서로 다른 서비스의 상태를 하나의 트랜잭션으로 되돌릴 수 없습니다. HTTP Timeout도 실제 결제 실패를 의미하지 않아 즉시 취소할 수 없습니다.
 
-**Cause:** MySQL 트랜잭션과 RabbitMQ 발행 시, 주문 상태 변경과 외부 메시지 발행 사이에 부분 실패 구간이 존재했습니다.
+**Cause:** 결제 승인, 주문 완료, Contribution 반영, Campaign 상태 변경이 서로 다른 처리 단계에 있어 부분 실패 구간이 생깁니다.
 
-**Fix:** 결제 승인, 상태 이력, `OutboxEvent` 저장을 하나의 DB 트랜잭션으로 묶고, 커밋된 이벤트 발행은 별도 Poller로 분리했습니다. 이벤트 상태는 `NEW`, `SENT`, `FAILED`, `MANUAL_REQUIRED`로 관리합니다.
+**Fix:** Saga FSM이 현재 상태에 따라 정방향 처리와 보상을 결정합니다. 결제 결과가 불확실하면 `PAYMENT_UNKNOWN`으로 전이한 뒤 Payment 상태를 조회합니다. 승인된 결제를 주문에 반영할 수 없으면 `REFUND_PAYMENT` Outbox 명령으로 보상합니다. 마감 시 목표에 도달하지 못한 Campaign의 Contribution도 같은 보상 흐름으로 환불합니다.
 
-**Result:** 결제 정합성 및 Outbox 발행 실패 통합 테스트의 10개 시나리오에서 중복 Webhook, 동시 요청, 금액 불일치, 서명, 시간 검증 실패, MQ 발행 실패에 따른 중복 반영과 유실 되지 않음을 검증했습니다.
+**Result:** Timeout, 서버 종료, 늦은 승인, 주문 완료 실패, Campaign 마감 시나리오를 통합 테스트로 검증했습니다. 미완료 건은 Recovery Worker가 이어서 처리하고 자동 복구 한도를 넘으면 운영자 확인 대상으로 격리합니다.
 
 <details>
-<summary>관련 코드 및 파일</summary>
+<summary>관련 코드 및 파일 보기</summary>
 
-- [`OrderPaymentCommandService.java`](src/main/java/com/example/fan_cafe/order/application/OrderPaymentCommandService.java): 결제 상태, 상태 이력, Outbox를 하나의 트랜잭션에서 변경합니다.
-- [`OutboxEvent.java`](src/main/java/com/example/fan_cafe/outbox/domain/OutboxEvent.java): 이벤트 상태와 발행 재시도 정보를 관리합니다.
+- [`PaymentSagaOrchestrator.java`](src/main/java/com/example/fan_cafe/order/saga/application/PaymentSagaOrchestrator.java): 결제 결과와 Saga 상태를 대조해 정방향 처리, 상태 조회, 보상을 선택합니다.
+- [`SagaCompensationService.java`](src/main/java/com/example/fan_cafe/order/saga/application/SagaCompensationService.java): 결제 환불과 Campaign Contribution 환불을 Saga 보상으로 시작합니다.
 
 ```java
-lockedOrder.markPaid(paymentKey);
-recordStatusHistory(lockedOrder, from, Status.PAID, historyReason);
-persistOutboxWithEventId(
-        OutboxEvent.init("ORDER", lockedOrder.getId(), buildOrderPaidPayload(lockedOrder))
-);
+try {
+    payment = paymentClient.approve(orderId, expectedAmount, approvalAmount, paymentKey);
+} catch (PaymentOutcomeUnknownException unknown) {
+    SagaSnapshot current = sagaTransactionService.markPaymentUnknown(
+            saga.sagaId(), summarizeUnknown(unknown));
+    return continueAfterUnknown(current, orderId, unknown);
+}
 ```
 
 </details>
 
-### 2. Outbox Poller 조회 병목 개선
+### 2. Outbox와 멱등 처리로 실행 보장
 
-**Problem:** Outbox 이벤트 누적 시 처리 대상 조회 p95가 3초까지 증가했습니다. Polling 주기를 늘리면 DB 부하는 줄지만 이벤트 전달이 지연되고, 다중 Poller는 잠금 대기가 발생할 수 있습니다.
+**Problem:** 상태 전이 이후 결제, 환불, 후속 이벤트 실행이 유실되거나 재시도로 중복 실행될 수 있습니다.
 
-**Cause:** `status`, `next_retry_at` 조건의 반복 필터링과 `id` 정렬 비용이 증가했으며, 여러 Poller가 같은 행을 처리 대상으로 선택할 수 있었습니다.
+**Cause:** DB 상태 변경과 외부 메시지 전달은 하나의 원자적 트랜잭션으로 묶을 수 없습니다.
 
-**Fix:** 조회 조건 순서에 맞춘 `(status, next_retry_at, id)` 복합 인덱스와 `LIMIT 50`, `FOR UPDATE SKIP LOCKED`를 적용했습니다.
+**Fix:** Saga 상태 전이와 `APPROVE_PAYMENT`, `REFUND_PAYMENT` 명령을 Outbox에 저장하고 Poller가 RabbitMQ로 전달합니다. Payment 서비스는 결제 키와 `REFUND:{sagaId}` 키로 반복 명령을 멱등 처리합니다. Campaign 목표 달성 시에는 Campaign 상태, Contribution 상태, `CAMPAIGN_SUCCEEDED` Outbox를 `SagaOrderCompletionService`의 같은 트랜잭션에서 저장합니다.
 
-**Result:** Poller 조회 p95는 3초에서 70.04ms로 감소했고 API p95는 19.2% 개선됐습니다.
+**Result:** 상태는 변경됐지만 실행 명령이 사라지는 구간을 제거했습니다. 반복 요청과 MQ 재전달에서도 결제와 환불이 중복 반영되지 않도록 구성했습니다.
 
 <details>
-<summary>관련 코드 및 파일</summary>
+<summary>관련 코드 및 파일 보기</summary>
 
-- [`OutboxEvent.java`](src/main/java/com/example/fan_cafe/outbox/domain/OutboxEvent.java): `status`, `next_retry_at`, `id` 순서의 복합 인덱스를 정의합니다.
-- [`OutboxEventRepository.java`](src/main/java/com/example/fan_cafe/outbox/infrastructure/OutboxEventRepository.java): 처리 대상 50건을 `FOR UPDATE SKIP LOCKED`로 조회합니다.
+- [`SagaOrderCompletionService.java`](src/main/java/com/example/fan_cafe/order/saga/application/SagaOrderCompletionService.java): 주문, Contribution, Campaign, Saga 변경을 하나의 트랜잭션으로 묶습니다.
+- [`CampaignContributionPaymentService.java`](src/main/java/com/example/fan_cafe/campaign/application/CampaignContributionPaymentService.java): 목표 달성 시 Campaign 성공 상태와 사용자별 성공 Outbox를 저장합니다.
+
+```java
+if (campaign.isTargetReached()) {
+    campaign.markSuccess(LocalDateTime.now(clock));
+    contributionRepository.findDistinctUserIdsByCampaignIdAndStatus(
+                    campaign.getId(), ContributionStatus.CONFIRMED)
+            .forEach(userId -> campaignOutboxService.saveSuccess(
+                    campaign.getId(), userId, campaign.getTitle()));
+}
+```
+
+</details>
+
+### 3. Recovery Worker로 미완료 Saga 복구
+
+**Problem:** 결제 상태 조회, 주문 완료, 환불 도중 서버가 종료되면 Saga가 중간 상태에 남을 수 있습니다. 여러 Worker가 같은 Saga를 동시에 조회하면 잠금 경쟁과 중복 처리가 생길 수 있습니다.
+
+**Cause:** 장애 이후 현재 상태부터 처리를 이어갈 복구 경로와 Worker 간 작업 분리가 필요합니다.
+
+**Fix:** Recovery Worker가 `PAYMENT_PENDING`, `PAYMENT_UNKNOWN`, `PAYMENT_COMPLETED`, `COMPENSATING` 상태 중 `next_retry_at`이 지난 Saga를 다시 처리합니다. 실패 시 `retry_count`, `next_retry_at`, `last_error`를 갱신하고, 한도를 넘으면 `RECONCILIATION_REQUIRED`로 전이해 Slack 알림 Outbox를 저장합니다. 다중 Worker는 `READ_COMMITTED`의 짧은 claim 트랜잭션과 `FOR UPDATE SKIP LOCKED`로 작업을 분리합니다.
+
+**Result:** 4,000개의 due `PAYMENT_UNKNOWN` Saga를 대상으로 Worker 동시성별 처리량과 InnoDB row lock delta를 비교할 수 있는 재현 가능한 실험 환경을 구성했습니다.
+
+<details>
+<summary>관련 코드 및 파일 보기</summary>
+
+- [`SagaRecoveryTransactionService.java`](src/main/java/com/example/fan_cafe/order/saga/recovery/SagaRecoveryTransactionService.java): 복구 대상을 claim하고 재시도 또는 운영자 확인 상태를 기록합니다.
+- [`SagaInstanceRepository.java`](src/main/java/com/example/fan_cafe/order/saga/infrastructure/SagaInstanceRepository.java): 처리 시각이 지난 미완료 Saga를 잠금 대기 없이 한 건씩 조회합니다.
 
 ```sql
 SELECT *
-FROM outbox_events
-WHERE status IN ('NEW', 'FAILED')
+FROM saga_instance
+WHERE status IN ('PAYMENT_PENDING', 'PAYMENT_UNKNOWN', 'PAYMENT_COMPLETED', 'COMPENSATING')
   AND next_retry_at <= :now
-ORDER BY id
-LIMIT 50
-FOR UPDATE SKIP LOCKED;
+ORDER BY next_retry_at, saga_id
+LIMIT 1
+FOR UPDATE SKIP LOCKED
 ```
 
 </details>
 
-### 3. 실패 이벤트 재시도 및 수동 복구
+---
 
-**Problem:** 일시적 장애는 재시도로 복구할 가치가 있지만 반복 실패 이벤트는 빠르게 제외해야 합니다. 로그만으로는 재시도 대기, 한도 초과, 수동 처리 대상을 구분하기 어렵습니다.
+## 실행 및 테스트
 
-**Cause:** 실패 유형별 상태와 재시도 정책, 한도 초과 이벤트를 정상 처리 흐름에서 분리하는 경로가 필요했습니다.
-
-**Fix:** Poller에 지수 Backoff와 Jitter를 적용하고 `retry_count`, `next_retry_at`, `last_error`를 기록합니다. 발행 한도 초과는 `MANUAL_REQUIRED`, Consumer 처리 한도 초과는 DLQ로 분리하고 관리자 재처리, Trace ID 로그, Slack 알림과 HealthIndicator를 연결했습니다.
-
-**Result:** 일시적 발행 실패는 자동 재시도로 복구하고, 재시도 한도를 초과한 이벤트는 `MANUAL_REQUIRED` 또는 DLQ로 격리했습니다. 장애 감지 시 Slack 알림이 전송되고, 관리자가 격리된 이벤트를 재처리하는 흐름을 테스트했습니다.
-
-<details>
-<summary>관련 코드 및 파일</summary>
-
-- [`OutboxPoller.java`](src/main/java/com/example/fan_cafe/outbox/application/OutboxPoller.java): 발행 실패 상태, 다음 재시도 시각과 수동 처리 상태를 기록합니다.
-- [`DlqService.java`](src/main/java/com/example/fan_cafe/outbox/application/DlqService.java): DLQ 이력을 저장하고 재시도 소진 이벤트를 Main Queue로 재발행합니다.
-
-</details>
-
-## 실행 및 부하 테스트
-
-<details>
-<summary>환경 변수</summary>
-
-```env
-SPRING_PROFILES_ACTIVE=dev
-MOCK_PG_WEBHOOK_SECRET=
-
-DB_URL=
-DB_USERNAME=
-DB_PASSWORD=
-
-REDIS_HOST=
-REDIS_PORT=
-
-RABBITMQ_HOST=
-RABBITMQ_PORT=
-RABBITMQ_USERNAME=
-RABBITMQ_PASSWORD=
-
-AWS_REGION=
-AWS_S3_BUCKET=
-MAIL_PORT=
-SERVER_PORT=
-
-ACTUATOR_USER=
-ACTUATOR_PASSWORD=
-```
-
-JWT RSA 키, Firebase 서비스 계정 파일, AWS S3 접근 권한이 추가로 필요합니다. 비밀값은 저장소에 커밋하지 않습니다.
-
-</details>
-
-Docker Compose 실행:
+### Docker Compose 실행
 
 ```bash
 docker compose up -d --build
@@ -157,20 +150,98 @@ docker compose up -d --build
 
 ### API 문서
 
-애플리케이션 실행 후 Swagger UI에서 API 명세를 확인하고 요청을 테스트할 수 있습니다.
-
 ```text
 http://localhost:{SERVER_PORT}/swagger-ui/index.html
 ```
 
-### k6 부하 테스트
+### Saga Recovery 4,000건 동시성 실험
 
-부하 테스트 전에 DB 프로시저 파일 `scripts/seed-payment-pending-orders.sql`을 실행해 `PAYMENT_PENDING` 주문 100,000건을 생성합니다.
+4,000개의 미완료 Saga를 대상으로 Worker 수를 `1`, `2`, `4`, `8`, `10`으로 바꾸며 처리량과 DB Lock 경쟁을 비교합니다.
+
+<details>
+<summary>실험 재현 방법 보기</summary>
+
+전체 절차와 전제 조건은 [`docs/experiments/saga-step8/README.md`](docs/experiments/saga-step8/README.md)에 있습니다.
+
+인프라를 시작하고 각 실행 전에 데이터를 초기화합니다.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d db payment-db redis rabbitmq
+docker compose stop app payment-service
+
+Get-Content -Raw docs/experiments/saga-step8/experiment2-reset-order.sql |
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
+Get-Content -Raw docs/experiments/saga-step8/experiment2-reset-payment.sql |
+  docker compose exec -T payment-db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" payment_db'
+Get-Content -Raw docs/experiments/saga-step8/experiment2-seed-order.sql |
+  docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
+Get-Content -Raw docs/experiments/saga-step8/experiment2-seed-payment.sql |
+  docker compose exec -T payment-db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" payment_db'
+```
+
+실행별 `runId`를 지정하고 BEFORE snapshot을 저장한 뒤 Worker를 시작합니다.
+
+```powershell
+$env:EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_ENABLED = "false"
+docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d payment-service
+
+$runId = "concurrency-1-run-1"
+$env:SAGA_RECOVERY_EXPERIMENT_RUN_ID = $runId
+$beforeSql = "SET @run_id='$runId'; SET @snapshot_phase='BEFORE';`n" +
+  (Get-Content -Raw docs/experiments/saga-step8/mysql-lock-snapshot.sql)
+$beforeSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
+
+$env:SAGA_RECOVERY_CONCURRENCY = "1"
+docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d app
+```
+
+4,000건이 처리된 직후 AFTER snapshot과 결과를 조회합니다.
+
+```powershell
+$afterSql = "SET @run_id='$runId'; SET @snapshot_phase='AFTER';`n" +
+  (Get-Content -Raw docs/experiments/saga-step8/mysql-lock-snapshot.sql)
+$afterSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
+
+$resultSql = "SET @run_id='$runId';`n" +
+  (Get-Content -Raw docs/experiments/saga-step8/experiment2-result.sql)
+$resultSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" fan_cafe'
+```
+
+결과 SQL은 처리 Saga 수, 순수 Recovery 처리시간, 초당 처리량, InnoDB row lock waits와 row lock wait time의 BEFORE/AFTER 차이를 출력합니다.
+
+</details>
+
+### Payment Partial Success 20,000건 실험
+
+승인 커밋 후 응답 지연을 주입해 `PAYMENT_UNKNOWN` 복구와 최종 수렴을 검증합니다.
+
+<details>
+<summary>실험 재현 방법 보기</summary>
+
+초기화와 결과 조회 명령은 [`docs/experiments/saga-step8/README.md`](docs/experiments/saga-step8/README.md)에 있습니다.
+
+```powershell
+$env:EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_ENABLED = "true"
+$env:EXPERIMENT_PAYMENT_PARTIAL_SUCCESS_PERCENT = "20"
+$env:EXPERIMENT_PAYMENT_APPROVAL_RESPONSE_DELAY = "5s"
+$env:SAGA_RECOVERY_CONCURRENCY = "1"
+docker compose -f docker-compose.yml -f docker-compose.experiment.yml up -d payment-service app
+
+k6 run -e VUS=50 -e BASE_URL=http://localhost:8080 k6/saga-partial-success.js
+```
+
+</details>
+
+### Transactional Outbox 부하 테스트
+
+100,000건 Outbox 부하 테스트는 복합 인덱스와 `FOR UPDATE SKIP LOCKED` 적용 전후의 Poller 조회 성능을 비교합니다. 기록된 측정에서 조회 p95는 3초에서 70.04ms로 감소했습니다.
+
+<details>
+<summary>실험 재현 방법 보기</summary>
 
 ```bash
 mysql -u root -p fan_cafe < scripts/seed-payment-pending-orders.sql
-```
-
-```bash
 k6 run -e BASE_URL=http://localhost:8080 -e MOCK_PG_WEBHOOK_SECRET=<MOCK_PG_WEBHOOK_SECRET> k6/order-webhook-outbox-load-test.js
 ```
+
+</details>
