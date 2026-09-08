@@ -50,6 +50,34 @@
        width="800">
 </p>
 
+### 패키지 구조
+
+```text
+src/main/java/com/example/fan_cafe
+├── order
+│   ├── application, domain, infrastructure, interfaces
+│   ├── payment/client
+│   └── saga
+│       ├── application, domain, infrastructure, messaging
+│       ├── recovery
+│       └── interfaces/rest
+├── campaign
+│   └── application, domain, infrastructure, interfaces
+├── outbox
+│   ├── application, domain, infrastructure, mq
+│   └── controller, interfaces/rest
+├── notification
+└── global
+```
+
+- `order`: 상품 주문과 결제 상태 변경을 처리합니다.
+- `campaign`: 공동모금과 참여, 목표 달성 및 환불 상태를 관리합니다.
+- `order/saga`: 결제와 주문, 모금 간 정방향 처리와 보상을 조율합니다.
+- `order/saga/recovery`: 중단된 Saga를 조회하고 상태에 맞는 처리를 재개합니다.
+- `order/payment/client`: 외부 Payment 서비스의 승인, 상태 조회, 환불 API를 호출합니다.
+- `outbox`: Outbox 저장과 발행, RabbitMQ 전달, 재시도 및 격리 처리를 담당합니다.
+- `order/saga/interfaces`, `outbox/controller`, `outbox/interfaces`: 운영자가 복구 대상을 조회하고 재처리하는 API와 관리 화면을 제공합니다.
+
 ---
 
 ## 핵심 기술적 문제 해결
@@ -60,7 +88,7 @@
 
 **Cause:** 결제 승인, 주문 완료, Contribution 반영, Campaign 상태 변경이 서로 다른 처리 단계에 있어 부분 실패 구간이 생깁니다.
 
-**Fix:** Saga FSM이 현재 상태에 따라 정방향 처리와 보상을 결정합니다. 결제 결과가 불확실하면 `PAYMENT_UNKNOWN`으로 전이한 뒤 Payment 상태를 조회합니다. 승인된 결제를 주문에 반영할 수 없으면 `REFUND_PAYMENT` Outbox 명령으로 보상합니다. 마감 시 목표에 도달하지 못한 Campaign의 Contribution도 같은 보상 흐름으로 환불합니다.
+**Fix:** Saga FSM이 현재 상태에 따라 정방향 처리와 보상을 결정합니다. 결제 결과가 불확실하면 결과 확인 대기 상태(`PAYMENT_UNKNOWN`)로 전이한 뒤 Payment 상태를 조회합니다. 승인된 결제를 주문에 반영할 수 없으면 환불 Outbox 명령(`REFUND_PAYMENT`)으로 보상합니다. 마감 시 목표에 도달하지 못한 Campaign의 Contribution도 같은 보상 흐름으로 환불합니다.
 
 **Result:** Timeout, 서버 종료, 늦은 승인, 주문 완료 실패, Campaign 마감 시나리오를 통합 테스트로 검증했습니다. 미완료 건은 Recovery Worker가 이어서 처리하고 자동 복구 한도를 넘으면 운영자 확인 대상으로 격리합니다.
 
@@ -88,9 +116,9 @@ try {
 
 **Cause:** DB 상태 변경과 외부 메시지 전달은 하나의 원자적 트랜잭션으로 묶을 수 없습니다.
 
-**Fix:** Saga 상태 전이와 `APPROVE_PAYMENT`, `REFUND_PAYMENT` 명령을 Outbox에 저장하고 Poller가 RabbitMQ로 전달합니다. Payment 서비스는 결제 키와 `REFUND:{sagaId}` 키로 반복 명령을 멱등 처리합니다. Campaign 목표 달성 시에는 Campaign 상태, Contribution 상태, `CAMPAIGN_SUCCEEDED` Outbox를 `SagaOrderCompletionService`의 같은 트랜잭션에서 저장합니다.
+**Fix:** Saga 상태 전이와 결제 승인 및 환불 명령(`APPROVE_PAYMENT`, `REFUND_PAYMENT`)을 Outbox에 저장하고 Poller가 RabbitMQ로 전달합니다. Payment 서비스는 결제 키와 `REFUND:{sagaId}` 키로 반복 명령을 멱등 처리합니다. Campaign 목표 달성 시에는 Campaign 상태, Contribution 상태, 성공 알림 Outbox(`CAMPAIGN_SUCCEEDED`)를 `SagaOrderCompletionService`의 같은 트랜잭션에서 저장합니다. Outbox가 누적되면 Poller의 미발행 대상 조회가 반복되는 점을 고려해 `(status, next_retry_at, id)` 복합 인덱스를 적용했습니다.
 
-**Result:** 상태는 변경됐지만 실행 명령이 사라지는 구간을 제거했습니다. 반복 요청과 MQ 재전달에서도 결제와 환불이 중복 반영되지 않도록 구성했습니다.
+**Result:** 상태는 변경됐지만 실행 명령이 사라지는 구간을 제거했습니다. 반복 요청과 MQ 재전달에서도 결제와 환불이 중복 반영되지 않도록 구성했습니다. 복합 인덱스 적용 후 Webhook API p95를 57.65ms에서 21.36ms로 62.9% 단축하고, 처리량을 208.47 req/s에서 229.74 req/s로 10.2% 높였습니다.
 
 <details>
 <summary>관련 코드 및 파일 보기</summary>
@@ -116,9 +144,9 @@ if (campaign.isTargetReached()) {
 
 **Cause:** 장애 이후 현재 상태부터 처리를 이어갈 복구 경로와 Worker 간 작업 분리가 필요합니다.
 
-**Fix:** Recovery Worker가 `PAYMENT_PENDING`, `PAYMENT_UNKNOWN`, `PAYMENT_COMPLETED`, `COMPENSATING` 상태 중 `next_retry_at`이 지난 Saga를 다시 처리합니다. 실패 시 `retry_count`, `next_retry_at`, `last_error`를 갱신하고, 한도를 넘으면 `RECONCILIATION_REQUIRED`로 전이해 Slack 알림 Outbox를 저장합니다. 다중 Worker는 `READ_COMMITTED`의 짧은 claim 트랜잭션과 `FOR UPDATE SKIP LOCKED`로 작업을 분리합니다.
+**Fix:** Recovery Worker가 결제 처리 중이거나 결과 확인, 주문 완료, 환불을 기다리는 Saga 중 재시도 시각이 지난 대상을 다시 처리합니다. 실패 시 재시도 횟수와 다음 재시도 시각, 마지막 오류를 기록하고, 자동 복구 한도를 넘으면 운영자 확인이 필요한 상태(`RECONCILIATION_REQUIRED`)로 격리해 Slack 알림 Outbox를 저장합니다. 다중 Worker는 `READ_COMMITTED`의 짧은 claim 트랜잭션과 `FOR UPDATE SKIP LOCKED`로 작업을 분리합니다.
 
-**Result:** 4,000개의 due `PAYMENT_UNKNOWN` Saga를 대상으로 Worker 동시성별 처리량과 InnoDB row lock delta를 비교할 수 있는 재현 가능한 실험 환경을 구성했습니다.
+**Result:** 20,000건 실험에서 응답 시간 초과를 즉시 실패 처리한 방식은 4,108건(20.54%)의 상태 불일치가 모두 최종 미수렴으로 남았지만, Saga Recovery는 초기 복구 대상 4,247건을 모두 최종 상태로 수렴시켜 미수렴 0건을 확인했습니다. Worker 4, 미완료 Saga 4,000건 조건에서는 `FOR UPDATE SKIP LOCKED` 적용으로 Lock Wait를 7,864회에서 0회, Lock Wait Time을 125,437ms에서 0ms로 제거하고 처리량을 42.277 Sagas/s에서 44.410 Sagas/s로 높였습니다.
 
 <details>
 <summary>관련 코드 및 파일 보기</summary>
@@ -213,7 +241,7 @@ $resultSql | docker compose exec -T db sh -lc 'mysql -uroot -p"$MYSQL_ROOT_PASSW
 
 ### Payment Partial Success 20,000건 실험
 
-승인 커밋 후 응답 지연을 주입해 `PAYMENT_UNKNOWN` 복구와 최종 수렴을 검증합니다.
+승인 커밋 후 응답 지연을 주입해 결제 결과 확인 대기 상태(`PAYMENT_UNKNOWN`)의 복구와 최종 수렴을 검증합니다.
 
 <details>
 <summary>실험 재현 방법 보기</summary>
@@ -234,7 +262,7 @@ k6 run -e VUS=50 -e BASE_URL=http://localhost:8080 k6/saga-partial-success.js
 
 ### Transactional Outbox 부하 테스트
 
-100,000건 Outbox 부하 테스트는 복합 인덱스와 `FOR UPDATE SKIP LOCKED` 적용 전후의 Poller 조회 성능을 비교합니다. 기록된 측정에서 조회 p95는 3초에서 70.04ms로 감소했습니다.
+100,000건 Outbox 부하 환경에서 복합 인덱스와 `FOR UPDATE SKIP LOCKED` 적용 전후의 Poller 조회 및 API 성능 변화를 비교합니다.
 
 <details>
 <summary>실험 재현 방법 보기</summary>
