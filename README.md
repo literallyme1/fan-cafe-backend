@@ -52,6 +52,9 @@
 
 ### 패키지 구조
 
+<details>
+<summary>주요 패키지와 역할 보기</summary>
+
 ```text
 src/main/java/com/example/fan_cafe
 ├── order
@@ -77,6 +80,8 @@ src/main/java/com/example/fan_cafe
 - `order/payment/client`: 외부 Payment 서비스의 승인, 상태 조회, 환불 API를 호출합니다.
 - `outbox`: Outbox 저장과 발행, RabbitMQ 전달, 재시도 및 격리 처리를 담당합니다.
 - `order/saga/interfaces`, `outbox/controller`, `outbox/interfaces`: 운영자가 복구 대상을 조회하고 재처리하는 API와 관리 화면을 제공합니다.
+
+</details>
 
 ---
 
